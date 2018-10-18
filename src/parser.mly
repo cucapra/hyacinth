@@ -45,6 +45,12 @@ unop:
   | MULTIPLY              { BMul }
   | DIVIDE                { BDiv }
 
+/* Expressions */
+expr :
+  | value                 { EValue($1) }
+  | expr binop expr       { EBinop ($2, $1, $3) }
+  | unop expr             { EUnop($1, $2) }
+
 /* Commands */
 com :
   | acom                  { $1 }
@@ -55,12 +61,7 @@ acom :
   | PRINT expr SEMI       { CPrint $2 }
   | SKIP SEMI             { CSkip}
   | LBRACE com RBRACE     { $2 }
-
-/* Expressions */
-expr :
-  | value                 { EValue($1) }
-  | expr binop expr       { EBinop ($2, $1, $3) }
-  | unop expr             { EUnop($1, $2) }
+  | expr                  { CExpr($1)}
 
 /* Programs */
 prog :

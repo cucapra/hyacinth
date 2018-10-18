@@ -23,6 +23,7 @@ and expr =
 
 and com =
   | CAssgn of var * expr
-  | CPrint of expr
   | CSeq of com list
+  | CExpr of expr
+  | CPrint of expr
   | CSkip
