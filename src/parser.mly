@@ -15,6 +15,9 @@ let parse_sequence c1 c2 =
 ADD SUBTRACT MULTIPLY DIVIDE NEGATE SQRT ABS
 SKIP LPAREN RPAREN ASSIGN SEMI LBRACE RBRACE PRINT EOF
 
+%left
+ADD SUBTRACT MULTIPLY DIVIDE
+
 %type <Ast.value> value
 %type <Ast.binop> binop
 %type <Ast.unop> unop 
@@ -61,7 +64,7 @@ acom :
   | PRINT expr SEMI       { CPrint $2 }
   | SKIP SEMI             { CSkip}
   | LBRACE com RBRACE     { $2 }
-  | expr                  { CExpr($1)}
+  | expr SEMI             { CExpr($1)}
 
 /* Programs */
 prog :
