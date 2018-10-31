@@ -40,24 +40,27 @@ let id = ['a'-'z'] ['a'-'z' '0'-'9']*
 let white = [' ' '\t']
 
 rule token = parse
-| white   { token lexbuf }
-| '\n'    { newline lexbuf; token lexbuf }
-| "+"     { ADD }
-| "-"     { SUBTRACT }
-| "*"     { MULTIPLY }
-| "/"     { DIVIDE }
-| "neg"   { NEGATE } 
-| "sqrt"  { SQRT }
-| "abs"   { ABS }
-| "skip"  { SKIP }
-| "("     { LPAREN }
-| ")"     { RPAREN }
-| "{"     { LBRACE }
-| "}"     { RBRACE }
-| ":="    { ASSIGN }
-| ";"     { SEMI }
-| "print" { PRINT }
-| id as v { VAR(v) }
-| float   { FLOAT (float_of_string (Lexing.lexeme lexbuf)) }
-| eof     { EOF }
-| _ as c  { error lexbuf (String.make 1 c) }
+  | white   { token lexbuf }
+  | '\n'    { newline lexbuf; token lexbuf }
+
+  | "+"     { ADD }
+  | "-"     { SUBTRACT }
+  | "*"     { MULTIPLY }
+  | "/"     { DIVIDE }
+
+  | "neg"   { NEGATE } 
+  | "sqrt"  { SQRT }
+  | "abs"   { ABS }
+
+  | "skip"  { SKIP }
+  | "("     { LPAREN }
+  | ")"     { RPAREN }
+  | "{"     { LBRACE }
+  | "}"     { RBRACE }
+  | ":="    { ASSIGN }
+  | ";"     { SEMI }
+  | "print" { PRINT }
+  | id as v { VAR(v) }
+  | float   { FLOAT (float_of_string (Lexing.lexeme lexbuf)) }
+  | eof     { EOF }
+  | _ as c  { error lexbuf (String.make 1 c) }

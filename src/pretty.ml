@@ -2,17 +2,28 @@ open Ast
 
 let pretty_value (v : value) : string =
   match v with
+    | VTrue -> "true"
+    | VFalse -> "false"
     | VFloat(fl) -> string_of_float fl
     | VVar(var) -> var
 
 let pretty_unop (u : unop) : string =
   match u with
-    | UNeg -> "neg"
-    | USqrt -> "sqrt"
-    | UAbs -> "abs"
+    | UNot -> "not"
+    | UNeg -> "neg "
+    | USqrt -> "sqrt "
+    | UAbs -> "abs "
 
 let pretty_binop (b : binop) : string =
   match b with
+    | EAnd -> "&&"
+    | EOr -> "||"
+    | BEquals -> "=="
+    | BNotEquals -> "!="
+    | BLess -> "<"
+    | BLessEq -> "<="
+    | BGreater -> ">"
+    | BGreaterEq -> ">="
     | BAdd -> " + "
     | BSub -> " - "
     | BMul -> " * "
@@ -27,9 +38,13 @@ let rec pretty_expr (e : expr) : string =
 
 let rec pretty (c : com) : string =
   match c with
-    | CAssgn(var, expr) -> var ^ " := " ^ (pretty_expr expr) ^ ";\n"
-    | CSeq(hd::coms) -> (pretty hd) ^ (pretty (CSeq coms))
-    | CSeq([]) -> ""
-    | CExpr(expr) ->  (pretty_expr expr) ^ ";\n"
-    | CPrint(expr) -> "print " ^ (pretty_expr expr) ^ ";\n"
-    | CSkip -> "skip;\n"
+    | CAssgn(var, expr) -> var ^ " := " ^ (pretty_expr expr) ^ ";"
+    | CIf(cond, expr) ->
+    (* TODO: add tabs *)
+      "if (" ^ (pretty_expr cond) ^ ") {\n" ^ (pretty expr) ^ "\n}"
+    | CSeq(coms) ->
+      let f (acc : string) (c : com) : string =  acc ^ "\n" ^ (pretty c)
+      in List.fold_left f "" coms
+    | CExpr(expr) ->  (pretty_expr expr) ^ ";"
+    | CPrint(expr) -> "print " ^ (pretty_expr expr) ^ ";"
+    | CSkip -> "skip;"
