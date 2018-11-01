@@ -2,8 +2,6 @@
 type var = string
 
 and value =
-  | VTrue
-  | VFalse
   | VFloat of float
   | VVar of var
 
@@ -14,8 +12,8 @@ and unop =
   | UAbs
 
 and binop =
-  | EAnd
-  | EOr
+  | BAnd
+  | BOr
   | BEquals
   | BNotEquals
   | BLess
@@ -36,6 +34,4 @@ and com =
   | CAssgn of var * expr
   | CIf of expr * com
   | CSeq of com list
-  | CExpr of expr
   | CPrint of expr
-  | CSkip

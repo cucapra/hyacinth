@@ -48,11 +48,19 @@ rule token = parse
   | "*"     { MULTIPLY }
   | "/"     { DIVIDE }
 
+  | "="     { EQUALS }
+  | "!="    { NOTEQUALS }
+  | "<="    { LESSEQ }
+  | "<"     { LESS }
+  | ">="    { GREATEREQ }
+  | ">"     { GREATER }
+  | "&&"    { AND }
+  | "||"    { OR }
+
   | "neg"   { NEGATE } 
   | "sqrt"  { SQRT }
   | "abs"   { ABS }
 
-  | "skip"  { SKIP }
   | "("     { LPAREN }
   | ")"     { RPAREN }
   | "{"     { LBRACE }

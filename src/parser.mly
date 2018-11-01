@@ -13,10 +13,13 @@ let parse_sequence c1 c2 =
 %token <string> VAR
 %token  
 ADD SUBTRACT MULTIPLY DIVIDE NEGATE SQRT ABS
-SKIP LPAREN RPAREN ASSIGN SEMI LBRACE RBRACE PRINT EOF
+EQUALS NOTEQUALS LESS LESSEQ GREATER GREATEREQ AND OR
+LPAREN RPAREN ASSIGN SEMI LBRACE RBRACE PRINT EOF
 
-%left
-ADD SUBTRACT MULTIPLY DIVIDE
+%left ADD SUBTRACT MULTIPLY DIVIDE EQUALS NOTEQUALS LESS LESSEQ GREATER GREATEREQ 
+
+%right 
+AND OR
 
 %type <Ast.value> value
 %type <Ast.binop> binop
@@ -47,6 +50,15 @@ unop:
   | SUBTRACT              { BSub }
   | MULTIPLY              { BMul }
   | DIVIDE                { BDiv }
+  | EQUALS                { BEquals }
+  | NOTEQUALS             { BNotEquals }
+  | LESS                  { BLess }
+  | LESSEQ                { BLessEq }
+  | GREATER               { BGreater }
+  | GREATEREQ             { BGreaterEq }
+  | AND                   { BAnd }
+  | OR                    { BOr }
+
 
 /* Expressions */
 expr :
@@ -62,9 +74,7 @@ com :
 acom : 
   | VAR ASSIGN expr SEMI  { CAssgn($1, $3) }
   | PRINT expr SEMI       { CPrint $2 }
-  | SKIP SEMI             { CSkip}
   | LBRACE com RBRACE     { $2 }
-  | expr SEMI             { CExpr($1)}
 
 /* Programs */
 prog :

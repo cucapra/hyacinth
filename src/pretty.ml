@@ -2,8 +2,6 @@ open Ast
 
 let pretty_value (v : value) : string =
   match v with
-    | VTrue -> "true"
-    | VFalse -> "false"
     | VFloat(fl) -> string_of_float fl
     | VVar(var) -> var
 
@@ -16,8 +14,8 @@ let pretty_unop (u : unop) : string =
 
 let pretty_binop (b : binop) : string =
   match b with
-    | EAnd -> "&&"
-    | EOr -> "||"
+    | BAnd -> "&&"
+    | BOr -> "||"
     | BEquals -> "=="
     | BNotEquals -> "!="
     | BLess -> "<"
@@ -45,6 +43,4 @@ let rec pretty (c : com) : string =
     | CSeq(coms) ->
       let f (acc : string) (c : com) : string =  acc ^ "\n" ^ (pretty c)
       in List.fold_left f "" coms
-    | CExpr(expr) ->  (pretty_expr expr) ^ ";"
     | CPrint(expr) -> "print " ^ (pretty_expr expr) ^ ";"
-    | CSkip -> "skip;"
