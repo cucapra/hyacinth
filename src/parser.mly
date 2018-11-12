@@ -14,9 +14,10 @@ let parse_sequence c1 c2 =
 %token  
 ADD SUBTRACT MULTIPLY DIVIDE NEGATE SQRT ABS
 EQUALS NOTEQUALS LESS LESSEQ GREATER GREATEREQ AND OR
-LPAREN RPAREN ASSIGN SEMI LBRACE RBRACE PRINT EOF
+IF PHI LPAREN RPAREN ASSIGN SEMI COMMA LBRACE RBRACE PRINT EOF
 
-%left ADD SUBTRACT MULTIPLY DIVIDE EQUALS NOTEQUALS LESS LESSEQ GREATER GREATEREQ 
+%left ADD SUBTRACT MULTIPLY DIVIDE
+EQUALS NOTEQUALS LESS LESSEQ GREATER GREATEREQ 
 
 %right 
 AND OR
@@ -62,9 +63,10 @@ unop:
 
 /* Expressions */
 expr :
-  | value                 { EValue($1) }
-  | expr binop expr       { EBinop ($2, $1, $3) }
-  | unop expr             { EUnop($1, $2) }
+  | value                             { EValue($1) }
+  | expr binop expr                   { EBinop ($2, $1, $3) }
+  | unop expr                         { EUnop($1, $2) }
+  | PHI LPAREN expr COMMA expr RPAREN { EPhi($3, $5) }
 
 /* Commands */
 com :
@@ -72,9 +74,10 @@ com :
   | acom com              { parse_sequence $1 $2 } 
 
 acom : 
-  | VAR ASSIGN expr SEMI  { CAssgn($1, $3) }
-  | PRINT expr SEMI       { CPrint $2 }
-  | LBRACE com RBRACE     { $2 }
+  | VAR ASSIGN expr SEMI                    { CAssgn($1, $3) }
+  | PRINT expr SEMI                         { CPrint $2 }
+  | LBRACE com RBRACE                       { $2 }
+  | IF LPAREN expr RPAREN LBRACE com RBRACE { CIf ($3, $6) }
 
 /* Programs */
 prog :

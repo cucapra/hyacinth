@@ -61,12 +61,16 @@ rule token = parse
   | "sqrt"  { SQRT }
   | "abs"   { ABS }
 
+  | "if"    { IF }
+  | "phi"   { PHI }
+
   | "("     { LPAREN }
   | ")"     { RPAREN }
   | "{"     { LBRACE }
   | "}"     { RBRACE }
   | ":="    { ASSIGN }
   | ";"     { SEMI }
+  | ","     { COMMA }
   | "print" { PRINT }
   | id as v { VAR(v) }
   | float   { FLOAT (float_of_string (Lexing.lexeme lexbuf)) }

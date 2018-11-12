@@ -16,7 +16,7 @@ let rec check_ssa_expr (e : expr) (vars : VarSet.t) : VarSet.t =
   match e with
     | EValue(value) -> check_ssa_value value vars
     | EUnop(_, expr) -> (check_ssa_expr expr vars)
-    | EBinop(_, e1, e2) ->
+    | EBinop(_, e1, e2) | EPhi (e1, e2) ->
       VarSet.union (check_ssa_expr e1 vars) (check_ssa_expr e2 vars)
 
 let check_ssa (c : com) : var list =

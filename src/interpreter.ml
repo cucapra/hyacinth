@@ -47,6 +47,7 @@ let rec interpret_expr (s : float VarMap.t) (e : expr) : float =
       let f2 = (interpret_expr s e2) in
       (interpret_binop binop) f1 f2
     | EUnop(unop, expr) -> interpret_unop unop (interpret_expr s expr)
+    | EPhi (e1, _) -> (interpret_expr s e1) (* TODO: select one?? *)
 
 let interpret (c : com) : float VarMap.t =
   let rec interpret_com (s : float VarMap.t) (c : com) : float VarMap.t =
