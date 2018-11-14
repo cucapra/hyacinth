@@ -66,7 +66,7 @@ expr :
   | value                             { EValue($1) }
   | expr binop expr                   { EBinop ($2, $1, $3) }
   | unop expr                         { EUnop($1, $2) }
-  | PHI LPAREN expr COMMA expr RPAREN { EPhi($3, $5) }
+  | PHI LPAREN VAR COMMA VAR RPAREN { EPhi($3, $5) }
 
 /* Commands */
 com :

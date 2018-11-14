@@ -1,17 +1,30 @@
 open Ast
-open Check
+
+exception UnboundVariableInterp of var
 
 module VarMap =
   Map.Make(struct type t = var;; let compare = String.compare end)
 
-let set (s : float VarMap.t) (x : var) (v : float) : float VarMap.t =
-  VarMap.add x v s
+(* For now, Phi nodes just select the variable most recently assigned to *)
 
-let lookup (s : float VarMap.t) (x : var) : float =
-  try VarMap.find x s
-  with Not_found -> raise (UnboundVariable x)
+type store =
+  { vars : float VarMap.t;
+    phi : var list
+  }
 
-let interpret_value (s : float VarMap.t) (v : value) : float =
+let set (s : store) (x : var) (v : float) : store =
+  { vars = VarMap.add x v s.vars; phi = x::(s.phi) }
+
+let lookup (s : store) (x : var) : float =
+  try VarMap.find x s.vars
+  with Not_found -> raise (UnboundVariableInterp x)
+
+let phi_select (s : store) (v1 : var) (v2 : var) : var =
+  let f (x : var) = (x = v1) || (x = v2) in
+  try List.find f s.phi
+  with Not_found -> raise (UnboundVariableInterp v1)
+
+let interpret_value (s : store) (v : value) : float =
   match v with
     | VFloat(fl) -> fl
     | VVar(var) -> lookup s var
@@ -39,7 +52,7 @@ let interpret_binop (b : binop) : (float -> float -> float) =
     | BMul -> ( *. )
     | BDiv -> (/.)
 
-let rec interpret_expr (s : float VarMap.t) (e : expr) : float =
+let rec interpret_expr (s : store) (e : expr) : float =
   match e with
     | EValue(value) -> interpret_value s value
     | EBinop(binop, e1, e2) ->
@@ -47,22 +60,23 @@ let rec interpret_expr (s : float VarMap.t) (e : expr) : float =
       let f2 = (interpret_expr s e2) in
       (interpret_binop binop) f1 f2
     | EUnop(unop, expr) -> interpret_unop unop (interpret_expr s expr)
-    | EPhi (e1, _) -> (interpret_expr s e1) (* TODO: select one?? *)
+    | EPhi (v1, v2) -> lookup s (phi_select s v1 v2)
 
 let interpret (c : com) : float VarMap.t =
-  let rec interpret_com (s : float VarMap.t) (c : com) : float VarMap.t =
+  let rec interpret_com (s : store) (c : com) : store =
     match c with
       | CAssgn(var, expr) -> set s var (interpret_expr s expr)
       | CIf(cond, branch) ->
         let cval = (interpret_expr s cond) in
-        if cval > 0. then (interpret_com s branch) else s
+        if cval > 0. then interpret_com s branch else s
       | CSeq(coms) ->
-        let f (acc : float VarMap.t) (c' : com) = (interpret_com acc c')
+        let f (acc : store) (c' : com) = (interpret_com acc c')
         in List.fold_left f s coms
       | CPrint(expr) ->
         let f = interpret_expr s expr in print_endline (string_of_float f); s;
   in
-interpret_com VarMap.empty c
+let result = interpret_com {vars = VarMap.empty; phi = []} c in
+  result.vars
 
 let print_store (s : float VarMap.t) =
   let f (var : var) (f : float) (acc : string) : string =

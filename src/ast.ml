@@ -29,7 +29,7 @@ and expr =
   | EValue of value
   | EBinop of binop * expr * expr
   | EUnop of unop * expr
-  | EPhi of expr * expr
+  | EPhi of var * var
 
 and com =
   | CAssgn of var * expr

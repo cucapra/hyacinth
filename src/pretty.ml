@@ -33,8 +33,8 @@ let rec pretty_expr (e : expr) : string =
     | EBinop(binop, e1, e2) ->
       (pretty_expr e1) ^ (pretty_binop binop) ^ (pretty_expr e2)
     | EUnop(unop, expr) -> (pretty_unop unop) ^ (pretty_expr expr)
-    | EPhi (e1, e2) ->
-      "phi (" ^ (pretty_expr e1) ^ ", " ^ (pretty_expr e2) ^ ")"
+    | EPhi (v1, v2) ->
+      "phi (" ^ v1 ^ ", " ^ v2 ^ ")"
 
 let rec pretty (c : com) : string =
   match c with
