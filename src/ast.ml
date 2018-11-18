@@ -25,10 +25,16 @@ and binop =
   | BMul
   | BDiv
 
-and expr =
+(* and expr =
   | EValue of value
   | EBinop of binop * expr * expr
   | EUnop of unop * expr
+  | EPhi of var * var *)
+
+and expr =
+  | EValue of value
+  | EBinop of binop * value * value
+  | EUnop of unop * value
   | EPhi of var * var
 
 and com =

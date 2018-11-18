@@ -52,14 +52,14 @@ let interpret_binop (b : binop) : (float -> float -> float) =
     | BMul -> ( *. )
     | BDiv -> (/.)
 
-let rec interpret_expr (s : store) (e : expr) : float =
+let interpret_expr (s : store) (e : expr) : float =
   match e with
     | EValue(value) -> interpret_value s value
-    | EBinop(binop, e1, e2) ->
-      let f1 = (interpret_expr s e1) in
-      let f2 = (interpret_expr s e2) in
+    | EBinop(binop, v1, v2) ->
+      let f1 = (interpret_value s v1) in
+      let f2 = (interpret_value s v2) in
       (interpret_binop binop) f1 f2
-    | EUnop(unop, expr) -> interpret_unop unop (interpret_expr s expr)
+    | EUnop(unop, v) -> interpret_unop unop (interpret_value s v)
     | EPhi (v1, v2) -> lookup s (phi_select s v1 v2)
 
 let interpret (c : com) : float VarMap.t =

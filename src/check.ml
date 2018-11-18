@@ -14,12 +14,12 @@ let check_ssa_value (v : value) (vars : VarSet.t) : VarSet.t =
     | VVar(x) -> check_var x vars
     | VFloat(_) -> vars
 
-let rec check_ssa_expr (e : expr) (vars : VarSet.t) : VarSet.t =
+let check_ssa_expr (e : expr) (vars : VarSet.t) : VarSet.t =
   match e with
     | EValue(value) -> check_ssa_value value vars
-    | EUnop(_, expr) -> (check_ssa_expr expr vars)
-    | EBinop(_, e1, e2) ->
-      VarSet.union (check_ssa_expr e1 vars) (check_ssa_expr e2 vars)
+    | EUnop(_, v) -> (check_ssa_value v vars)
+    | EBinop(_, v1, v2) ->
+      VarSet.union (check_ssa_value v1 vars) (check_ssa_value v2 vars)
     | EPhi(v1, v2) -> let _ = check_var v1 vars in check_var v2 vars
 
 let check_ssa (c : com) : var list =

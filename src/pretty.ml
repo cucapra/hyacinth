@@ -27,14 +27,13 @@ let pretty_binop (b : binop) : string =
     | BMul -> " * "
     | BDiv -> " / "
 
-let rec pretty_expr (e : expr) : string =
+let pretty_expr (e : expr) : string =
   match e with
     | EValue(value) -> pretty_value value
-    | EBinop(binop, e1, e2) ->
-      (pretty_expr e1) ^ (pretty_binop binop) ^ (pretty_expr e2)
-    | EUnop(unop, expr) -> (pretty_unop unop) ^ (pretty_expr expr)
-    | EPhi (v1, v2) ->
-      "phi (" ^ v1 ^ ", " ^ v2 ^ ")"
+    | EBinop(binop, val1, val2) ->
+      (pretty_value val1) ^ (pretty_binop binop) ^ (pretty_value val2)
+    | EUnop(unop, v) -> (pretty_unop unop) ^ (pretty_value v)
+    | EPhi (v1, v2) -> "phi (" ^ v1 ^ ", " ^ v2 ^ ")"
 
 let rec pretty (c : com) : string =
   match c with

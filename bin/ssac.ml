@@ -20,3 +20,10 @@ let _ =
     print_endline (Interpreter.print_store store)
   with e ->
     print_endline ("Interpreter error: " ^ Printexc.to_string e));
+
+  (try
+    print_endline "\nSSA to DFG:";
+    let dfg = Dfg.ssa_to_dfg prog in
+    print_endline (Dfg.print_nodes dfg)
+  with e ->
+    print_endline ("SSA to DFG error: " ^ Printexc.to_string e));

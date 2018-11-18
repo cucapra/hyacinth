@@ -16,12 +16,6 @@ ADD SUBTRACT MULTIPLY DIVIDE NEGATE SQRT ABS
 EQUALS NOTEQUALS LESS LESSEQ GREATER GREATEREQ AND OR
 IF PHI LPAREN RPAREN ASSIGN SEMI COMMA LBRACE RBRACE PRINT EOF
 
-%left ADD SUBTRACT MULTIPLY DIVIDE
-EQUALS NOTEQUALS LESS LESSEQ GREATER GREATEREQ 
-
-%right 
-AND OR
-
 %type <Ast.value> value
 %type <Ast.binop> binop
 %type <Ast.unop> unop 
@@ -64,9 +58,9 @@ unop:
 /* Expressions */
 expr :
   | value                             { EValue($1) }
-  | expr binop expr                   { EBinop ($2, $1, $3) }
-  | unop expr                         { EUnop($1, $2) }
-  | PHI LPAREN VAR COMMA VAR RPAREN { EPhi($3, $5) }
+  | value binop value                 { EBinop ($2, $1, $3) }
+  | unop value                        { EUnop($1, $2) }
+  | PHI LPAREN VAR COMMA VAR RPAREN   { EPhi($3, $5) }
 
 /* Commands */
 com :

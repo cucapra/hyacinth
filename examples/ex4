@@ -1,6 +1,7 @@
 x1 := 0;
 if (1.) {
-    x2 := 1;
+    x2 := 2 + 3;
+    x3 := x2 + 4;
 }
-x3 := phi(x1, x2);
-print x3;
+x4 := phi(x1, x3);
+print x4;
