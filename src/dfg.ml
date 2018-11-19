@@ -83,12 +83,11 @@ let rec com_to_nodes (c : com) (r : result) : result =
     insert r var n
   | CIf(cond, branch) ->
     let cn = expr_to_node cond r in
-    let r' = com_to_nodes branch r in
     let ifn = NOp({
       op = OIf;
       incoming = [cn];
     }) in
-    insert r' "" ifn
+    com_to_nodes branch (insert r "" ifn)
   | CSeq(coms) -> com_seq_to_nodes coms r
   | CPrint(expr) ->
     let en = expr_to_node expr r in
@@ -128,20 +127,6 @@ and print_node (n : node) : string =
     " incoming: [" ^ (string_of_int (List.length on.incoming)) ^ "]\n"
   | NStart -> "NStart\n"
 
-(* Outgoing *)
-(* let repair_src (dst : opnode) (src : node) : node =
-  match src with
-  | NLit(_) | NStart -> src
-  | NOp(osrc)->
-    if List.mem dst osrc.outgoing then src else NOp({osrc with outgoing = dst::osrc.outgoing})
-
-let repair_outgoing (dst : node) : node =
-  match dst with
-  | NLit(_) | NStart -> dst
-  | NOp(odst)-> NOp{odst with incoming = List.map (repair_src odst) odst.incoming} *)
-
 let ssa_to_dfg (c : com) : dfg =
   let r = com_to_nodes c {curr = NStart; map = VarMap.empty; nodes = [NStart]} in
   r.nodes
-(*   List.map repair_outgoing r.nodes
- *)

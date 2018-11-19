@@ -28,4 +28,4 @@ let _ =
   with e ->
     print_endline ("SSA to DFG error: " ^ Printexc.to_string e));
 
-  print_endline (Partition.solve ())
+(*   print_endline (Partition.solve ()) *)
