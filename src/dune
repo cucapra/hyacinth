@@ -4,4 +4,5 @@
 (ocamllex lexer)
 
 (library
-  (name ssacompiler))
+  (name ssacompiler)
+  (libraries z3))
