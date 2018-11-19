@@ -39,9 +39,11 @@ let rec pretty (c : com) : string =
   match c with
     | CAssgn(var, expr) -> var ^ " := " ^ (pretty_expr expr) ^ ";"
     | CIf(cond, expr) ->
-    (* TODO: add tabs *)
-      "if (" ^ (pretty_expr cond) ^ ") {\n\t" ^ (pretty expr) ^ "\n}"
+      let lines = String.split_on_char '\n' (pretty expr) in
+      let f (acc : string) (s : string) : string =  acc ^ "\t" ^ s ^ "\n" in
+      let pe = List.fold_left f "" lines in
+      "if (" ^ (pretty_expr cond) ^ ") {\n\t" ^ pe ^ "\n}"
     | CSeq(coms) ->
-      let f (acc : string) (c : com) : string =  acc ^ "\n" ^ (pretty c)
-      in List.fold_left f "" coms
+      let f (acc : string) (c : com) : string =  acc ^ "\n" ^ (pretty c) in
+      List.fold_left f "" coms
     | CPrint(expr) -> "print " ^ (pretty_expr expr) ^ ";"
