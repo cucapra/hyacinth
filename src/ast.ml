@@ -25,12 +25,6 @@ and binop =
   | BMul
   | BDiv
 
-(* and expr =
-  | EValue of value
-  | EBinop of binop * expr * expr
-  | EUnop of unop * expr
-  | EPhi of var * var *)
-
 and expr =
   | EValue of value
   | EBinop of binop * value * value
@@ -39,6 +33,6 @@ and expr =
 
 and com =
   | CAssgn of var * expr
-  | CIf of expr * com
+  | CIf of var * com
   | CSeq of com list
   | CPrint of expr

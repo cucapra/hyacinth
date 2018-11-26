@@ -67,7 +67,7 @@ let interpret (c : com) : float VarMap.t =
     match c with
       | CAssgn(var, expr) -> set s var (interpret_expr s expr)
       | CIf(cond, branch) ->
-        let cval = (interpret_expr s cond) in
+        let cval = lookup s cond in
         if cval > 0. then interpret_com s branch else s
       | CSeq(coms) ->
         let f (acc : store) (c' : com) = (interpret_com acc c')

@@ -30,7 +30,7 @@ let check_ssa (c : com) : var list =
       then raise (ReassignedVariable x)
       else check_ssa_expr expr (VarSet.add x vars)
     | CIf (cond, expr) ->
-      check_ssa_com expr (check_ssa_expr cond vars)
+      check_ssa_com expr (check_var cond vars)
     | CSeq(coms) ->
       let f (acc : VarSet.t) (c : com) : VarSet.t = check_ssa_com c acc
       in List.fold_left f vars coms

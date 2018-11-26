@@ -1,5 +1,10 @@
 open Ast
 
+let pretty_indentation (s : string) : string =
+  let lines = String.split_on_char '\n' s in
+  let f (acc : string) (s : string) : string =  acc ^ "\t" ^ s ^ "\n" in
+  List.fold_left f "" lines
+
 let pretty_value (v : value) : string =
   match v with
     | VFloat(fl) -> string_of_float fl
@@ -39,10 +44,8 @@ let rec pretty (c : com) : string =
   match c with
     | CAssgn(var, expr) -> var ^ " := " ^ (pretty_expr expr) ^ ";"
     | CIf(cond, expr) ->
-      let lines = String.split_on_char '\n' (pretty expr) in
-      let f (acc : string) (s : string) : string =  acc ^ "\t" ^ s ^ "\n" in
-      let pe = List.fold_left f "" lines in
-      "if (" ^ (pretty_expr cond) ^ ") {\n\t" ^ pe ^ "\n}"
+      let pe = pretty_indentation (pretty expr) in
+      "if (" ^ cond ^ ") {\n\t" ^ pe ^ "\n}"
     | CSeq(coms) ->
       let f (acc : string) (c : com) : string =  acc ^ "\n" ^ (pretty c) in
       List.fold_left f "" coms

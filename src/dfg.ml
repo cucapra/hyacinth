@@ -8,7 +8,6 @@ module VarMap =
 
 type operation =
   | OPhi
-  | OIf
   | OPrint
   | OBinop of binop
   | OUnop of unop
@@ -81,13 +80,8 @@ let rec com_to_nodes (c : com) (r : result) : result =
   | CAssgn(var, expr) ->
     let n = expr_to_node expr r in
     insert r var n
-  | CIf(cond, branch) ->
-    let cn = expr_to_node cond r in
-    let ifn = NOp({
-      op = OIf;
-      incoming = [cn];
-    }) in
-    com_to_nodes branch (insert r "" ifn)
+  | CIf(_, branch) ->
+    com_to_nodes branch r
   | CSeq(coms) -> com_seq_to_nodes coms r
   | CPrint(expr) ->
     let en = expr_to_node expr r in
@@ -110,7 +104,6 @@ and com_seq_to_nodes (cs : com list) (r : result) : result =
 let print_operation (o : operation) : string =
   match o with
   | OPhi -> "Phi"
-  | OIf -> "If"
   | OPrint -> "Print"
   | OBinop(bo) -> pretty_binop bo
   | OUnop(uo) -> pretty_unop uo

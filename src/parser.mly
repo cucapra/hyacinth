@@ -71,7 +71,7 @@ acom :
   | VAR ASSIGN expr SEMI                    { CAssgn($1, $3) }
   | PRINT expr SEMI                         { CPrint $2 }
   | LBRACE com RBRACE                       { $2 }
-  | IF LPAREN expr RPAREN LBRACE com RBRACE { CIf ($3, $6) }
+  | IF LPAREN VAR RPAREN LBRACE com RBRACE { CIf ($3, $6) }
 
 /* Programs */
 prog :
