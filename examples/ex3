@@ -1,15 +1,15 @@
 a := 1;
 b := 3;
-c := neg(4);
+c := neg 4;
 
 t1 := a * c;
 t2 := 4 * t1;
 t3 := b * b;
 t4 := t3 - t2;
-t5 := sqrt(t4);
-t6 := neg(b);
+t5 := sqrt t4;
+t6 := neg b;
 t7 := t6 - t5;
-t8 := t7 + t5;
+t8 := t6 + t5;
 t9 := 2 * a;
 r1 := t7 / t9;
 r2 := t8 / t9;

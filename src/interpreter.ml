@@ -80,5 +80,5 @@ let result = interpret_com {vars = VarMap.empty; phi = []} c in
 
 let print_store (s : float VarMap.t) =
   let f (var : var) (f : float) (acc : string) : string =
-    acc ^ var ^ "\t:\t" ^ (string_of_float f) ^ "\n"
+    acc ^ var ^ "\t: " ^ (string_of_float f) ^ "\n"
   in VarMap.fold f s ""
