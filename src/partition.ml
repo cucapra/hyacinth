@@ -1,18 +1,33 @@
-(* open Z3
+open Smtlib
+
+let solver = Smtlib.make_solver "z3"
+
+let results_to_strings : (identifier * term) list -> string list =
+    List.map (fun (x,t) -> let Id s = x in
+      s ^ "\t: " ^ (sexp_to_string (term_to_sexp t)))
 
 let solve () : string  =
-  let context = Z3.mk_context [] in
-  let solver = Z3.Solver.mk_solver context None in
+  declare_const solver (Id "a") int_sort;
+  declare_const solver (Id "l") bool_sort;
+  declare_const solver (Id "p") bool_sort;
+  declare_const solver (Id "r") bool_sort;
+  assert_ solver
+    (or_
+      (and_ (gte (const "a") (Int 16)) (const "l"))
+      (and_ (lt (const "a") (Int 16))
+        (and_ (const "p")
+          (and_ (gt (const "a") (Int 14)) (const "r")))));
+  match check_sat solver with
+  | Unsat | Unknown -> "Failed"
+  | Sat ->
+    let s = results_to_strings (get_model solver) in
+    print_endline (String.concat "\n" s);
+  "Sat"
+(*   Smtlib.Const term_ *)
 
-  let xsy = Z3.Symbol.mk_string context "x" in
-  let x = Z3.Boolean.mk_const context xsy in
+(*
+((age >= 16) ∧ haveLicense) ∨ ((age < 16) ∧ havePermit ∧ withParent)
 
-  Z3.Solver.add solver [x];
-
-  match Z3.Solver.check solver [] with
-  | UNSATISFIABLE -> "unsat"
-  | UNKNOWN -> "unknown"
-  | SATISFIABLE ->
-      match Z3.Solver.get_model solver with
-      | None -> "no model"
-      | Some model -> Printf.sprintf "%s" (Z3.Model.to_string model) *)
+f = z3.Or(z3.And(age >= 16, haveLicense), z3.And(age < 16, havePermit, withParent))
+f = z3.And(f, z3.Implies(haveLicense, z3.Not(havePermit)))
+ *)
