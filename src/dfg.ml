@@ -122,4 +122,4 @@ and print_node (n : node) : string =
 
 let ssa_to_dfg (c : com) : dfg =
   let r = com_to_nodes c {curr = NStart; map = VarMap.empty; nodes = [NStart]} in
-  r.nodes
+  List.filter (fun(n)-> match n with | NOp(_)-> true | _ -> false) r.nodes
