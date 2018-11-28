@@ -9,7 +9,7 @@ let cols = 4
 let tiles = rows * cols
 
 let term_0 = int_to_term 0
-
+let dist_fun_id = (Id "manhattan_dist")
 let con = Smtlib.const
 
 type assignments = (node * term * (term * term)) list
@@ -20,6 +20,9 @@ let declare_int (s : solver) (n : string) =
 let split_prefix (s : string) : (string * string) =
   let spl = String.split s ~on:'_' in
   (List.nth_exn spl 0, List.nth_exn spl 1)
+
+let term_to_string (t : term) : string =
+  (sexp_to_string (term_to_sexp t))
 
 let results_to_strings r : string list =
   let filter_extra (Id i, _)  = (String.is_prefix i ~prefix:"z3name!") ||
@@ -36,10 +39,10 @@ let results_to_strings r : string list =
   let sorted_extra = List.sort ~compare:compare extra in
   let sorted = sorted_per_node @ sorted_extra in
 
-  List.map ~f:(fun (x,t) -> let Id s = x in
-    s ^ "\t: " ^ (sexp_to_string (term_to_sexp t))) sorted
+  let print_term (Id s, t) = s ^ "\t: " ^ (term_to_string t) in
+  List.map ~f:print_term sorted
 
-let cost_per_binop (bo : binop) : term =
+let time_per_binop (bo : binop) : term =
   match bo with
   | BAnd -> int_to_term 1
   | BOr -> int_to_term 1
@@ -54,26 +57,65 @@ let cost_per_binop (bo : binop) : term =
   | BMul -> int_to_term 5
   | BDiv -> int_to_term 10
 
-let cost_per_unop (uo : unop) : term =
+let time_per_unop (uo : unop) : term =
   match uo with
   | UNot -> int_to_term 1
   | UNeg -> int_to_term 1
   | USqrt -> int_to_term 10
   | UAbs -> int_to_term 3
 
-let cost_per_op (o : operation) : term =
+let time_per_op (o : operation) : term =
   match o with
   | OPhi -> int_to_term 1
   | OPrint -> term_0
-  | OBinop(bo) -> cost_per_binop bo
-  | OUnop(uo) -> cost_per_unop uo
+  | OBinop(bo) -> time_per_binop bo
+  | OUnop(uo) -> time_per_unop uo
+
+(* The cost for communicating between two partitions is their manhattan distance
+  in the core grid *)
+let components (p : int) : (int * int) =
+  let x = p % cols in
+  let y : int = p / rows in
+  (x, y)
+
+let constrain_comms_times (s : solver) =
+  declare_fun s dist_fun_id [int_sort; int_sort] int_sort;
+  let parts = List.range 0 tiles in
+  let map_rel (p1 : int) (p2 : int) =
+    let (x1, y1) = components p1 in
+    let (x2, y2) = components p2 in
+    let dist = (abs (x1 - x2)) + (abs (y1 - y2)) in
+    let args = [int_to_term p1; int_to_term p2] in
+    assert_ s (equals (App(dist_fun_id, args)) (int_to_term dist)) in
+  List.iter ~f:(fun (p) -> List.iter ~f:(map_rel p) parts) parts
+
+let time_for_comms (p1 : term) (p2 : term) : term =
+  App(dist_fun_id, [p1; p2])
+
+(* let time_for_comms (s : solver) (p1 : term) (p2 : term) : term =
+  let abs t = ite (gte t term_0) t (mul t (int_to_term (-1))) in
+  let n1 = term_to_string p1 in
+  let n2 = term_to_string p2 in
+  let x1 = (n1 ^ "_x1") in
+  let x2 = (n2 ^ "_x2") in
+  let y1 = (n1 ^ "_y1") in
+  let y2 = (n2 ^ "_y2") in
+  declare_int s x1;
+  declare_int s x2;
+  declare_int s y1;
+  declare_int s y2;
+  assert_ s (equals p1 (add (mul (con y1) (int_to_term cols)) (con x1)));
+  assert_ s (equals p2 (add (mul (con y2) (int_to_term cols)) (con x2)));
+  add (abs (sub (con x1) (con x2))) (abs (sub (con y1) (con y2))) *)
+
+(* p = y * num_cols + x   *)
 
 let constrain_per_incoming (s : solver) (a : assignments) (i_n : node) pt t1 =
   match i_n with
   | NStart | NLit(_) -> ()
   | NOp(_) ->
     let (_, pt', (_, t2')) = List.find_exn ~f:(fun (n', _, _) -> i_n = n') a in
-    let partition_comms_term = ite (equals pt pt') term_0 (int_to_term 1) in
+    let partition_comms_term = time_for_comms pt pt' in
     (* The starting time must be after the incoming ending time plus the
     communication cost *)
     assert_ s (gte t1 (add t2' partition_comms_term))
@@ -83,7 +125,7 @@ let constrain_per_node (s : solver) (a : assignments) p  =
   | (NStart, _, _) | (NLit(_), _, _) -> ()
   | (NOp(op), pt, (t1, t2)) ->
     (* The ending time must be after the starting time plus the op time *)
-    let op_cost_term = cost_per_op op.op in
+    let op_cost_term = time_per_op op.op in
     assert_ s (equals (add t1 op_cost_term) t2);
     (* The starting time must be after the ending time of each incoming node *)
     let f (n : node) = constrain_per_incoming s a n pt t1 in
@@ -117,8 +159,7 @@ let latest_time (s : solver) (a : assignments) : term =
   List.iter ~f:(max (con l)) a;
   (con l)
 
-
-(* Idea: take in the list of nodes, return a list with partition assignments? *)
+(* Idea: take in the list of nodes, return a list with partition assignments *)
 (*  let solve_dfg (graph : dfg) : (node * int) list = *)
 let solve_dfg (graph : dfg) : string =
   let s : solver = Smtlib.make_solver "z3" in
@@ -133,6 +174,7 @@ let solve_dfg (graph : dfg) : string =
     let t2' : term = (con t2) in
     constrain_times s t1' t2';
     (x, con pt, (con t1, con t2))) graph in
+  constrain_comms_times s;
   constrain_partitions s a;
   constrain_overlapping_times s a;
   constrain_nodes s a;
