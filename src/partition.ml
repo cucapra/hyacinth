@@ -74,9 +74,12 @@ let time_per_op (o : operation) : term =
 (* The cost for communicating between two partitions is their manhattan distance
   in the core grid *)
 let components (p : int) : (int * int) =
-  let x = p % cols in
+  let x = p % rows in
   let y : int = p / rows in
   (x, y)
+
+let manhattan_dist (x, y) (x', y') =
+  (abs (x - x')) + (abs (y - y'))
 
 let constrain_comms_times (s : solver) =
   declare_fun s dist_fun_id [int_sort; int_sort] int_sort;
@@ -84,31 +87,13 @@ let constrain_comms_times (s : solver) =
   let map_rel (p1 : int) (p2 : int) =
     let (x1, y1) = components p1 in
     let (x2, y2) = components p2 in
-    let dist = (abs (x1 - x2)) + (abs (y1 - y2)) in
+    let time = manhattan_dist (x1, y1) (x2, y2) in
     let args = [int_to_term p1; int_to_term p2] in
-    assert_ s (equals (App(dist_fun_id, args)) (int_to_term dist)) in
+    assert_ s (equals (App(dist_fun_id, args)) (int_to_term time)) in
   List.iter ~f:(fun (p) -> List.iter ~f:(map_rel p) parts) parts
 
 let time_for_comms (p1 : term) (p2 : term) : term =
   App(dist_fun_id, [p1; p2])
-
-(* let time_for_comms (s : solver) (p1 : term) (p2 : term) : term =
-  let abs t = ite (gte t term_0) t (mul t (int_to_term (-1))) in
-  let n1 = term_to_string p1 in
-  let n2 = term_to_string p2 in
-  let x1 = (n1 ^ "_x1") in
-  let x2 = (n2 ^ "_x2") in
-  let y1 = (n1 ^ "_y1") in
-  let y2 = (n2 ^ "_y2") in
-  declare_int s x1;
-  declare_int s x2;
-  declare_int s y1;
-  declare_int s y2;
-  assert_ s (equals p1 (add (mul (con y1) (int_to_term cols)) (con x1)));
-  assert_ s (equals p2 (add (mul (con y2) (int_to_term cols)) (con x2)));
-  add (abs (sub (con x1) (con x2))) (abs (sub (con y1) (con y2))) *)
-
-(* p = y * num_cols + x   *)
 
 let constrain_per_incoming (s : solver) (a : assignments) (i_n : node) pt t1 =
   match i_n with
