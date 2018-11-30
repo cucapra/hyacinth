@@ -6,6 +6,7 @@ open Pervasives
 
 let rows = 2
 let cols = 2
+
 let tiles = rows * cols
 
 let term_0 = int_to_term 0
@@ -89,6 +90,8 @@ let constrain_comms_times (s : solver) =
     let (x2, y2) = components p2 in
     let time = manhattan_dist (x1, y1) (x2, y2) in
     let args = [int_to_term p1; int_to_term p2] in
+    print_endline ("func: " ^ (string_of_int p1) ^ ", "
+      ^ (string_of_int p2) ^ " = " ^ (string_of_int time));
     assert_ s (equals (App(dist_fun_id, args)) (int_to_term time)) in
   List.iter ~f:(fun (p) -> List.iter ~f:(map_rel p) parts) parts
 
@@ -151,9 +154,9 @@ let sequential_time (a : assignments) : int =
   List.fold_left a ~init:0 ~f:total_time
 
 let solve_for_goal (s : solver) (total : term) (goal : int) =
-  print_endline ("Searching for solution less than goal: " ^ (string_of_int goal));
+  print_endline ("Searching for solution for goal: " ^ (string_of_int goal));
   push s;
-  (assert_ s (lt total (int_to_term goal)));
+  (assert_ s (lte total (int_to_term goal)));
   match check_sat s with
   | Unsat -> print_endline "Unsat"; pop s; None
   | Unknown -> print_endline "Unknown"; pop s; None
@@ -165,7 +168,13 @@ let solve_for_goal (s : solver) (total : term) (goal : int) =
 let rec incrememntal_solve_loop (s : solver) (total : term) (goal : int) best =
   let opt_res = solve_for_goal s total goal in
   match opt_res with
-  | Some _ -> incrememntal_solve_loop s total (goal - 1) opt_res
+  | Some res ->
+    let find_time (Id i, _) = String.equal "latest_time" i in
+    let (_, t) = List.find_exn ~f:find_time res in
+    let old_best = match t with
+    | Int n -> n
+    | _ -> goal in
+    incrememntal_solve_loop s total (old_best - 1) opt_res
   | None -> best
 
 (* Idea: take in the list of nodes, return a list with partition assignments *)

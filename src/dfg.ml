@@ -101,6 +101,13 @@ and com_seq_to_nodes (cs : com list) (r : result) : result =
 
 (* Printing *)
 
+let print_address n : string =
+  let address = 2*(Obj.magic n) in
+  Printf.sprintf "%d" address
+
+let print_address_list ns : string =
+  String.concat ", " (List.map print_address ns)
+
 let print_operation (o : operation) : string =
   match o with
   | OPhi -> "Phi"
@@ -114,10 +121,10 @@ let rec print_nodes (ns : node list) : string =
 
 and print_node (n : node) : string =
   match n with
-  | NLit(fl) -> "NLit: " ^ (string_of_float fl) ^ "\n"
+  | NLit(fl) -> "NLit: " ^ (string_of_float fl) ^ " " ^(print_address n) ^ "\n"
   | NOp(on) ->
-    "NOp: op: [" ^ (print_operation on.op) ^ "]" ^
-    " incoming: [" ^ (string_of_int (List.length on.incoming)) ^ "]\n"
+    "NOp: op: [" ^ (print_operation on.op) ^ "]" ^ " " ^(print_address n) ^
+    " incoming: [" ^ (print_address_list on.incoming) ^ "]\n"
   | NStart -> "NStart\n"
 
 let ssa_to_dfg (c : com) : dfg =
