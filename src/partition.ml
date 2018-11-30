@@ -4,8 +4,8 @@ open Ast
 open Core
 open Pervasives
 
-let rows = 4
-let cols = 4
+let rows = 2
+let cols = 2
 let tiles = rows * cols
 
 let term_0 = int_to_term 0
@@ -42,32 +42,32 @@ let results_to_strings r : string list =
   let print_term (Id s, t) = s ^ "\t: " ^ (term_to_string t) in
   List.map ~f:print_term sorted
 
-let time_per_binop (bo : binop) : term =
+let time_per_binop (bo : binop) : int =
   match bo with
-  | BAnd -> int_to_term 1
-  | BOr -> int_to_term 1
-  | BEquals -> int_to_term 1
-  | BNotEquals -> int_to_term 3
-  | BLess -> int_to_term 3
-  | BLessEq -> int_to_term 3
-  | BGreater -> int_to_term 3
-  | BGreaterEq -> int_to_term 3
-  | BAdd -> int_to_term 3
-  | BSub -> int_to_term 3
-  | BMul -> int_to_term 5
-  | BDiv -> int_to_term 10
+  | BAnd -> 1
+  | BOr -> 1
+  | BEquals -> 1
+  | BNotEquals -> 3
+  | BLess -> 3
+  | BLessEq -> 3
+  | BGreater -> 3
+  | BGreaterEq -> 3
+  | BAdd -> 3
+  | BSub -> 3
+  | BMul -> 5
+  | BDiv -> 10
 
-let time_per_unop (uo : unop) : term =
+let time_per_unop (uo : unop) : int =
   match uo with
-  | UNot -> int_to_term 1
-  | UNeg -> int_to_term 1
-  | USqrt -> int_to_term 10
-  | UAbs -> int_to_term 3
+  | UNot -> 1
+  | UNeg -> 1
+  | USqrt -> 10
+  | UAbs -> 3
 
-let time_per_op (o : operation) : term =
+let time_per_op (o : operation) : int =
   match o with
-  | OPhi -> int_to_term 1
-  | OPrint -> term_0
+  | OPhi ->  1
+  | OPrint -> 0
   | OBinop(bo) -> time_per_binop bo
   | OUnop(uo) -> time_per_unop uo
 
@@ -110,7 +110,7 @@ let constrain_per_node (s : solver) (a : assignments) p  =
   | (NStart, _, _) | (NLit(_), _, _) -> ()
   | (NOp(op), pt, (t1, t2)) ->
     (* The ending time must be after the starting time plus the op time *)
-    let op_cost_term = time_per_op op.op in
+    let op_cost_term = int_to_term (time_per_op op.op) in
     assert_ s (equals (add t1 op_cost_term) t2);
     (* The starting time must be after the ending time of each incoming node *)
     let f (n : node) = constrain_per_incoming s a n pt t1 in
@@ -140,9 +140,33 @@ let constrain_overlapping_times (s : solver) (a : assignments) =
 let latest_time (s : solver) (a : assignments) : term =
   let l = "latest_time" in
   declare_int s l;
-  let max (l : term) (_, _, (_, y)) = assert_ s (equals l (ite (lt l y) y l)) in
+  let max (l : term) (_, _, (_, y)) = assert_ s (equals l (ite (lte l y) y l)) in
   List.iter ~f:(max (con l)) a;
   (con l)
+
+let sequential_time (a : assignments) : int =
+  let total_time (acc : int) (n, _, _) = match n with
+  | NStart | NLit(_) -> acc
+  | NOp(o) -> time_per_op o.op + acc in
+  List.fold_left a ~init:0 ~f:total_time
+
+let solve_for_goal (s : solver) (total : term) (goal : int) =
+  print_endline ("Searching for solution less than goal: " ^ (string_of_int goal));
+  push s;
+  (assert_ s (lt total (int_to_term goal)));
+  match check_sat s with
+  | Unsat -> print_endline "Unsat"; pop s; None
+  | Unknown -> print_endline "Unknown"; pop s; None
+  | Sat -> print_endline "Sat!";
+    let model = Some (get_model s) in
+    pop s;
+    model
+
+let rec incrememntal_solve_loop (s : solver) (total : term) (goal : int) best =
+  let opt_res = solve_for_goal s total goal in
+  match opt_res with
+  | Some _ -> incrememntal_solve_loop s total (goal - 1) opt_res
+  | None -> best
 
 (* Idea: take in the list of nodes, return a list with partition assignments *)
 (*  let solve_dfg (graph : dfg) : (node * int) list = *)
@@ -164,12 +188,13 @@ let solve_dfg (graph : dfg) : string =
   constrain_overlapping_times s a;
   constrain_nodes s a;
   let total_time = latest_time s a in
-  minimize s total_time;
-  match check_sat s with
-  | Unsat -> "Unsat"
-  | Unknown -> "Unknown"
-  | Sat ->
-    let results = (get_model s) in
-    let s = results_to_strings results in
+  let upper_bound = sequential_time a in
+  print_endline ("Seq time (upper bound): " ^ (string_of_int upper_bound));
+
+  let opt_res = incrememntal_solve_loop s total_time upper_bound None in
+  match opt_res with
+  | Some res ->
+    let s = results_to_strings res in
     print_endline (String.concat ~sep:"\n" s);
-  "Sat"
+    "Sat"
+  | None -> "No solution found :("
