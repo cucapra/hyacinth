@@ -25,6 +25,22 @@ let split_prefix (s : string) : (string * string) =
 let term_to_string (t : term) : string =
   (sexp_to_string (term_to_sexp t))
 
+(*
+Debugging: TODO parametrize
+
+let assert_ s t : unit =
+  print_endline (term_to_string t);
+  Smtlib.assert_ s t
+
+let push s : unit =
+  print_endline "push";
+  Smtlib.push s
+
+let pop s : unit =
+  print_endline "pop";
+  Smtlib.pop s
+*)
+
 let results_to_strings r : string list =
   let filter_extra (Id i, _)  = (String.is_prefix i ~prefix:"z3name!") ||
     (String.equal "latest_time" i) in
@@ -102,7 +118,7 @@ let constrain_per_incoming (s : solver) (a : assignments) (i_n : node) pt t1 =
   match i_n with
   | NStart | NLit(_) -> ()
   | NOp(_) ->
-    let (_, pt', (_, t2')) = List.find_exn ~f:(fun (n', _, _) -> i_n = n') a in
+    let (_, pt', (_, t2')) = List.find_exn ~f:(fun (n', _, _) -> i_n == n') a in
     let partition_comms_term = time_for_comms pt pt' in
     (* The starting time must be after the incoming ending time plus the
     communication cost *)
