@@ -64,26 +64,26 @@ let time_per_binop (bo : binop) : int =
   | BAnd -> 1
   | BOr -> 1
   | BEquals -> 1
-  | BNotEquals -> 3
-  | BLess -> 3
-  | BLessEq -> 3
-  | BGreater -> 3
-  | BGreaterEq -> 3
+  | BNotEquals -> 1
+  | BLess -> 1
+  | BLessEq -> 1
+  | BGreater -> 1
+  | BGreaterEq -> 1
   | BAdd -> 3
   | BSub -> 3
-  | BMul -> 5
-  | BDiv -> 10
+  | BMul -> 10
+  | BDiv -> 20
 
 let time_per_unop (uo : unop) : int =
   match uo with
-  | UNot -> 1
-  | UNeg -> 1
-  | USqrt -> 10
+  | UNot -> 2
+  | UNeg -> 2
+  | USqrt -> 20
   | UAbs -> 3
 
 let time_per_op (o : operation) : int =
   match o with
-  | OPhi ->  1
+  | OPhi ->  0
   | OPrint -> 0
   | OBinop(bo) -> time_per_binop bo
   | OUnop(uo) -> time_per_unop uo
