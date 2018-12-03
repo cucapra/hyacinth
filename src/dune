@@ -5,4 +5,4 @@
 
 (library
   (name ssacompiler)
-  (libraries core unix z3))
+  (libraries core unix z3 ocamlgraph))

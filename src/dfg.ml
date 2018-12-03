@@ -21,11 +21,10 @@ and opnode =
 and node =
   | NLit of float
   | NOp of opnode
-  | NStart
 
 and result =
   {
-    curr : node;
+    curr : node option;
     nodes : node list;
     map : int VarMap.t;
   }
@@ -125,8 +124,7 @@ and print_node (n : node) : string =
   | NOp(on) ->
     "NOp: op: [" ^ (print_operation on.op) ^ "]" ^ " " ^(print_address n) ^
     " incoming: [" ^ (print_address_list on.incoming) ^ "]\n"
-  | NStart -> "NStart\n"
 
 let ssa_to_dfg (c : com) : dfg =
-  let r = com_to_nodes c {curr = NStart; map = VarMap.empty; nodes = [NStart]} in
+  let r = com_to_nodes c {curr = None; map = VarMap.empty; nodes = []} in
   List.filter (fun(n)-> match n with | NOp(_)-> true | _ -> false) r.nodes

@@ -106,8 +106,6 @@ let constrain_comms_times (s : solver) =
     let (x2, y2) = components p2 in
     let time = manhattan_dist (x1, y1) (x2, y2) in
     let args = [int_to_term p1; int_to_term p2] in
-    print_endline ("func: " ^ (string_of_int p1) ^ ", "
-      ^ (string_of_int p2) ^ " = " ^ (string_of_int time));
     assert_ s (equals (App(dist_fun_id, args)) (int_to_term time)) in
   List.iter ~f:(fun (p) -> List.iter ~f:(map_rel p) parts) parts
 
@@ -116,7 +114,7 @@ let time_for_comms (p1 : term) (p2 : term) : term =
 
 let constrain_per_incoming (s : solver) (a : assignments) (i_n : node) pt t1 =
   match i_n with
-  | NStart | NLit(_) -> ()
+  | NLit(_) -> ()
   | NOp(_) ->
     let (_, pt', (_, t2')) = List.find_exn ~f:(fun (n', _, _) -> i_n == n') a in
     let partition_comms_term = time_for_comms pt pt' in
@@ -126,7 +124,7 @@ let constrain_per_incoming (s : solver) (a : assignments) (i_n : node) pt t1 =
 
 let constrain_per_node (s : solver) (a : assignments) p  =
   match p with
-  | (NStart, _, _) | (NLit(_), _, _) -> ()
+  | (NLit(_), _, _) -> ()
   | (NOp(op), pt, (t1, t2)) ->
     (* The ending time must be after the starting time plus the op time *)
     let op_cost_term = int_to_term (time_per_op op.op) in
@@ -165,7 +163,7 @@ let latest_time (s : solver) (a : assignments) : term =
 
 let sequential_time (a : assignments) : int =
   let total_time (acc : int) (n, _, _) = match n with
-  | NStart | NLit(_) -> acc
+  | NLit(_) -> acc
   | NOp(o) -> time_per_op o.op + acc in
   List.fold_left a ~init:0 ~f:total_time
 
@@ -220,6 +218,5 @@ let solve_dfg (graph : dfg) : string =
   match opt_res with
   | Some res ->
     let s = results_to_strings res in
-    print_endline (String.concat ~sep:"\n" s);
-    "Sat"
-  | None -> "No solution found :("
+    String.concat ~sep:"\n" s;
+  | None -> ""
