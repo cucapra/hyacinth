@@ -24,8 +24,7 @@ let _ =
   (try
     print_endline "\nSSA to DFG:";
     let dfg = Dfg.ssa_to_dfg prog in
-    print_endline "dfg";
-    Visualize.visualize_dfg dfg;
-    print_endline (Partition.solve_dfg dfg)
+    let dfg_assignments : (Dfg.node * int * (int * int)) list = Partition.solve_dfg dfg in
+    Visualize.visualize_dfg dfg_assignments;
   with e ->
     print_endline ("SSA to DFG error: " ^ Printexc.to_string e));

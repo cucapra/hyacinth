@@ -4,6 +4,8 @@ open Ast
 open Core
 open Pervasives
 
+exception UnexpectedTerm of term
+
 let rows = 2
 let cols = 2
 
@@ -13,6 +15,7 @@ let term_0 = int_to_term 0
 let dist_fun_id = (Id "manhattan_dist")
 let con = Smtlib.const
 
+(* node, core assignment, (starting time, ending time) *)
 type assignments = (node * term * (term * term)) list
 
 let declare_int (s : solver) (n : string) =
@@ -25,6 +28,10 @@ let split_prefix (s : string) : (string * string) =
 let term_to_string (t : term) : string =
   (sexp_to_string (term_to_sexp t))
 
+let term_to_int (t : term) : int =
+  match t with
+  | Int i -> i
+  | _ -> raise (UnexpectedTerm t)
 (*
 Debugging: TODO parametrize
 
@@ -192,8 +199,7 @@ let rec incrememntal_solve_loop (s : solver) (total : term) (goal : int) best =
   | None -> best
 
 (* Idea: take in the list of nodes, return a list with partition assignments *)
-(*  let solve_dfg (graph : dfg) : (node * int) list = *)
-let solve_dfg (graph : dfg) : string =
+let solve_dfg (graph : dfg) : (node * int * (int * int)) list =
   let s : solver = Smtlib.make_solver "z3" in
   let a = List.mapi ~f:(fun (i : int) (x : node) ->
     let pt = "p_" ^ string_of_int i in
@@ -218,5 +224,12 @@ let solve_dfg (graph : dfg) : string =
   match opt_res with
   | Some res ->
     let s = results_to_strings res in
-    String.concat ~sep:"\n" s;
-  | None -> ""
+    print_endline (String.concat ~sep:"\n" s);
+    List.mapi ~f:(fun (i : int) (x : node) ->
+      let find_t s = List.find_exn ~f:(fun (Id i, _) -> String.equal i s) res in
+      let find_int s = (let (_, t) = find_t s in term_to_int t) in
+      let pt = find_int ("p_" ^ string_of_int i) in
+      let t1 = find_int ("t1_" ^ string_of_int i) in
+      let t2 = find_int ("t2_" ^ string_of_int i) in
+      (x, pt, (t1, t2))) graph
+  | None -> []
