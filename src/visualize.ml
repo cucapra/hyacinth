@@ -24,6 +24,14 @@ let string_of_partition (n, p, (t1, t2)) =
     ^ "\nTime: (" ^ (string_of_int t1) ^ ", " ^ (string_of_int t2) ^ ")" in
   "\"" ^ node ^ sched ^ "\""
 
+let vertex_attribute (_n, p, _) =
+  let color = match p with
+  | 0 -> 0xb7d2ff
+  | 1 -> 0xf7f08a
+  | 2 -> 0xff9393
+  | _ -> 0xd5b7ff in
+  [`Shape `Box; `Fillcolor color; `Style `Filled]
+
 module VNode = struct
    type t = (node * int * (int * int))
    let compare = Pervasives.compare
@@ -42,10 +50,10 @@ module G = Imperative.Digraph.ConcreteBidirectionalLabeled(VNode)(VEdge)
 
 module Dot = Graphviz.Dot(struct
   include G
-  let edge_attributes (_, e, _) = [`Label e; `Color 4711]
+  let edge_attributes (_n1, e, _n2) = [`Label e; `Color 4711]
   let default_edge_attributes _ = []
   let get_subgraph _ = None
-  let vertex_attributes _ = [`Shape `Box]
+  let vertex_attributes v = vertex_attribute v
   let vertex_name v = string_of_partition v
   let default_vertex_attributes _ = []
   let graph_attributes _ = []
