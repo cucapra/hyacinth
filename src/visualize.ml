@@ -80,6 +80,6 @@ let dfg_to_viz_graph (graph : (node * int * (int * int)) list) : G.t =
   List.iter per_node graph;
   g
 
-let visualize_dfg (graph : (node * int * (int * int)) list) =
-  let file = open_out_bin "mygraph.dot" in
+let visualize_dfg (graph : (node * int * (int * int)) list) (output : string) =
+  let file = open_out_bin output in
   Dot.output_graph file (dfg_to_viz_graph graph)

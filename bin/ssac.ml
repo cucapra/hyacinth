@@ -1,30 +1,74 @@
 open Ssacompiler
+open Partition
+
+let program_file : string option ref = ref None
+let anon_fun (arg : string) : unit =
+    print_endline ("Warning: no argument expected, ignoring: " ^ arg)
+
+let pretty_print : bool ref = ref false
+let bound_ssa : bool ref = ref false
+let print_interpreter : bool ref = ref false
+let rows : int ref = ref 2
+let columns : int ref = ref 2
+let timeout : int ref = ref 100000
+let out_filename : string ref = ref "ssac-output.dot"
+
+
+let usage = "SSA-Spatial Compiler\n"
+let spec_list : (Arg.key * Arg.spec * Arg.doc) list =
+    [
+      ("-p", Arg.Set pretty_print, "Pretty prints the input program");
+      ("-b", Arg.Set bound_ssa, "Prints the bound variables from the SSA check");
+      ("-i", Arg.Set print_interpreter, "Prints the interpreter final store");
+      ("-r", Arg.Set_int rows, "Number of rows in the spatial configuration");
+      ("-c", Arg.Set_int columns, "Number of columns in the spatial configuration");
+      ("-t", Arg.Set_int timeout, "Timeout for z3, in seconds");
+      ("-o", Arg.Set_string out_filename, "Filename for the dot output file");
+    ]
 
 let _ =
+  Arg.parse spec_list anon_fun usage;
   let lexbuf = Lexing.from_channel stdin in
   let prog = Parser.prog Lexer.token lexbuf in
-  print_endline "Program";
-  print_endline (Pretty.pretty prog);
+  if !pretty_print then
+    (print_endline "Program"; print_endline (Pretty.pretty prog);)
+  else ();
 
   (try
     let vars = Check.check_ssa prog in
-    print_endline "\nChecking, bound variables:";
-    List.iter print_endline vars
+    print_endline "Checking for SSA form:";
+    if !bound_ssa then
+      (print_endline "Bound variables:";
+      List.iter print_endline vars)
+    else print_endline "Success";
   with e ->
     print_endline ("\nCheck error: " ^ Printexc.to_string e));
 
   (try
-    print_endline "\nInterpreted:";
+    print_endline "\nInterpreting:";
     let store = Interpreter.interpret prog in
-    print_endline "\nFinal store:";
-    print_endline (Interpreter.print_store store)
+    if !print_interpreter then
+      (print_endline "\nFinal store:";
+      print_endline (Interpreter.print_store store))
+    else print_endline "Success"
   with e ->
     print_endline ("Interpreter error: " ^ Printexc.to_string e));
 
   (try
     print_endline "\nSSA to DFG:";
     let dfg = Dfg.ssa_to_dfg prog in
-    let dfg_assignments : (Dfg.node * int * (int * int)) list = Partition.solve_dfg dfg in
-    Visualize.visualize_dfg dfg_assignments;
+    let config =
+      {
+        rows = !rows;
+        cols = !columns;
+        timeout = !timeout;
+        debug = false
+      } in
+    print_endline "Success";
+    print_endline ("\nPartitioning for spatial layout with " ^ (string_of_int !rows)
+      ^ " rows, " ^ (string_of_int !columns) ^ " columns, "
+      ^ (string_of_int !timeout) ^"s timeout");
+    let dfg_assignments = Partition.solve_dfg dfg config in
+    Visualize.visualize_dfg dfg_assignments !out_filename;
   with e ->
     print_endline ("SSA to DFG error: " ^ Printexc.to_string e));

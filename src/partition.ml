@@ -6,17 +6,27 @@ open Pervasives
 
 exception UnexpectedTerm of term
 
-let rows = 2
-let cols = 2
+type config =
+  {
+    rows : int;
+    cols : int;
+    timeout : int; (* in seconds *)
+    debug : bool;
+  }
 
-let tiles = rows * cols
+(* node, core assignment, (starting time, ending time) *)
+type assignments = (node * term * (term * term)) list
+
+let rows = ref 2
+let cols = ref 2
+
+let tiles = !rows * !cols
+
+let debug = ref false
 
 let term_0 = int_to_term 0
 let dist_fun_id = (Id "manhattan_dist")
 let con = Smtlib.const
-
-(* node, core assignment, (starting time, ending time) *)
-type assignments = (node * term * (term * term)) list
 
 let declare_int (s : solver) (n : string) =
   declare_const s (Id n) int_sort
@@ -32,21 +42,20 @@ let term_to_int (t : term) : int =
   match t with
   | Int i -> i
   | _ -> raise (UnexpectedTerm t)
-(*
-Debugging: TODO parametrize
+
+(* Debugging *)
 
 let assert_ s t : unit =
-  print_endline (term_to_string t);
+  if !debug then print_endline (term_to_string t) else ();
   Smtlib.assert_ s t
 
 let push s : unit =
-  print_endline "push";
+  if !debug then (print_endline "push") else ();
   Smtlib.push s
 
 let pop s : unit =
-  print_endline "pop";
+  if !debug then (print_endline "pop") else ();
   Smtlib.pop s
-*)
 
 let results_to_strings r : string list =
   let filter_extra (Id i, _)  = (String.is_prefix i ~prefix:"z3name!") ||
@@ -71,26 +80,26 @@ let time_per_binop (bo : binop) : int =
   | BAnd -> 1
   | BOr -> 1
   | BEquals -> 1
-  | BNotEquals -> 1
-  | BLess -> 1
-  | BLessEq -> 1
-  | BGreater -> 1
-  | BGreaterEq -> 1
+  | BNotEquals -> 3
+  | BLess -> 3
+  | BLessEq -> 3
+  | BGreater -> 3
+  | BGreaterEq -> 3
   | BAdd -> 3
   | BSub -> 3
-  | BMul -> 10
-  | BDiv -> 20
+  | BMul -> 5
+  | BDiv -> 10
 
 let time_per_unop (uo : unop) : int =
   match uo with
-  | UNot -> 2
-  | UNeg -> 2
-  | USqrt -> 20
+  | UNot -> 1
+  | UNeg -> 1
+  | USqrt -> 10
   | UAbs -> 3
 
 let time_per_op (o : operation) : int =
   match o with
-  | OPhi ->  0
+  | OPhi ->  1
   | OPrint -> 0
   | OBinop(bo) -> time_per_binop bo
   | OUnop(uo) -> time_per_unop uo
@@ -98,8 +107,8 @@ let time_per_op (o : operation) : int =
 (* The cost for communicating between two partitions is their manhattan distance
   in the core grid *)
 let components (p : int) : (int * int) =
-  let x = p % rows in
-  let y : int = p / rows in
+  let x = p % !rows in
+  let y : int = p / !rows in
   (x, y)
 
 let manhattan_dist (x, y) (x', y') =
@@ -180,7 +189,7 @@ let solve_for_goal (s : solver) (total : term) (goal : int) =
   (assert_ s (lte total (int_to_term goal)));
   match check_sat s with
   | Unsat -> print_endline "Unsat"; pop s; None
-  | Unknown -> print_endline "Unknown"; pop s; None
+  | Unknown -> print_endline "Timeout"; pop s; None
   | Sat -> print_endline "Sat!";
     let model = Some (get_model s) in
     pop s;
@@ -198,9 +207,17 @@ let rec incrememntal_solve_loop (s : solver) (total : term) (goal : int) best =
     incrememntal_solve_loop s total (old_best - 1) opt_res
   | None -> best
 
+let set_timeout (s : solver) (seconds : int) =
+  let ms_string = string_of_int (seconds * 1000) in
+  let response = (Smtlib.SString ("set-option :timeout " ^ ms_string)) in
+  let s = (sexp_to_string (command s response)) in
+  if (s = "success") then () else
+  print_endline ("Warning: unexpected response setting timeout: " ^ s)
+
 (* Idea: take in the list of nodes, return a list with partition assignments *)
-let solve_dfg (graph : dfg) : (node * int * (int * int)) list =
+let solve_dfg (graph : dfg) (config : config): (node * int * (int * int)) list =
   let s : solver = Smtlib.make_solver "z3" in
+  set_timeout s config.timeout;
   let a = List.mapi ~f:(fun (i : int) (x : node) ->
     let pt = "p_" ^ string_of_int i in
     let t1 = "t1_" ^ string_of_int i in
@@ -218,7 +235,7 @@ let solve_dfg (graph : dfg) : (node * int * (int * int)) list =
   constrain_nodes s a;
   let total_time = latest_time s a in
   let upper_bound = sequential_time a in
-  print_endline ("Seq time (upper bound): " ^ (string_of_int upper_bound));
+  print_endline ("Seqential time (upper bound): " ^ (string_of_int upper_bound) ^"\n");
 
   let opt_res = incrememntal_solve_loop s total_time upper_bound None in
   match opt_res with
