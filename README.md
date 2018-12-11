@@ -44,3 +44,30 @@ On Linux:
 [ocamlgraph]: https://github.com/backtracking/ocamlgraph
 [ocaml-z3]: https://github.com/plasma-umass/ocaml-z3
 [z3]: https://github.com/Z3Prover/z3
+
+Building & Running
+-----
+
+Run the following from the top-level directory to install the compiler's `ssac` executable onto your path:
+
+    $ dune build && dune install
+
+Program are read from standard input:
+
+    $ cat examples/simple_phi | ssac
+
+
+The `ssac` executable supports the following arguments:
+
+    $ SSA-Spatial Compiler
+    $ 
+    $   -p Pretty prints the input program
+    $   -b Prints the bound variables from the SSA check
+    $   -i Prints the interpreter final store
+    $   -d Prints debugging for constraint generation
+    $   -r Number of rows in the spatial configuration
+    $   -c Number of columns in the spatial configuration
+    $   -t Timeout for z3, in seconds
+    $   -o Filename for the dot output file
+    $   -help  Display this list of options
+    $   --help  Display this list of options
