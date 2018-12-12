@@ -17,16 +17,16 @@ let out_filename : string ref = ref "ssac-output.dot"
 
 let usage = "SSA-Spatial Compiler\n"
 let spec_list : (Arg.key * Arg.spec * Arg.doc) list =
-    [
-      ("-p", Arg.Set pretty_print, "Pretty prints the input program");
-      ("-b", Arg.Set bound_ssa, "Prints the bound variables from the SSA check");
-      ("-i", Arg.Set print_interpreter, "Prints the interpreter final store");
-      ("-d", Arg.Set debug, "Prints debugging for constraint generation");
-      ("-r", Arg.Set_int rows, "Number of rows in the spatial configuration");
-      ("-c", Arg.Set_int columns, "Number of columns in the spatial configuration");
-      ("-t", Arg.Set_int timeout, "Timeout for z3, in seconds");
-      ("-o", Arg.Set_string out_filename, "Filename for the dot output file");
-    ]
+  [
+    ("-p", Arg.Set pretty_print, "Pretty prints the input program");
+    ("-b", Arg.Set bound_ssa, "Prints the bound variables from the SSA check");
+    ("-i", Arg.Set print_interpreter, "Prints the interpreter final store");
+    ("-d", Arg.Set debug, "Prints debugging for constraint generation");
+    ("-r", Arg.Set_int rows, "Number of rows in the spatial configuration");
+    ("-c", Arg.Set_int columns, "Number of columns in the spatial configuration");
+    ("-t", Arg.Set_int timeout, "Timeout for z3, in seconds");
+    ("-o", Arg.Set_string out_filename, "Filename for the dot output file");
+  ]
 
 let _ =
   Arg.parse spec_list anon_fun usage;

@@ -56,7 +56,6 @@ Program are read from standard input:
 
     $ cat examples/simple_phi | ssac
 
-
 The `ssac` executable supports the following arguments:
 
     $ SSA-Spatial Compiler
@@ -71,3 +70,7 @@ The `ssac` executable supports the following arguments:
     $   -o Filename for the dot output file
     $   -help  Display this list of options
     $   --help  Display this list of options
+
+SSA-Spatial produces a dot final for visualizing the final partitioning. To view the result as a png:
+
+    $ dot -Tpng ssac-output.dot > ssac-output.png

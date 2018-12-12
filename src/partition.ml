@@ -20,8 +20,6 @@ type assignments = (node * term * (term * term)) list
 let rows = ref 2
 let cols = ref 2
 
-let tiles = !rows * !cols
-
 let debug = ref false
 
 let term_0 = int_to_term 0
@@ -80,11 +78,11 @@ let time_per_binop (bo : binop) : int =
   | BAnd -> 1
   | BOr -> 1
   | BEquals -> 1
-  | BNotEquals -> 3
-  | BLess -> 3
-  | BLessEq -> 3
-  | BGreater -> 3
-  | BGreaterEq -> 3
+  | BNotEquals -> 1
+  | BLess -> 1
+  | BLessEq -> 1
+  | BGreater -> 1
+  | BGreaterEq -> 1
   | BAdd -> 3
   | BSub -> 3
   | BMul -> 5
@@ -92,14 +90,14 @@ let time_per_binop (bo : binop) : int =
 
 let time_per_unop (uo : unop) : int =
   match uo with
-  | UNot -> 1
-  | UNeg -> 1
+  | UNot -> 2
+  | UNeg -> 2
   | USqrt -> 10
   | UAbs -> 3
 
 let time_per_op (o : operation) : int =
   match o with
-  | OPhi ->  1
+  | OPhi -> 0
   | OPrint -> 0
   | OBinop(bo) -> time_per_binop bo
   | OUnop(uo) -> time_per_unop uo
@@ -116,6 +114,7 @@ let manhattan_dist (x, y) (x', y') =
 
 let constrain_comms_times (s : solver) =
   declare_fun s dist_fun_id [int_sort; int_sort] int_sort;
+  let tiles = !rows * !cols in
   let parts = List.range 0 tiles in
   let map_rel (p1 : int) (p2 : int) =
     let (x1, y1) = components p1 in
@@ -153,6 +152,7 @@ let constrain_nodes (s : solver) (a : assignments) =
   List.iter ~f:(fun (p) -> constrain_per_node s a p) a
 
 let constrain_partitions (s : solver) (a : assignments) =
+  let tiles = !rows * !cols in
   List.iter ~f:(fun (_, pt, _) -> assert_ s
     (and_ (gte pt term_0) (lt pt (int_to_term tiles)))) a
 
@@ -214,10 +214,16 @@ let set_timeout (s : solver) (seconds : int) =
   if (s = "success") then () else
   print_endline ("Warning: unexpected response setting timeout: " ^ s)
 
+let set_configuration (s : solver) (c : config) =
+    set_timeout s c.timeout;
+    cols := c.cols;
+    rows := c.rows;
+    debug := c.debug
+
 (* Idea: take in the list of nodes, return a list with partition assignments *)
 let solve_dfg (graph : dfg) (config : config): (node * int * (int * int)) list =
   let s : solver = Smtlib.make_solver "z3" in
-  set_timeout s config.timeout;
+  set_configuration s config;
   let a = List.mapi ~f:(fun (i : int) (x : node) ->
     let pt = "p_" ^ string_of_int i in
     let t1 = "t1_" ^ string_of_int i in

@@ -24,13 +24,16 @@ let string_of_partition (n, p, (t1, t2)) =
     ^ "\nTime: (" ^ (string_of_int t1) ^ ", " ^ (string_of_int t2) ^ ")" in
   "\"" ^ node ^ sched ^ "\""
 
-let vertex_attribute (_n, p, _) =
+let vertex_attribute (n, p, _) =
   let color = match p with
   | 0 -> 0xb7d2ff
   | 1 -> 0xf7f08a
   | 2 -> 0xff9393
   | _ -> 0xd5b7ff in
-  [`Shape `Box; `Fillcolor color; `Style `Filled]
+  let shape = match n with
+  | NLit _ -> `Box
+  | NOp _ -> `Ellipse in
+  [`Shape shape; `Fillcolor color; `Style `Filled]
 
 module VNode = struct
    type t = (node * int * (int * int))

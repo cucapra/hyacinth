@@ -1,0 +1,10 @@
+lib: [
+  "_build/install/default/lib/ssacompiler/META" {"META"}
+  "_build/install/default/lib/ssacompiler/opam" {"opam"}
+]
+bin: [
+  "_build/install/default/bin/ssac" {"ssac"}
+]
+doc: [
+  "_build/install/default/doc/ssacompiler/README.md"
+]
