@@ -50,6 +50,7 @@ Building & Running
 
 Run the following from the top-level directory to install the compiler's `ssac` executable onto your path:
 
+    $ eval $(opam env)
     $ dune build && dune install
 
 Program are read from standard input:
