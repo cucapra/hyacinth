@@ -9,6 +9,7 @@ let pretty_print : bool ref = ref false
 let bound_ssa : bool ref = ref false
 let print_interpreter : bool ref = ref false
 let debug : bool ref = ref false
+let direct_man_distance : bool ref = ref false
 let rows : int ref = ref 2
 let columns : int ref = ref 2
 let timeout : int ref = ref 100000
@@ -22,6 +23,7 @@ let spec_list : (Arg.key * Arg.spec * Arg.doc) list =
     ("-b", Arg.Set bound_ssa, "Prints the bound variables from the SSA check");
     ("-i", Arg.Set print_interpreter, "Prints the interpreter final store");
     ("-d", Arg.Set debug, "Prints debugging for constraint generation");
+    ("-m", Arg.Set direct_man_distance, "Computes Manhattan distance directly rather than via a lookup table");
     ("-r", Arg.Set_int rows, "Number of rows in the spatial configuration");
     ("-c", Arg.Set_int columns, "Number of columns in the spatial configuration");
     ("-t", Arg.Set_int timeout, "Timeout for z3, in seconds");
@@ -65,6 +67,7 @@ let _ =
         cols = !columns;
         timeout = !timeout;
         debug = !debug;
+        direct_distance = !direct_man_distance;
       } in
     print_endline "Success";
     print_endline ("\nPartitioning for spatial layout with " ^ (string_of_int !rows)

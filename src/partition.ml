@@ -12,6 +12,7 @@ type config =
     cols : int;
     timeout : int; (* in seconds *)
     debug : bool;
+    direct_distance : bool;
   }
 
 (* node, core assignment, (starting time, ending time) *)
@@ -21,6 +22,7 @@ let rows = ref 2
 let cols = ref 2
 
 let debug = ref false
+let lookup_table = ref true
 
 let term_0 = int_to_term 0
 let dist_fun_id = (Id "manhattan_dist")
@@ -112,7 +114,7 @@ let components (p : int) : (int * int) =
 let manhattan_dist (x, y) (x', y') =
   (abs (x - x')) + (abs (y - y'))
 
-let constrain_comms_times (s : solver) =
+let constrain_comms_times_lookup_table (s : solver) =
   declare_fun s dist_fun_id [int_sort; int_sort] int_sort;
   let tiles = !rows * !cols in
   let parts = List.range 0 tiles in
@@ -123,6 +125,20 @@ let constrain_comms_times (s : solver) =
     let args = [int_to_term p1; int_to_term p2] in
     assert_ s (equals (App(dist_fun_id, args)) (int_to_term time)) in
   List.iter ~f:(fun (p) -> List.iter ~f:(map_rel p) parts) parts
+
+let constrain_comms_times_direct (s : solver) =
+  let abs = "define-fun absolute ((x Int)) Int (ite (>= x 0) x (- x))" in
+  let dist =  Printf.sprintf  "define-fun manhattan_dist ((x Int) (y Int)) Int
+    (+ (absolute (- (mod x %d) (mod y %d))) (absolute (- (div x %d) (div y %d))))"
+    !cols !cols !cols !cols in
+  let r = (sexp_to_string (command s (Smtlib.SString abs))) in
+  let r' = (sexp_to_string (command s (Smtlib.SString dist))) in
+  if ((r = "success") && (r' = "success")) then ()
+  else print_endline ("Warning: unexpected responses: " ^ r ^ r')
+
+let constrain_comms_times (s : solver) =
+  if !lookup_table then constrain_comms_times_lookup_table s
+  else constrain_comms_times_direct s
 
 let time_for_comms (p1 : term) (p2 : term) : term =
   App(dist_fun_id, [p1; p2])
@@ -218,7 +234,8 @@ let set_configuration (s : solver) (c : config) =
     set_timeout s c.timeout;
     cols := c.cols;
     rows := c.rows;
-    debug := c.debug
+    debug := c.debug;
+    lookup_table := not c.debug
 
 (* Idea: take in the list of nodes, return a list with partition assignments *)
 let solve_dfg (graph : dfg) (config : config): (node * int * (int * int)) list =
