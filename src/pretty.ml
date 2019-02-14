@@ -39,6 +39,9 @@ let pretty_expr (e : expr) : string =
       (pretty_value val1) ^ (pretty_binop binop) ^ (pretty_value val2)
     | EUnop(unop, v) -> (pretty_unop unop) ^ (pretty_value v)
     | EPhi (v1, v2) -> "phi (" ^ v1 ^ ", " ^ v2 ^ ")"
+    | EOther (name, values) ->
+      let f (acc : string) (v : value) : string =  acc ^ " " ^ (pretty_value v) in
+      "other: " ^ name ^  (List.fold_left f "" values)
 
 let rec pretty (c : com) : string =
   match c with

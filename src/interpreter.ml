@@ -61,6 +61,7 @@ let interpret_expr (s : store) (e : expr) : float =
       (interpret_binop binop) f1 f2
     | EUnop(unop, v) -> interpret_unop unop (interpret_value s v)
     | EPhi (v1, v2) -> lookup s (phi_select s v1 v2)
+    | EOther (_, _) -> failwith "Cannot interpret other/external expression"
 
 let interpret (c : com) : float VarMap.t =
   let rec interpret_com (s : store) (c : com) : store =

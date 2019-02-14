@@ -8,6 +8,7 @@ let print_operation (o : operation) : string =
   | OPrint -> "Print"
   | OBinop(bo) -> pretty_binop bo
   | OUnop(uo) -> pretty_unop uo
+  | OOther(name) -> name
 
 let print_address n : string =
   let address = 2*(Obj.magic n) in

@@ -30,6 +30,7 @@ and expr =
   | EBinop of binop * value * value
   | EUnop of unop * value
   | EPhi of var * var
+  | EOther of string * value list
 
 and com =
   | CAssgn of var * expr

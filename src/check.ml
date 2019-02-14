@@ -21,6 +21,9 @@ let check_ssa_expr (e : expr) (vars : VarSet.t) : VarSet.t =
     | EBinop(_, v1, v2) ->
       VarSet.union (check_ssa_value v1 vars) (check_ssa_value v2 vars)
     | EPhi(v1, v2) -> let _ = check_var v1 vars in check_var v2 vars
+    | EOther (_, values) ->
+      List.iter (fun (v) -> let _ = check_ssa_value v vars in ()) values;
+      vars
 
 let check_ssa (c : com) : var list =
   let rec check_ssa_com (c : com) (vars : VarSet.t) : VarSet.t =

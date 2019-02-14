@@ -103,6 +103,7 @@ let time_per_op (o : operation) : int =
   | OPrint -> 0
   | OBinop(bo) -> time_per_binop bo
   | OUnop(uo) -> time_per_unop uo
+  | OOther(_) -> 10
 
 (* The cost for communicating between two partitions is their manhattan distance
   in the core grid *)

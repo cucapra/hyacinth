@@ -11,6 +11,7 @@ type operation =
   | OPrint
   | OBinop of binop
   | OUnop of unop
+  | OOther of string
 
 and opnode =
   {
@@ -73,6 +74,12 @@ let expr_to_node (e : expr) (r : result) : node =
       op = OPhi;
       incoming = [n1; n2];
     })
+  | EOther(name, values) ->
+    NOp({
+      op = OOther(name);
+      incoming = List.map (fun (v) -> val_to_node v r) values;
+    })
+
 
 let rec com_to_nodes (c : com) (r : result) : result =
   match c with
@@ -113,6 +120,7 @@ let print_operation (o : operation) : string =
   | OPrint -> "Print"
   | OBinop(bo) -> pretty_binop bo
   | OUnop(uo) -> pretty_unop uo
+  | OOther(name) -> "Other" ^ name
 
 let rec print_nodes (ns : node list) : string =
   let f (acc : string) (n : node) = acc ^ (print_node n) in

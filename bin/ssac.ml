@@ -5,6 +5,7 @@ let program_file : string option ref = ref None
 let anon_fun (arg : string) : unit =
     print_endline ("Warning: no argument expected, ignoring: " ^ arg)
 
+let llvm_input : bool ref = ref false
 let pretty_print : bool ref = ref false
 let bound_ssa : bool ref = ref false
 let print_interpreter : bool ref = ref false
@@ -19,6 +20,7 @@ let out_filename : string ref = ref "ssac-output.dot"
 let usage = "SSA-Spatial Compiler\n"
 let spec_list : (Arg.key * Arg.spec * Arg.doc) list =
   [
+    ("-l", Arg.Set llvm_input, "Expects LLVM as the input program");
     ("-p", Arg.Set pretty_print, "Pretty prints the input program");
     ("-b", Arg.Set bound_ssa, "Prints the bound variables from the SSA check");
     ("-i", Arg.Set print_interpreter, "Prints the interpreter final store");
@@ -32,8 +34,11 @@ let spec_list : (Arg.key * Arg.spec * Arg.doc) list =
 
 let _ =
   Arg.parse spec_list anon_fun usage;
-  let lexbuf = Lexing.from_channel stdin in
-  let prog = Parser.prog Lexer.token lexbuf in
+  let prog = (if !llvm_input then
+    Llvmin.parse_llvm stdin
+  else
+    let lexbuf = Lexing.from_channel stdin in Parser.prog Lexer.token lexbuf
+  ) in
   if !pretty_print then
     (print_endline "Program"; print_endline (Pretty.pretty prog);)
   else ();
