@@ -5,13 +5,11 @@ and value =
   | VFloat of float
   | VVar of var
 
-and unop =
+and internal_op =
   | UNot
   | UNeg
   | USqrt
   | UAbs
-
-and binop =
   | BAnd
   | BOr
   | BEquals
@@ -25,12 +23,15 @@ and binop =
   | BMul
   | BDiv
 
+
+and op =
+  | OInternal of internal_op
+  | OExternal of string * int
+
 and expr =
   | EValue of value
-  | EBinop of binop * value * value
-  | EUnop of unop * value
+  | EOp of op * value list
   | EPhi of var * var
-  | EOther of string * value list
 
 and com =
   | CAssgn of var * expr

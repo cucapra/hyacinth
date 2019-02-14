@@ -75,8 +75,12 @@ let results_to_strings r : string list =
   let print_term (Id s, t) = s ^ "\t: " ^ (term_to_string t) in
   List.map ~f:print_term sorted
 
-let time_per_binop (bo : binop) : int =
-  match bo with
+let time_per_internal_op (uo : internal_op) : int =
+  match uo with
+  | UNot -> 2
+  | UNeg -> 2
+  | USqrt -> 10
+  | UAbs -> 3
   | BAnd -> 1
   | BOr -> 1
   | BEquals -> 1
@@ -90,20 +94,11 @@ let time_per_binop (bo : binop) : int =
   | BMul -> 5
   | BDiv -> 10
 
-let time_per_unop (uo : unop) : int =
-  match uo with
-  | UNot -> 2
-  | UNeg -> 2
-  | USqrt -> 10
-  | UAbs -> 3
-
 let time_per_op (o : operation) : int =
   match o with
   | OPhi -> 0
-  | OPrint -> 0
-  | OBinop(bo) -> time_per_binop bo
-  | OUnop(uo) -> time_per_unop uo
-  | OOther(_) -> 10
+  | OOp(OInternal(io)) -> time_per_internal_op io
+  | OOp(OExternal(_, cost)) -> cost
 
 (* The cost for communicating between two partitions is their manhattan distance
   in the core grid *)

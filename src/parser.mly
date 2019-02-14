@@ -17,8 +17,6 @@ EQUALS NOTEQUALS LESS LESSEQ GREATER GREATEREQ AND OR
 IF PHI LPAREN RPAREN ASSIGN SEMI COMMA LBRACE RBRACE PRINT EOF
 
 %type <Ast.value> value
-%type <Ast.binop> binop
-%type <Ast.unop> unop 
 %type <Ast.expr> expr
 %type <Ast.com> com
 %type <Ast.com> prog
@@ -40,7 +38,7 @@ unop:
   | ABS                   { UAbs }
 
 /* Binary operations */
-%inline binop :
+binop :
   | ADD                   { BAdd }
   | SUBTRACT              { BSub }
   | MULTIPLY              { BMul }
@@ -58,8 +56,8 @@ unop:
 /* Expressions */
 expr :
   | value                             { EValue($1) }
-  | value binop value                 { EBinop ($2, $1, $3) }
-  | unop value                        { EUnop($1, $2) }
+  | binop value value                 { EOp(OInternal($1), [$2; $3]) }
+  | unop value                        { EOp(OInternal($1), [$2]) }
   | PHI LPAREN VAR COMMA VAR RPAREN   { EPhi($3, $5) }
 
 /* Commands */

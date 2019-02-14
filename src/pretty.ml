@@ -7,49 +7,48 @@ let pretty_indentation (s : string) : string =
 
 let pretty_value (v : value) : string =
   match v with
-    | VFloat(fl) -> string_of_float fl
-    | VVar(var) -> var
+  | VFloat(fl) -> string_of_float fl
+  | VVar(var) -> var
 
-let pretty_unop (u : unop) : string =
-  match u with
-    | UNot -> "not"
-    | UNeg -> "neg "
-    | USqrt -> "sqrt "
-    | UAbs -> "abs "
+let pretty_internal_op (io : internal_op) : string =
+  match io with
+  | UNot -> "not"
+  | UNeg -> "neg "
+  | USqrt -> "sqrt "
+  | UAbs -> "abs "
+  | BAnd -> "&&"
+  | BOr -> "||"
+  | BEquals -> "=="
+  | BNotEquals -> "!="
+  | BLess -> "<"
+  | BLessEq -> "<="
+  | BGreater -> ">"
+  | BGreaterEq -> ">="
+  | BAdd -> " + "
+  | BSub -> " - "
+  | BMul -> " * "
+  | BDiv -> " / "
 
-let pretty_binop (b : binop) : string =
-  match b with
-    | BAnd -> "&&"
-    | BOr -> "||"
-    | BEquals -> "=="
-    | BNotEquals -> "!="
-    | BLess -> "<"
-    | BLessEq -> "<="
-    | BGreater -> ">"
-    | BGreaterEq -> ">="
-    | BAdd -> " + "
-    | BSub -> " - "
-    | BMul -> " * "
-    | BDiv -> " / "
+let pretty_op (o : op) : string =
+  match o with
+  | OInternal (io) -> pretty_internal_op io
+  | OExternal (name, _) -> name
 
 let pretty_expr (e : expr) : string =
   match e with
-    | EValue(value) -> pretty_value value
-    | EBinop(binop, val1, val2) ->
-      (pretty_value val1) ^ (pretty_binop binop) ^ (pretty_value val2)
-    | EUnop(unop, v) -> (pretty_unop unop) ^ (pretty_value v)
-    | EPhi (v1, v2) -> "phi (" ^ v1 ^ ", " ^ v2 ^ ")"
-    | EOther (name, values) ->
-      let f (acc : string) (v : value) : string =  acc ^ " " ^ (pretty_value v) in
-      "other: " ^ name ^  (List.fold_left f "" values)
+  | EValue(value) -> pretty_value value
+  | EPhi (v1, v2) -> "phi (" ^ v1 ^ ", " ^ v2 ^ ")"
+  | EOp (o, values) ->
+    let f (acc : string) (v : value) : string =  acc ^ " " ^ (pretty_value v) in
+    (pretty_op o) ^  (List.fold_left f "" values)
 
 let rec pretty (c : com) : string =
   match c with
-    | CAssgn(var, expr) -> var ^ " := " ^ (pretty_expr expr) ^ ";"
-    | CIf(cond, expr) ->
-      let pe = pretty_indentation (pretty expr) in
-      "if (" ^ cond ^ ") {\n\t" ^ pe ^ "\n}"
-    | CSeq(coms) ->
-      let f (acc : string) (c : com) : string =  acc ^ "\n" ^ (pretty c) in
-      List.fold_left f "" coms
-    | CPrint(expr) -> "print " ^ (pretty_expr expr) ^ ";"
+  | CAssgn(var, expr) -> var ^ " := " ^ (pretty_expr expr) ^ ";"
+  | CIf(cond, expr) ->
+    let pe = pretty_indentation (pretty expr) in
+    "if (" ^ cond ^ ") {\n\t" ^ pe ^ "\n}"
+  | CSeq(coms) ->
+    let f (acc : string) (c : com) : string =  acc ^ "\n" ^ (pretty c) in
+    List.fold_left f "" coms
+  | CPrint(expr) -> "print " ^ (pretty_expr expr) ^ ";"

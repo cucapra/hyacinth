@@ -5,10 +5,7 @@ open Graph
 let print_operation (o : operation) : string =
   match o with
   | OPhi -> "Phi"
-  | OPrint -> "Print"
-  | OBinop(bo) -> pretty_binop bo
-  | OUnop(uo) -> pretty_unop uo
-  | OOther(name) -> name
+  | OOp(op) -> pretty_op op
 
 let print_address n : string =
   let address = 2*(Obj.magic n) in
@@ -37,17 +34,17 @@ let vertex_attribute (n, p, _) =
   [`Shape shape; `Fillcolor color; `Style `Filled]
 
 module VNode = struct
-   type t = (node * int * (int * int))
-   let compare = Pervasives.compare
-   let hash = Hashtbl.hash
-   let equal = (==)
+  type t = (node * int * (int * int))
+  let compare = Pervasives.compare
+  let hash = Hashtbl.hash
+  let equal = (==)
 end
 
 module VEdge = struct
-   type t = string
-   let compare = Pervasives.compare
-   let equal = (=)
-   let default = ""
+  type t = string
+  let compare = Pervasives.compare
+  let equal = (=)
+  let default = ""
 end
 
 module G = Imperative.Digraph.ConcreteBidirectionalLabeled(VNode)(VEdge)

@@ -7,11 +7,8 @@ module VarMap =
   Map.Make(struct type t = var;; let compare = String.compare end)
 
 type operation =
+  | OOp of op
   | OPhi
-  | OPrint
-  | OBinop of binop
-  | OUnop of unop
-  | OOther of string
 
 and opnode =
   {
@@ -54,19 +51,6 @@ let val_to_node (v : value) (r : result) : node =
 let expr_to_node (e : expr) (r : result) : node =
   match e with
   | EValue(v) -> val_to_node v r
-  | EBinop(binop, v1, v2) ->
-    let n1 = val_to_node v1 r in
-    let n2 = val_to_node v2 r in
-    NOp({
-      op = OBinop(binop);
-      incoming = [n1; n2];
-    })
-  | EUnop(unop, v) ->
-    let n = val_to_node v r in
-    NOp({
-      op = OUnop(unop);
-      incoming = [n];
-    })
   | EPhi (var1, var2) ->
     let n1 = lookup r var1 in
     let n2 = lookup r var2 in
@@ -74,9 +58,9 @@ let expr_to_node (e : expr) (r : result) : node =
       op = OPhi;
       incoming = [n1; n2];
     })
-  | EOther(name, values) ->
+  | EOp(o, values) ->
     NOp({
-      op = OOther(name);
+      op = OOp(o);
       incoming = List.map (fun (v) -> val_to_node v r) values;
     })
 
@@ -92,7 +76,7 @@ let rec com_to_nodes (c : com) (r : result) : result =
   | CPrint(expr) ->
     let en = expr_to_node expr r in
     let pn = NOp({
-      op = OPrint;
+      op = OOp(OExternal("print", 0));
       incoming = [en];
     }) in
     insert r "" pn
@@ -117,10 +101,7 @@ let print_address_list ns : string =
 let print_operation (o : operation) : string =
   match o with
   | OPhi -> "Phi"
-  | OPrint -> "Print"
-  | OBinop(bo) -> pretty_binop bo
-  | OUnop(uo) -> pretty_unop uo
-  | OOther(name) -> "Other" ^ name
+  | OOp(op) -> pretty_op op
 
 let rec print_nodes (ns : node list) : string =
   let f (acc : string) (n : node) = acc ^ (print_node n) in
