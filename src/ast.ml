@@ -23,7 +23,6 @@ and internal_op =
   | BMul
   | BDiv
 
-
 and op =
   | OInternal of internal_op
   | OExternal of string * int

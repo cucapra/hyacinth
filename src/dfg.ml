@@ -42,7 +42,7 @@ let insert (r : result) (x : var) (n : node) : result =
 let val_to_node (v : value) (r : result) : node =
   match v with
   | VFloat(fl) ->
-    (* for floats, we want always want a new literal node *)
+    (* for floats, we always want a new literal node *)
     NLit(fl)
   | VVar(var) ->
     (* for variables, we want to use the existing node *)
