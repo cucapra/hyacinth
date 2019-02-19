@@ -45,6 +45,23 @@ let print_val lv =
   print_type llty ;
   ()
 
+let opcode_cost (opcode : Llvm.Opcode.t) : int =
+  match opcode with
+  | Alloca -> 1
+  | Load -> 1
+  | Store -> 1
+  | FMul -> 5
+  | FSub -> 3
+  | FDiv -> 10
+  | FAdd -> 3
+  | FCmp -> 1
+  | PHI -> 0
+  | Ret -> 1
+  | Call -> 10
+  | Br -> 1
+  | Select -> 1
+  | _ -> 10
+
 let pretty_opcode (opcode : Llvm.Opcode.t) : string =
   match opcode with
   | Alloca -> "alloca"
@@ -59,6 +76,7 @@ let pretty_opcode (opcode : Llvm.Opcode.t) : string =
   | Ret -> "ret"
   | Call -> "call"
   | Br -> "br"
+  | Select -> "select"
   | _ -> "other"
 
 
@@ -97,7 +115,7 @@ let operand_to_value (operand : Llvm.llvalue) (rs : result ref) : value =
 let op_from_instr (instr : Llvm.llvalue) : op =
   let opcode = Llvm.instr_opcode instr in
   let name = pretty_opcode opcode in
-  OExternal (name, 1) (* TODO: costs! *)
+  OExternal (name, opcode_cost opcode)
 
 let instr_to_com (rs : result) (instr : Llvm.llvalue) : result =
   let result : result ref = ref rs in
