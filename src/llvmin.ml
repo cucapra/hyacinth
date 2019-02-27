@@ -18,6 +18,9 @@ let register (v : Llvm.llvalue) (rs : result ref) : string =
     rs := {!rs with map = map'; idx = !rs.idx + 1};
     name'
 
+let regigister_number (r : string) : int =
+  int_of_string (Core.String.strip ~drop:(fun c -> c = '%') r)
+
 let rec print_type llty =
   let ty = Llvm.classify_type llty in
   match ty with
@@ -79,7 +82,6 @@ let pretty_opcode (opcode : Llvm.Opcode.t) : string =
   | Select -> "select"
   | _ -> "other"
 
-
 let print_fun lv =
   Llvm.iter_blocks
     (fun llbb ->
@@ -134,7 +136,8 @@ let instr_to_com (rs : result) (instr : Llvm.llvalue) : result =
 
 let params_to_coms (rs : result ref) (fn : Llvm.llvalue) =
   let param_to_assgn p =
-    let com = CAssgn (register p rs, EValue (VFloat (-2.))) in
+    let r = register p rs in
+    let com = CAssgn (r, EInput (regigister_number r)) in
     rs :=  {!rs with coms = com::!rs.coms} in
   Llvm.iter_params param_to_assgn fn
 

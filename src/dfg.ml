@@ -19,6 +19,7 @@ and opnode =
 and node =
   | NLit of float
   | NOp of opnode
+  | NInput of int
 
 and result =
   {
@@ -50,19 +51,20 @@ let val_to_node (v : value) (r : result) : node =
 
 let expr_to_node (e : expr) (r : result) : node =
   match e with
-  | EValue(v) -> val_to_node v r
+  | EValue (v) -> val_to_node v r
   | EPhi (var1, var2) ->
     let n1 = lookup r var1 in
     let n2 = lookup r var2 in
-    NOp({
+    NOp ({
       op = OPhi;
       incoming = [n1; n2];
     })
-  | EOp(o, values) ->
+  | EOp (o, values) ->
     NOp({
       op = OOp(o);
       incoming = List.map (fun (v) -> val_to_node v r) values;
     })
+  | EInput (n) -> NInput n
 
 
 let rec com_to_nodes (c : com) (r : result) : result =
@@ -109,11 +111,15 @@ let rec print_nodes (ns : node list) : string =
 
 and print_node (n : node) : string =
   match n with
-  | NLit(fl) -> "NLit: " ^ (string_of_float fl) ^ " " ^(print_address n) ^ "\n"
-  | NOp(on) ->
+  | NLit fl -> "NLit: " ^ (string_of_float fl) ^ " " ^(print_address n) ^ "\n"
+  | NOp on ->
     "NOp: op: [" ^ (print_operation on.op) ^ "]" ^ " " ^(print_address n) ^
     " incoming: [" ^ (print_address_list on.incoming) ^ "]\n"
+  | NInput n -> "NInput " ^ (string_of_int n)
 
 let ssa_to_dfg (c : com) : dfg =
   let r = com_to_nodes c {curr = None; map = VarMap.empty; nodes = []} in
-  List.filter (fun(n)-> match n with | NOp(_)-> true | _ -> false) r.nodes
+  let keep n = match n with
+  | NOp _ | NInput _ -> true
+  | NLit _-> false in
+  List.filter keep r.nodes

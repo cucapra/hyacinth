@@ -141,8 +141,8 @@ let time_for_comms (p1 : term) (p2 : term) : term =
 
 let constrain_per_incoming (s : solver) (a : assignments) (i_n : node) pt t1 =
   match i_n with
-  | NLit(_) -> ()
-  | NOp(_) ->
+  | NLit _ -> () (* No cost for incoming literals *)
+  | NOp _ | NInput _->
     let (_, pt', (_, t2')) = List.find_exn ~f:(fun (n', _, _) -> i_n == n') a in
     let partition_comms_term = time_for_comms pt pt' in
     (* The starting time must be after the incoming ending time plus the
@@ -151,7 +151,7 @@ let constrain_per_incoming (s : solver) (a : assignments) (i_n : node) pt t1 =
 
 let constrain_per_node (s : solver) (a : assignments) p  =
   match p with
-  | (NLit(_), _, _) -> ()
+  | (NLit(_), _, _) -> failwith "Literals should not be directly constrained"
   | (NOp(op), pt, (t1, t2)) ->
     (* The ending time must be after the starting time plus the op time *)
     let op_cost_term = int_to_term (time_per_op op.op) in
@@ -159,6 +159,12 @@ let constrain_per_node (s : solver) (a : assignments) p  =
     (* The starting time must be after the ending time of each incoming node *)
     let f (n : node) = constrain_per_incoming s a n pt t1 in
     List.iter ~f:f op.incoming
+  | (NInput _, pt, (t1, t2)) ->
+    (* The ending time must be after the starting time plus the input time *)
+    let input_cost = int_to_term 1 in
+    assert_ s (equals (add t1 input_cost) t2);
+    (* For now, inputs must be from partition 0 *)
+    assert_ s (equals pt term_0)
 
 let constrain_nodes (s : solver) (a : assignments) =
   List.iter ~f:(fun (p) -> constrain_per_node s a p) a
@@ -191,8 +197,9 @@ let latest_time (s : solver) (a : assignments) : term =
 
 let sequential_time (a : assignments) : int =
   let total_time (acc : int) (n, _, _) = match n with
-  | NLit(_) -> acc
-  | NOp(o) -> time_per_op o.op + acc in
+  | NLit _ -> acc
+  | NOp o -> time_per_op o.op + acc
+  | NInput _ -> acc in
   List.fold_left a ~init:0 ~f:total_time
 
 let solve_for_goal (s : solver) (total : term) (goal : int) =

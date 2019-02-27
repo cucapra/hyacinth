@@ -26,8 +26,8 @@ let phi_select (s : store) (v1 : var) (v2 : var) : var =
 
 let interpret_value (s : store) (v : value) : float =
   match v with
-    | VFloat(fl) -> fl
-    | VVar(var) -> lookup s var
+    | VFloat fl -> fl
+    | VVar var -> lookup s var
 
 let interpret_unop (u : internal_op) : (float -> float) =
   match u with
@@ -70,11 +70,12 @@ let interpret_op (s : store) (io : internal_op) (vals : value list) : float =
 
 let interpret_expr (s : store) (e : expr) : float =
   match e with
-  | EValue (value) -> interpret_value s value
+  | EValue value -> interpret_value s value
   | EOp (OInternal(io), vals) -> interpret_op s io vals
   | EOp (OExternal(n, _), _) ->
     failwith ("Cannot interpret external operation: " ^ n)
   | EPhi (v1, v2) -> lookup s (phi_select s v1 v2)
+  | EInput _ -> failwith "Cannot interpret opaque input value"
 
 let interpret (c : com) : float VarMap.t =
   let rec interpret_com (s : store) (c : com) : store =
@@ -83,10 +84,10 @@ let interpret (c : com) : float VarMap.t =
     | CIf (cond, branch) ->
       let cval = lookup s cond in
       if cval > 0. then interpret_com s branch else s
-    | CSeq (coms) ->
+    | CSeq coms ->
       let f (acc : store) (c' : com) = (interpret_com acc c')
       in List.fold_left f s coms
-    | CPrint (expr) ->
+    | CPrint expr ->
       let f = interpret_expr s expr in print_endline (string_of_float f); s;
   in
 let result = interpret_com {vars = VarMap.empty; phi = []} c in

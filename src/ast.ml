@@ -31,6 +31,7 @@ and expr =
   | EValue of value
   | EOp of op * value list
   | EPhi of var * var
+  | EInput of int
 
 and com =
   | CAssgn of var * expr

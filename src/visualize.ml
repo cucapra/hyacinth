@@ -1,11 +1,12 @@
 open Dfg
 open Pretty
 open Graph
+open Partition
 
 let print_operation (o : operation) : string =
   match o with
   | OPhi -> "Phi"
-  | OOp(op) -> pretty_op op
+  | OOp op -> pretty_op op
 
 let print_address n : string =
   let address = 2*(Obj.magic n) in
@@ -13,8 +14,9 @@ let print_address n : string =
 
 let string_of_node (n : node) : string =
   match n with
-  | NLit(fl) -> "literal: " ^ (string_of_int (int_of_float fl))
-  | NOp(o) -> "operation: " ^ (print_operation o.op)
+  | NLit fl -> "literal: " ^ (string_of_float fl)
+  | NOp o -> "operation: " ^ (print_operation o.op)
+  | NInput n -> "input: " ^ (string_of_int n)
 
 let string_of_partition (n, p, (t1, t2)) =
   let node = string_of_node n in
@@ -29,9 +31,17 @@ let vertex_attribute (n, p, _) =
   | 2 -> 0xff9393
   | _ -> 0xd5b7ff in
   let shape = match n with
+  | NInput _ -> `Diamond
   | NLit _ -> `Box
   | NOp _ -> `Ellipse in
   [`Shape shape; `Fillcolor color; `Style `Filled]
+
+let edge_attribute ((_, p1, _), _, (_, p2, _)) =
+  if (p1 = p2) then
+    [`Color 4711]
+  else
+    let cost = manhattan_dist (components p1) (components p2) in
+    [`Label ("Cost: " ^ string_of_int cost)]
 
 module VNode = struct
   type t = (node * int * (int * int))
@@ -51,7 +61,7 @@ module G = Imperative.Digraph.ConcreteBidirectionalLabeled(VNode)(VEdge)
 
 module Dot = Graphviz.Dot(struct
   include G
-  let edge_attributes (_n1, e, _n2) = [`Label e; `Color 4711]
+  let edge_attributes e = edge_attribute e
   let default_edge_attributes _ = []
   let get_subgraph _ = None
   let vertex_attributes v = vertex_attribute v
