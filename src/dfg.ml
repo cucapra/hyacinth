@@ -6,6 +6,9 @@ exception UnboundVariableDFG of var
 module VarMap =
   Map.Make(struct type t = var;; let compare = String.compare end)
 
+module ComMap =
+  Map.Make(struct type t = com;; let compare = compare end)
+
 type operation =
   | OOp of op
   | OPhi
@@ -26,9 +29,10 @@ and result =
     curr : node option;
     nodes : node list;
     map : int VarMap.t;
+    com_map : node ComMap.t;
   }
 
-and dfg = node list
+type dfg = node list
 
 (* Conversion *)
 
@@ -71,7 +75,9 @@ let rec com_to_nodes (c : com) (r : result) : result =
   match c with
   | CAssgn(var, expr) ->
     let n = expr_to_node expr r in
-    insert r var n
+    let r' = insert r var n in
+    let map' = ComMap.add c n r'.com_map in
+    {r' with com_map = map'}
   | CIf(_, branch) ->
     com_to_nodes branch r
   | CSeq(coms) -> com_seq_to_nodes coms r
@@ -117,9 +123,11 @@ and print_node (n : node) : string =
     " incoming: [" ^ (print_address_list on.incoming) ^ "]\n"
   | NInput n -> "NInput " ^ (string_of_int n)
 
-let ssa_to_dfg (c : com) : dfg =
-  let r = com_to_nodes c {curr = None; map = VarMap.empty; nodes = []} in
+let ssa_to_dfg (c : com) : dfg * node ComMap.t =
+  let init = {curr = None; map = VarMap.empty; nodes = []; com_map = ComMap.empty} in
+  let r = com_to_nodes c init in
   let keep n = match n with
   | NOp _ | NInput _ -> true
   | NLit _-> false in
-  List.filter keep r.nodes
+  let nodes = List.filter keep r.nodes in
+  (nodes, r.com_map)

@@ -6,16 +6,17 @@ module ValueMap =
 type result =
   {
     coms : com list;
-    map : string ValueMap.t;
+    reg_map : string ValueMap.t;
     idx : int;
+    to_ast : (Llvm.llvalue * com) list;
   }
 
 let register (v : Llvm.llvalue) (rs : result ref) : string =
-  try let name = ValueMap.find v !rs.map in name
+  try let name = ValueMap.find v !rs.reg_map in name
   with Not_found ->
     let name' = "%" ^ (string_of_int !rs.idx) in
-    let map' = ValueMap.add v name' !rs.map in
-    rs := {!rs with map = map'; idx = !rs.idx + 1};
+    let map' = ValueMap.add v name' !rs.reg_map in
+    rs := {!rs with reg_map = map'; idx = !rs.idx + 1};
     name'
 
 let regigister_number (r : string) : int =
@@ -33,11 +34,17 @@ let rec print_type llty =
   | Llvm.TypeKind.Ppc_fp128 -> Printf.printf "  Ppc_fp128\n"
   | Llvm.TypeKind.Label -> Printf.printf "  Label\n"
   | Llvm.TypeKind.Struct -> Printf.printf "  Struct\n"
-  | Llvm.TypeKind.Integer  -> Printf.printf "  integer\n"
+  | Llvm.TypeKind.Integer -> Printf.printf "  integer\n"
   | Llvm.TypeKind.Function -> Printf.printf "  function\n"
-  | Llvm.TypeKind.Array    -> Printf.printf "  array of" ; print_type (Llvm.element_type llty)
-  | Llvm.TypeKind.Pointer  -> Printf.printf "  pointer to" ; print_type (Llvm.element_type llty)
-  | Llvm.TypeKind.Vector   -> Printf.printf "  vector of" ; print_type (Llvm.element_type llty)
+  | Llvm.TypeKind.Array ->
+    Printf.printf "  array of";
+    print_type (Llvm.element_type llty)
+  | Llvm.TypeKind.Pointer  ->
+    Printf.printf "  pointer to";
+    print_type (Llvm.element_type llty)
+  | Llvm.TypeKind.Vector ->
+    Printf.printf "  vector of";
+      print_type (Llvm.element_type llty)
   | Llvm.TypeKind.Metadata -> Printf.printf "  Metadata\n"
   | Llvm.TypeKind.X86_mmx -> Printf.printf "  X86_mmx\n"
 
@@ -107,7 +114,8 @@ let operand_to_value (operand : Llvm.llvalue) (rs : result ref) : value =
       (match Llvm.float_of_const operand with
       | Some fl -> fl
       | None -> failwith "Constant not a FP")
-    | _ -> print_endline ("constant not an Int or FP: " ^ (Llvm.string_of_llvalue operand));
+    | _ -> print_endline
+      ("constant not an Int or FP: " ^ (Llvm.string_of_llvalue operand));
       -1.0
     end in
     VFloat v
@@ -132,17 +140,18 @@ let instr_to_com (rs : result) (instr : Llvm.llvalue) : result =
   let op_expr = EOp (op_from_instr instr, operands) in
   let com = CAssgn (reg, op_expr) in
 
-  {!result with coms = com::rs.coms}
+  {!result with coms = com::rs.coms; to_ast = (instr, com)::rs.to_ast }
 
 let params_to_coms (rs : result ref) (fn : Llvm.llvalue) =
   let param_to_assgn p =
     let r = register p rs in
     let com = CAssgn (r, EInput (regigister_number r)) in
-    rs :=  {!rs with coms = com::!rs.coms} in
+    rs :=  {!rs with coms = com::!rs.coms; to_ast = (p, com)::!rs.to_ast} in
   Llvm.iter_params param_to_assgn fn
 
-let fold_functions (md : Llvm.llmodule) : com list =
-  let rs = {coms = []; map = ValueMap.empty; idx = 0} in
+let fold_functions (md : Llvm.llmodule) : result =
+  let rs =
+    {coms = []; reg_map = ValueMap.empty; idx = 0; to_ast = []} in
 
   let f_block (acc_b : result) (block : Llvm.llbasicblock) : result =
   Llvm.fold_left_instrs instr_to_com acc_b block in
@@ -151,13 +160,16 @@ let fold_functions (md : Llvm.llmodule) : com list =
   let acc_f' = ref acc_f in
   params_to_coms acc_f' fn;
   Llvm.fold_left_blocks f_block !acc_f' fn in
+  Llvm.fold_left_functions f_function rs md
 
-  let result = Llvm.fold_left_functions f_function rs md in
-  List.rev result.coms
+let llvm_to_ast (md : Llvm.llmodule) : (com list * (Llvm.llvalue * com) list) =
+  let result = fold_functions md in
+  (List.rev result.coms, List.rev result.to_ast)
 
-let parse_llvm (_llvm_in : in_channel) : com =
+let parse_llvm (_llvm_in : in_channel) : (com * (Llvm.llvalue * com) list) =
   let llctx = Llvm.global_context () in
   let llmem = Llvm.MemoryBuffer.of_stdin () in
   let llm = Llvm_bitreader.parse_bitcode llctx llmem in
 (*   Llvm.iter_functions print_fun llm; *)
-  CSeq (fold_functions llm)
+  let coms, to_ast = llvm_to_ast llm in
+  (CSeq coms, to_ast)

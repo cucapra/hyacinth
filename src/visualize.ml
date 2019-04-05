@@ -75,7 +75,7 @@ let incoming n =
   | NOp o -> o.incoming
   | _ -> []
 
-let dfg_to_viz_graph (graph : (node * int * (int * int)) list) : G.t =
+let dfg_to_viz_graph (graph : partitioning) : G.t =
   let g = G.create () in
   let add_edge n1 n2 =
     let n2opt = List.find_opt (fun (n, _, (_, _)) -> n == n2) graph in
@@ -91,6 +91,6 @@ let dfg_to_viz_graph (graph : (node * int * (int * int)) list) : G.t =
   List.iter per_node graph;
   g
 
-let visualize_dfg (graph : (node * int * (int * int)) list) (output : string) =
+let visualize_dfg (graph : partitioning) (output : string) =
   let file = open_out_bin output in
   Dot.output_graph file (dfg_to_viz_graph graph)

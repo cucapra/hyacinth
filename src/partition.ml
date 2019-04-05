@@ -16,7 +16,8 @@ type config =
   }
 
 (* node, core assignment, (starting time, ending time) *)
-type assignments = (node * term * (term * term)) list
+and assignments = (node * term * (term * term)) list
+and partitioning = (node * int * (int * int)) list
 
 let rows = ref 2
 let cols = ref 2
@@ -241,7 +242,7 @@ let set_configuration (s : solver) (c : config) =
     lookup_table := not c.debug
 
 (* Idea: take in the list of nodes, return a list with partition assignments *)
-let solve_dfg (graph : dfg) (config : config): (node * int * (int * int)) list =
+let solve_dfg (graph : dfg) (config : config) : partitioning =
   let s : solver = Smtlib.make_solver "z3" in
   set_configuration s config;
   let a = List.mapi ~f:(fun (i : int) (x : node) ->
@@ -261,7 +262,7 @@ let solve_dfg (graph : dfg) (config : config): (node * int * (int * int)) list =
   constrain_nodes s a;
   let total_time = latest_time s a in
   let upper_bound = sequential_time a in
-  print_endline ("Seqential time (upper bound): " ^ (string_of_int upper_bound) ^"\n");
+  print_endline ("Sequential time: " ^ (string_of_int upper_bound) ^"\n");
 
   let opt_res = incrememntal_solve_loop s total_time upper_bound None in
   match opt_res with

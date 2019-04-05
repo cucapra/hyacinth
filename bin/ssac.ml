@@ -34,10 +34,13 @@ let spec_list : (Arg.key * Arg.spec * Arg.doc) list =
 
 let _ =
   Arg.parse spec_list anon_fun usage;
-  let prog = (if !llvm_input then
-    Llvmin.parse_llvm stdin
+  let prog, llvm_ast_map_opt = (if !llvm_input then
+    let com, llvm_ast_map = Llvmin.parse_llvm stdin in
+    (com, Some llvm_ast_map)
   else
-    let lexbuf = Lexing.from_channel stdin in Parser.prog Lexer.token lexbuf
+    let lexbuf = Lexing.from_channel stdin in
+    let com = Parser.prog Lexer.token lexbuf in
+    (com, None)
   ) in
   if !pretty_print then
     (print_endline "Program"; print_endline (Pretty.pretty prog);)
@@ -65,7 +68,7 @@ let _ =
 
   (try
     print_endline "\nSSA to DFG:";
-    let dfg = Dfg.ssa_to_dfg prog in
+    let dfg, com_map = Dfg.ssa_to_dfg prog in
     let config =
       {
         rows = !rows;
@@ -80,5 +83,8 @@ let _ =
       ^ (string_of_int !timeout) ^"s timeout");
     let dfg_assignments = Partition.solve_dfg dfg config in
     Visualize.visualize_dfg dfg_assignments !out_filename;
-  with e ->
+    match llvm_ast_map_opt with
+    | Some llvm_ast_map -> Emit_llvm.emit_llvm dfg_assignments llvm_ast_map com_map
+    | None -> print_endline "None"
+   with e ->
     print_endline ("SSA to DFG error: " ^ Printexc.to_string e));
