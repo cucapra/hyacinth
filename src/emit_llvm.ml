@@ -64,17 +64,26 @@ let declare_external_functions () =
   let receive_t = function_type double_type [| int_type |] in
   ignore (declare_function receive_name receive_t llvm_module)
 
-let replace_operands inst map =
-  let arity = num_operands inst in
-  let arity_range = Core.List.range 0 arity in
-
+let replace_operands inst parent partition builder find_partition func_map instr_map =
   let replace_op idx =
-    let current = operand inst idx in
-    let new_opt = InstMap.find_opt current map in
-    match new_opt with
-    | Some new_inst -> set_operand inst idx new_inst
+    let op = operand inst idx in
+    match (InstMap.find_opt op instr_map) with
+    | Some new_op ->
+      let op_partition = find_partition op in
+      if partition != op_partition then
+        (print_endline "different parititions!";
+        let op_key = (op_partition, parent) in
+        let op_builder = NewFunctionMap.find_opt op_key !func_map in
+        let receive = call_receive receive_name op_partition builder in
+        let _ = call_send new_op partition op_builder in
+        set_operand inst idx receive)
+      else
+        (print_endline "same parititions!";
+        set_operand inst idx new_op)
     | None -> ()
   in
+  let arity = num_operands inst in
+  let arity_range = Core.List.range 0 arity in
   List.iter replace_op arity_range
 
 let emit_llvm (dfg : partitioning) (llvm_to_ast : (llvalue * com) list) (node_map : node ComMap.t) =
@@ -84,7 +93,6 @@ let emit_llvm (dfg : partitioning) (llvm_to_ast : (llvalue * com) list) (node_ma
     (p, (t1, t2))
   in
   let llvm_to_partition = List.map (fun (v, c) -> (v, partition_for_com c)) llvm_to_ast in
-
   let new_funs = ref NewFunctionMap.empty in
   let insts_map = ref InstMap.empty in
   declare_external_functions ();
@@ -92,8 +100,8 @@ let emit_llvm (dfg : partitioning) (llvm_to_ast : (llvalue * com) list) (node_ma
   let add_instruction (v, (p, ts)) =
     let builder_from_parent parent =
       let key = (p, parent) in
-      let insts_opt = NewFunctionMap.find_opt key !new_funs in
-      match insts_opt with
+      let builder_opt = NewFunctionMap.find_opt key !new_funs in
+      match builder_opt with
       | Some b -> b
       | None ->
         let fun_type = function_type void_type [||] in
@@ -104,32 +112,37 @@ let emit_llvm (dfg : partitioning) (llvm_to_ast : (llvalue * com) list) (node_ma
         new_funs := NewFunctionMap.add key builder !new_funs;
         builder
     in
+    let find_partition op =
+      let pair_opt = List.find_opt (fun (v, _) -> v == op) llvm_to_ast in
+      match pair_opt with
+      | Some (_, c) -> let (p, _) = partition_for_com c in p
+      | None -> p
+    in
     match (classify_value v) with
     | Instruction op ->
-      let builder = builder_from_parent (block_parent (instr_parent v)) in
+      let parent = block_parent (instr_parent v) in
+      let builder = builder_from_parent parent in
       begin match (op : Opcode.t) with
       | Ret ->
         let call = call_send (operand v 0) (-1) builder in
         set_metadata call ts;
         insts_map := InstMap.add v call !insts_map;
-        replace_operands call !insts_map;
+        replace_operands call parent p builder find_partition new_funs !insts_map;
       | _ ->
         let clone = instr_clone v in
         set_metadata clone ts;
         insts_map := InstMap.add v clone !insts_map;
-        replace_operands clone !insts_map;
+        replace_operands clone parent p builder find_partition new_funs !insts_map;
         insert_into_builder clone "" builder
       end
     | Argument ->
       let builder = builder_from_parent (param_parent v) in
       let call = call_receive "argument" (-1) builder in
       insts_map := InstMap.add v call !insts_map
-    | _ ->
-      failwith "Not intruction or argument"
+    | _ -> failwith "Not intruction or argument"
   in
   List.iter add_instruction llvm_to_partition;
   NewFunctionMap.iter (fun _ b -> ignore (build_ret_void b)) !new_funs;
-
   print_module "llvm_out.ll" llvm_module
 
 (*

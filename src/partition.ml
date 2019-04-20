@@ -47,15 +47,15 @@ let term_to_int (t : term) : int =
 (* Debugging *)
 
 let assert_ s t : unit =
-  if !debug then print_endline (term_to_string t) else ();
+  if !debug then print_endline (term_to_string t);
   Smtlib.assert_ s t
 
 let push s : unit =
-  if !debug then (print_endline "push") else ();
+  if !debug then (print_endline "push");
   Smtlib.push s
 
 let pop s : unit =
-  if !debug then (print_endline "pop") else ();
+  if !debug then (print_endline "pop");
   Smtlib.pop s
 
 let results_to_strings r : string list =

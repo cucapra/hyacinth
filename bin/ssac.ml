@@ -43,8 +43,7 @@ let _ =
     (com, None)
   ) in
   if !pretty_print then
-    (print_endline "Program"; print_endline (Pretty.pretty prog);)
-  else ();
+    (print_endline "Program"; print_endline (Pretty.pretty prog););
 
   (try
     let vars = Check.check_ssa prog in
