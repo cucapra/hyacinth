@@ -18,9 +18,9 @@ let check_ssa_expr (e : expr) (vars : VarSet.t) : VarSet.t =
   match e with
     | EValue value -> check_ssa_value value vars
     | EOp (_, values) ->
-      List.iter (fun v -> let _ = check_ssa_value v vars in ()) values;
+      List.iter (fun v -> ignore (check_ssa_value v vars)) values;
       vars
-    | EPhi (v1, v2) -> let _ = check_var v1 vars in check_var v2 vars
+    | EPhi (v1, v2) -> ignore (check_var v1 vars); check_var v2 vars
     | EInput _ -> vars
 
 let check_ssa (c : com) : var list =

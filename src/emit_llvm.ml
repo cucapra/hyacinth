@@ -60,9 +60,9 @@ let call_receive name (from_partition : int) builder =
 let declare_external_functions () =
   (* declare send and receive *)
   let send_t = function_type void_type [| double_type; int_type |] in
-  let _ = declare_function send_name send_t llvm_module in
+  ignore (declare_function send_name send_t llvm_module);
   let receive_t = function_type double_type [| int_type |] in
-  let _ = declare_function receive_name receive_t llvm_module in ()
+  ignore (declare_function receive_name receive_t llvm_module)
 
 let replace_operands inst map =
   let arity = num_operands inst in
@@ -128,6 +128,8 @@ let emit_llvm (dfg : partitioning) (llvm_to_ast : (llvalue * com) list) (node_ma
       failwith "Not intruction or argument"
   in
   List.iter add_instruction llvm_to_partition;
+  NewFunctionMap.iter (fun _ b -> ignore (build_ret_void b)) !new_funs;
+
   print_module "llvm_out.ll" llvm_module
 
 (*
