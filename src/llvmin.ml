@@ -155,22 +155,25 @@ let fold_functions (md : llmodule) : result =
     {coms = []; reg_map = ValueMap.empty; idx = 0; to_ast = []} in
 
   let f_block (acc_b : result) (block : llbasicblock) : result =
-  fold_left_instrs instr_to_com acc_b block in
+    fold_left_instrs instr_to_com acc_b block in
 
   let f_function (acc_f : result) (fn : llvalue) : result =
-  let acc_f' = ref acc_f in
-  params_to_coms acc_f' fn;
-  fold_left_blocks f_block !acc_f' fn in
+  if is_declaration fn then acc_f else
+    let acc_f' = ref acc_f in
+    params_to_coms acc_f' fn;
+    fold_left_blocks f_block !acc_f' fn
+  in
+
   fold_left_functions f_function rs md
 
 let llvm_to_ast (md : llmodule) : (com list * (llvalue * com) list) =
   let result = fold_functions md in
   (List.rev result.coms, List.rev result.to_ast)
 
-let parse_llvm (_llvm_in : in_channel) : (com * (llvalue * com) list) =
+let parse_llvm (_llvm_in : in_channel) : (com * (llmodule * ((llvalue * com) list))) =
   let llctx = global_context () in
   let llmem = MemoryBuffer.of_stdin () in
   let llm = Llvm_bitreader.parse_bitcode llctx llmem in
 (*   iter_functions print_fun llm; *)
   let coms, to_ast = llvm_to_ast llm in
-  (CSeq coms, to_ast)
+  (CSeq coms, (llm, to_ast))

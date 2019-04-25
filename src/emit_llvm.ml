@@ -86,7 +86,7 @@ let replace_operands inst parent partition builder find_partition func_map instr
   let arity_range = Core.List.range 0 arity in
   List.iter replace_op arity_range
 
-let emit_llvm (dfg : partitioning) (llvm_to_ast : (llvalue * com) list) (node_map : node ComMap.t) =
+let emit_llvm (dfg : partitioning) ((md, llvm_to_ast) : (llmodule * (llvalue * com) list)) (node_map : node ComMap.t) =
   let partition_for_com (c : com) =
     let node = ComMap.find c node_map in
     let (_, p, (t1, t2)) = List.find (fun (n, _, _) -> node == n) dfg in
