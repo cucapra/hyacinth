@@ -14,6 +14,33 @@ struct Context {
     pthread_rwlock_t lock;
 };
 
+void *init() {
+    Context *context = malloc(sizeof(Context));
+    context->channelList = NULL;
+    pthread_rwlock_init(&context->lock, 0);
+    return context;
+}
+
+void *call_function(void *name) {
+    void (*function)(void) = (void (*)(void))name;
+    (*function)();
+    return NULL;
+}
+
+void call_partitioned_functions(int num_functions, void (**function_pts)(void)) {
+    pthread_t *threads = malloc(sizeof(pthread_t) *num_functions);
+
+    for (int i = 0; i < num_functions; i++) {
+        pthread_create(&threads[i], NULL, call_function, function_pts[i]);
+        // TODO: send argument data
+    }
+
+    for (int i = 0; i < num_functions; i++) {
+        pthread_join(threads[i], NULL);
+        // TODO: receive return data
+    }
+}
+
 void _add_channel(double value, int id, Context *context) {
     Comm *node = context->channelList;
 
@@ -21,7 +48,7 @@ void _add_channel(double value, int id, Context *context) {
         node = node->next;
     }
 
-    node = (Comm *)malloc(sizeof(Comm));
+    node = malloc(sizeof(Comm));
     node->id = id;
     node->value = value;
     node->next = NULL;
@@ -58,11 +85,4 @@ double receive(int from_core, int id, void *context) {
         pthread_rwlock_unlock(&c->lock);
     }
     return 0.0;
-}
-
-void *init() {
-    Context *context = (Context *)malloc(sizeof(Context));
-    context->channelList = NULL;
-    pthread_rwlock_init(&context->lock, 0);
-    return context;
 }
