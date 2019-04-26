@@ -158,7 +158,9 @@ let fold_functions (md : llmodule) : result =
     fold_left_instrs instr_to_com acc_b block in
 
   let f_function (acc_f : result) (fn : llvalue) : result =
-  if is_declaration fn then acc_f else
+  if (is_declaration fn) || (value_name fn = "main") then
+    acc_f
+  else
     let acc_f' = ref acc_f in
     params_to_coms acc_f' fn;
     fold_left_blocks f_block !acc_f' fn
