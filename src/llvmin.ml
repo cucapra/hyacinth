@@ -48,6 +48,7 @@ let rec print_type llty =
       print_type (element_type llty)
   | TypeKind.Metadata -> Printf.printf "  Metadata\n"
   | TypeKind.X86_mmx -> Printf.printf "  X86_mmx\n"
+  | TypeKind.Token -> Printf.printf "  Token\n"
 
 let print_val lv =
   Printf.printf "  name %s\n" (value_name lv) ;
