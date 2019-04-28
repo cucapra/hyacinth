@@ -27,17 +27,20 @@ void *call_function(void *name) {
     return NULL;
 }
 
-void call_partitioned_functions(int num_functions, void (**function_pts)(void)) {
+void *call_partitioned_functions(int num_functions, void (**function_pts)(void)) {
     pthread_t *threads = malloc(sizeof(pthread_t) *num_functions);
 
     for (int i = 0; i < num_functions; i++) {
         pthread_create(&threads[i], NULL, call_function, function_pts[i]);
-        // TODO: send argument data
     }
+    return threads;
+}
+
+void join_partitioned_functions(int num_functions, void *threads_arg) {
+    pthread_t *threads = (pthread_t *)threads_arg;
 
     for (int i = 0; i < num_functions; i++) {
         pthread_join(threads[i], NULL);
-        // TODO: receive return data
     }
 }
 
