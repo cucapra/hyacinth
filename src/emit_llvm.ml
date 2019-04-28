@@ -13,6 +13,9 @@ module NewFunctionMap =
 module ValueMap =
   Map.Make(struct type t = llvalue;; let compare = compare end)
 
+module ValueSet =
+  Set.Make(struct type t = llvalue;; let compare = compare end)
+
 let context = global_context ()
 let void_type = void_type context
 let void_pt_type = pointer_type (i8_type context)
@@ -23,10 +26,9 @@ let llvm_module = create_module context "new_module"
 let init_name = "init"
 let send_name = "send"
 let receive_name = "receive"
+let replace_name = "call_partitioned_functions"
+let join_name = "join_partitioned_functions"
 let comms_id = ref 0
-
-let format_partition (p, (t1, t2)) =
-  (string_of_int p) ^ ", ("  ^ (string_of_int t1) ^ ", " ^ (string_of_int t2) ^ ")"
 
 let set_metadata inst (t1, t2) =
   let s_id = mdkind_id context "start" in
@@ -36,16 +38,20 @@ let set_metadata inst (t1, t2) =
   set_metadata inst s_id s;
   set_metadata inst e_id e
 
+let lookup_function_in name md =
+  let callee = match lookup_function name md with
+  | Some callee -> callee
+  | None -> failwith ("unknown function referenced: " ^ name)
+  in
+  callee
+
 let new_comms_id () : llvalue =
   let id = const_int int_type (!comms_id) in
   comms_id := !comms_id + 1;
   id
 
 let call_init builder =
-  let callee = begin match lookup_function init_name llvm_module with
-  | Some callee -> callee
-  | None -> failwith "unknown function referenced"
-  end in
+  let callee = lookup_function_in init_name llvm_module in
   build_call callee [||] "" builder
 
 let call_send value (to_partition : int) id builder ctx =
@@ -55,31 +61,36 @@ let call_send value (to_partition : int) id builder ctx =
     print_endline ("inserting dummy 0 send for non-double: " ^ string_of_llvalue value);
     const_float double_type 0.
   in
-  let callee = begin match lookup_function send_name llvm_module with
-  | Some callee -> callee
-  | None -> failwith "unknown function referenced"
-  end in
+  let callee = lookup_function_in send_name llvm_module in
   let destination = const_int int_type to_partition in
   let args = [| double; destination; id; ctx |] in
   build_call callee args "" builder
 
 let call_receive name (from_partition : int) id  builder ctx =
-  let callee = match lookup_function receive_name llvm_module with
-  | Some callee -> callee
-  | None -> failwith "unknown function referenced"
-  in
+  let callee = lookup_function_in receive_name llvm_module in
   let source = const_int int_type from_partition in
   let args = [| source; id; ctx |] in
   build_call callee args name builder
 
-let declare_external_functions () =
+(*
+void *call_partitioned_functions(int num_functions, void (**function_pts)(Context *), Context *context) {
+void join_partitioned_functions(int num_functions, void *threads_arg) {
+*)
+
+
+let declare_external_functions replace_md =
   (* declare init, send and receive *)
   let init_t = function_type void_pt_type [||] in
   ignore (declare_function init_name init_t llvm_module);
   let send_t = function_type void_type [| double_type; int_type; int_type; void_pt_type |] in
   ignore (declare_function send_name send_t llvm_module);
   let receive_t = function_type double_type [| int_type; int_type; void_pt_type |] in
-  ignore (declare_function receive_name receive_t llvm_module)
+  ignore (declare_function receive_name receive_t llvm_module);
+  let replace_funs_t = pointer_type (pointer_type (function_type void_type [| void_pt_type |])) in
+  let replace_t = function_type void_pt_type [| int_type; replace_funs_t; void_pt_type |] in
+  ignore (declare_function replace_name replace_t replace_md);
+  let join_t = function_type void_type [| int_type; void_pt_type |] in
+  ignore (declare_function join_name join_t replace_md)
 
 let replace_operands inst parent partition builder find_partition func_map instr_map =
   let replace_op idx =
@@ -108,19 +119,6 @@ let builders_from_parent parent p new_funs replace_funs replace_md =
   let replace_opt = ValueMap.find_opt parent !replace_funs in
   let new_builder_opt = NewFunctionMap.find_opt new_key !new_funs in
 
-  let replace_builder, ctx = match replace_opt with
-  | Some (b, c) -> b, c
-  | None ->
-    let fun_type = return_type (type_of parent) in
-    let replace_name = "replace_" ^ (value_name parent) in
-    let part_fun = define_function replace_name fun_type replace_md in
-    let fun_begin = instr_begin (entry_block part_fun) in
-    let builder = builder_at context fun_begin in
-    let ctx = call_init builder in
-    replace_funs := ValueMap.add parent (builder, ctx) !replace_funs;
-    builder, ctx
-  in
-
   let new_builder, new_fun = match new_builder_opt with
   | Some bs -> bs
   | None ->
@@ -132,6 +130,23 @@ let builders_from_parent parent p new_funs replace_funs replace_md =
     new_funs := NewFunctionMap.add new_key (builder, part_fun) !new_funs;
     builder, part_fun
   in
+
+  let replace_builder, ctx, _ = match replace_opt with
+  | Some (b, c, s) ->
+    s := ValueSet.add new_fun !s;
+    (b, c, s)
+  | None ->
+    let fun_type = return_type (type_of parent) in
+    let replace_name = "replace_" ^ (value_name parent) in
+    let part_fun = define_function replace_name fun_type replace_md in
+    let fun_begin = instr_begin (entry_block part_fun) in
+    let builder = builder_at context fun_begin in
+    let ctx = call_init builder in
+    let new_fun_set = ref (ValueSet.singleton new_fun) in
+    replace_funs := ValueMap.add parent (builder, ctx, new_fun_set) !replace_funs;
+    builder, ctx, new_fun_set
+  in
+
   (new_builder, new_fun, replace_builder, ctx)
 
 let emit_llvm (dfg : partitioning) ((replace_md, llvm_to_ast) : (llmodule * (llvalue * com) list)) (node_map : node ComMap.t) =
@@ -144,7 +159,7 @@ let emit_llvm (dfg : partitioning) ((replace_md, llvm_to_ast) : (llmodule * (llv
   let new_funs = ref NewFunctionMap.empty in
   let replace_funs = ref ValueMap.empty in
   let insts_map = ref ValueMap.empty in
-  declare_external_functions ();
+  declare_external_functions replace_md;
 
   let add_instruction (v, (p, ts)) =
     let find_partition op =
@@ -184,8 +199,34 @@ let emit_llvm (dfg : partitioning) ((replace_md, llvm_to_ast) : (llmodule * (llv
   in
   List.iter add_instruction llvm_to_partition;
   NewFunctionMap.iter (fun _ (b, _) -> ignore (build_ret_void b)) !new_funs;
+  let replace_fun old_fun (_, ctx, new_fun_set) =
+    let old_name = value_name old_fun in
+    let new_fun = lookup_function_in ("replace_" ^ old_name) replace_md in
+    replace_all_uses_with old_fun new_fun;
+    let fun_begin = instr_begin (entry_block new_fun) in
+    let builder = builder_at context fun_begin in
+    let funs = Array.of_list (ValueSet.elements !new_fun_set) in
+    let replace_funs_t = pointer_type (function_type void_type [| void_pt_type |]) in
+    let funs_arg = const_array replace_funs_t funs in
+    let replace_funs_pt_t = pointer_type replace_funs_t in
+    let fun_cast = const_bitcast funs_arg replace_funs_pt_t in
+    let num_funs_arg = const_int int_type (Array.length funs) in
+    let replace = lookup_function_in replace_name replace_md in
+    let args = [| num_funs_arg; fun_cast; ctx |] in
+    let _threads = build_call replace args "threads" builder in
+    ()
+
+  in
+  ValueMap.iter replace_fun !replace_funs;
   print_module "llvm_out.ll" llvm_module;
   print_module "llvm_replace.ll" replace_md
+
+
+
+(*
+void *call_partitioned_functions(int num_functions, void (**function_pts)(Context *), Context *context) {
+void join_partitioned_functions(int num_functions, void *threads_arg) {
+*)
 
 (*
 
@@ -222,4 +263,6 @@ val function_begin : llmodule -> (llmodule, llvalue) llpos
 
 val builder_at : llcontext ->
        (llbasicblock, llvalue) llpos -> llbuilder
-builder_at ip creates an instruction builder positioned at ip. See the constructor for llvm::LLVMBuilder.  *)
+builder_at ip creates an instruction builder positioned at ip. See the constructor for llvm::LLVMBuilder.
+
+*)

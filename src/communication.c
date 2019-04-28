@@ -14,6 +14,12 @@ struct Context {
     pthread_rwlock_t lock;
 };
 
+typedef struct Closure Closure;
+struct Closure {
+    void (*function)(Context *);
+    Context *context;
+};
+
 void *init() {
     Context *context = malloc(sizeof(Context));
     context->channelList = NULL;
@@ -21,17 +27,22 @@ void *init() {
     return context;
 }
 
-void *call_function(void *name) {
-    void (*function)(void) = (void (*)(void))name;
-    (*function)();
+void *_call_function(void *function) {
+    Closure *closure = (Closure *)function;
+    void (*fun)(Context *) = closure->function;
+    Context *context = closure->context;
+    (*fun)(context);
     return NULL;
 }
 
-void *call_partitioned_functions(int num_functions, void (**function_pts)(void)) {
-    pthread_t *threads = malloc(sizeof(pthread_t) *num_functions);
+void *call_partitioned_functions(int num_functions, void (**function_pts)(void *), void *context) {
+    pthread_t *threads = malloc(sizeof(pthread_t) * num_functions);
 
     for (int i = 0; i < num_functions; i++) {
-        pthread_create(&threads[i], NULL, call_function, function_pts[i]);
+        Closure *closure = malloc(sizeof(Closure));
+        closure->function = (void (*)(Context *))function_pts[i];
+        closure->context = context;
+        pthread_create(&threads[i], NULL, _call_function, closure);
     }
     return threads;
 }
