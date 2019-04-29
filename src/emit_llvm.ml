@@ -22,6 +22,7 @@ let void_pt_type = pointer_type (i8_type context)
 let int_type = i32_type context
 let float_type = float_type context
 let double_type = double_type context
+let const_i32 = const_int int_type
 let llvm_module = create_module context "new_module"
 let init_name = "init"
 let send_name = "send"
@@ -46,12 +47,12 @@ let lookup_function_in name md =
   callee
 
 let new_comms_id () : llvalue =
-  let id = const_int int_type (!comms_id) in
+  let id = const_i32 (!comms_id) in
   comms_id := !comms_id + 1;
   id
 
-let call_init builder =
-  let callee = lookup_function_in init_name llvm_module in
+let call_init builder md =
+  let callee = lookup_function_in init_name md in
   build_call callee [||] "" builder
 
 let call_send value (to_partition : int) id builder ctx =
@@ -62,13 +63,13 @@ let call_send value (to_partition : int) id builder ctx =
     const_float double_type 0.
   in
   let callee = lookup_function_in send_name llvm_module in
-  let destination = const_int int_type to_partition in
+  let destination = const_i32 to_partition in
   let args = [| double; destination; id; ctx |] in
   build_call callee args "" builder
 
 let call_receive name (from_partition : int) id  builder ctx =
   let callee = lookup_function_in receive_name llvm_module in
-  let source = const_int int_type from_partition in
+  let source = const_i32 from_partition in
   let args = [| source; id; ctx |] in
   build_call callee args name builder
 
@@ -79,13 +80,15 @@ void join_partitioned_functions(int num_functions, void *threads_arg) {
 
 
 let declare_external_functions replace_md =
-  (* declare init, send and receive *)
-  let init_t = function_type void_pt_type [||] in
-  ignore (declare_function init_name init_t llvm_module);
+  (* declare init, send, receive, replace, join *)
   let send_t = function_type void_type [| double_type; int_type; int_type; void_pt_type |] in
   ignore (declare_function send_name send_t llvm_module);
+  ignore (declare_function send_name send_t replace_md);
   let receive_t = function_type double_type [| int_type; int_type; void_pt_type |] in
   ignore (declare_function receive_name receive_t llvm_module);
+  ignore (declare_function receive_name receive_t replace_md);
+  let init_t = function_type void_pt_type [||] in
+  ignore (declare_function init_name init_t replace_md);
   let replace_funs_t = pointer_type (pointer_type (function_type void_type [| void_pt_type |])) in
   let replace_t = function_type void_pt_type [| int_type; replace_funs_t; void_pt_type |] in
   ignore (declare_function replace_name replace_t replace_md);
@@ -125,6 +128,7 @@ let builders_from_parent parent p new_funs replace_funs replace_md =
     let fun_type = function_type void_type [| void_pt_type |] in
     let new_name = (value_name parent) ^ "_" ^ (string_of_int p) in
     let part_fun = define_function new_name fun_type llvm_module in
+    let _ = declare_function new_name fun_type replace_md in
     let fun_begin = instr_begin (entry_block part_fun) in
     let builder = builder_at context fun_begin in
     new_funs := NewFunctionMap.add new_key (builder, part_fun) !new_funs;
@@ -141,7 +145,7 @@ let builders_from_parent parent p new_funs replace_funs replace_md =
     let part_fun = define_function replace_name fun_type replace_md in
     let fun_begin = instr_begin (entry_block part_fun) in
     let builder = builder_at context fun_begin in
-    let ctx = call_init builder in
+    let ctx = call_init builder replace_md in
     let new_fun_set = ref (ValueSet.singleton new_fun) in
     replace_funs := ValueMap.add parent (builder, ctx, new_fun_set) !replace_funs;
     builder, ctx, new_fun_set
@@ -171,12 +175,13 @@ let emit_llvm (dfg : partitioning) ((replace_md, llvm_to_ast) : (llmodule * (llv
     match (classify_value v) with
     | Instruction op ->
       let parent = block_parent (instr_parent v) in
-      let new_builder, _new_fun, replace_builder, ctx = builders_from_parent parent p new_funs replace_funs replace_md in
+      let new_builder, new_fun, replace_builder, r_ctx = builders_from_parent parent p new_funs replace_funs replace_md in
+      let ctx = param new_fun 0 in
       begin match (op : Opcode.t) with
       | Ret ->
         let id = new_comms_id () in
         let call = call_send (operand v 0) (-1) id new_builder ctx in
-        let return = call_receive "return" (-1) id replace_builder ctx in
+        let return = call_receive "return" (-1) id replace_builder r_ctx in
         let _ = build_ret return replace_builder in
         set_metadata call ts;
         insts_map := ValueMap.add v call !insts_map;
@@ -190,10 +195,11 @@ let emit_llvm (dfg : partitioning) ((replace_md, llvm_to_ast) : (llmodule * (llv
       end
     | Argument ->
       let parent = param_parent v in
-      let new_builder, _new_fun, replace_builder, ctx = builders_from_parent parent p new_funs replace_funs replace_md in
+      let new_builder, new_fun, replace_builder, r_ctx = builders_from_parent parent p new_funs replace_funs replace_md in
+      let ctx = param new_fun 0 in
       let id = new_comms_id () in
       let call = call_receive "argument" (-1) id new_builder ctx in
-      let _ = call_send v p id replace_builder ctx in
+      let _ = call_send v p id replace_builder r_ctx in
       insts_map := ValueMap.add v call !insts_map
     | _ -> failwith "Not intruction or argument"
   in
@@ -203,16 +209,20 @@ let emit_llvm (dfg : partitioning) ((replace_md, llvm_to_ast) : (llmodule * (llv
     let old_name = value_name old_fun in
     let new_fun = lookup_function_in ("replace_" ^ old_name) replace_md in
     replace_all_uses_with old_fun new_fun;
-    let fun_begin = instr_begin (entry_block new_fun) in
-    let builder = builder_at context fun_begin in
+    let after_init = match instr_begin (entry_block new_fun) with
+    | Before v -> instr_succ v
+    | At_end _ -> failwith "builder should be after init"
+    in
+    let builder = builder_at context after_init in
     let funs = Array.of_list (ValueSet.elements !new_fun_set) in
     let replace_funs_t = pointer_type (function_type void_type [| void_pt_type |]) in
     let funs_arg = const_array replace_funs_t funs in
-    let replace_funs_pt_t = pointer_type replace_funs_t in
-    let fun_cast = const_bitcast funs_arg replace_funs_pt_t in
-    let num_funs_arg = const_int int_type (Array.length funs) in
+    let funs_global = define_global "funs" funs_arg replace_md in
+    let funs_len = Array.length funs in
+    let indices = Array.init funs_len const_i32 in
+    let gep = build_in_bounds_gep funs_global indices "funs" builder in
     let replace = lookup_function_in replace_name replace_md in
-    let args = [| num_funs_arg; fun_cast; ctx |] in
+    let args = [| (const_i32 funs_len); gep; ctx |] in
     let _threads = build_call replace args "threads" builder in
     ()
 
@@ -224,11 +234,15 @@ let emit_llvm (dfg : partitioning) ((replace_md, llvm_to_ast) : (llmodule * (llv
 
 
 (*
-void *call_partitioned_functions(int num_functions, void (**function_pts)(Context *), Context *context) {
-void join_partitioned_functions(int num_functions, void *threads_arg) {
-*)
 
-(*
+
+  val builder_at : llcontext ->
+       (llbasicblock, llvalue) llpos -> llbuilder
+
+val define_global : string -> llvalue -> llmodule -> llvalue
+  val build_gep : llvalue ->
+       llvalue array -> string -> llbuilder -> llvalue
+
 
 val param : llvalue -> int -> llvalue
 

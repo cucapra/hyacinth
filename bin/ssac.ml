@@ -20,7 +20,7 @@ let out_filename : string ref = ref "ssac-output.dot"
 let usage = "SSA-Spatial Compiler\n"
 let spec_list : (Arg.key * Arg.spec * Arg.doc) list =
   [
-    ("-l", Arg.Set llvm_input, "Expects LLVM as the input program");
+    ("-l", Arg.Set llvm_input, "Expects LLVM bitcode as the input program");
     ("-p", Arg.Set pretty_print, "Pretty prints the input program");
     ("-b", Arg.Set bound_ssa, "Prints the bound variables from the SSA check");
     ("-i", Arg.Set print_interpreter, "Prints the interpreter final store");
