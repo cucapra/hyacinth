@@ -1,5 +1,5 @@
-; ModuleID = 'llvm-link'
-source_filename = "llvm-link"
+; ModuleID = 'src/communication.c'
+source_filename = "src/communication.c"
 target datalayout = "e-m:o-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-apple-macosx10.13.0"
 
@@ -12,18 +12,10 @@ target triple = "x86_64-apple-macosx10.13.0"
 %struct.__darwin_pthread_handler_rec = type { void (i8*)*, i8*, %struct.__darwin_pthread_handler_rec* }
 %struct._opaque_pthread_attr_t = type { i64, [56 x i8] }
 
-@str = external global [7 x i8]
-@str.4 = external global [7 x i8]
-@funs = global [2 x void (i8*)*] [void (i8*)* @quadratic_0, void (i8*)* @quadratic_1]
-@str.1 = private unnamed_addr constant [7 x i8] c"print1\00", align 1
-@str.4.2 = private unnamed_addr constant [7 x i8] c"print2\00", align 1
-@str.5 = private unnamed_addr constant [14 x i8] c"starting main\00", align 1
-@.str.3 = private unnamed_addr constant [4 x i8] c"%f\0A\00", align 1
-
 ; Function Attrs: noinline nounwind optnone ssp uwtable
 define i8* @init() #0 {
   %1 = alloca %struct.Context*, align 8
-  %2 = call i8* @malloc(i64 208) #7
+  %2 = call i8* @malloc(i64 208) #3
   %3 = bitcast i8* %2 to %struct.Context*
   store %struct.Context* %3, %struct.Context** %1, align 8
   %4 = load %struct.Context*, %struct.Context** %1, align 8
@@ -80,7 +72,7 @@ define i8* @call_partitioned_functions(i32, void (i8*)**, i8*) #0 {
   %10 = load i32, i32* %4, align 4
   %11 = sext i32 %10 to i64
   %12 = mul i64 8, %11
-  %13 = call i8* @malloc(i64 %12) #7
+  %13 = call i8* @malloc(i64 %12) #3
   %14 = bitcast i8* %13 to %struct._opaque_pthread_t**
   store %struct._opaque_pthread_t** %14, %struct._opaque_pthread_t*** %7, align 8
   store i32 0, i32* %8, align 4
@@ -93,7 +85,7 @@ define i8* @call_partitioned_functions(i32, void (i8*)**, i8*) #0 {
   br i1 %18, label %19, label %44
 
 ; <label>:19:                                     ; preds = %15
-  %20 = call i8* @malloc(i64 16) #7
+  %20 = call i8* @malloc(i64 16) #3
   %21 = bitcast i8* %20 to %struct.Closure*
   store %struct.Closure* %21, %struct.Closure** %9, align 8
   %22 = load void (i8*)**, void (i8*)*** %5, align 8
@@ -204,7 +196,7 @@ define void @_add_channel(double, i32, %struct.Context*) #0 {
   br label %11
 
 ; <label>:20:                                     ; preds = %11
-  %21 = call i8* @malloc(i64 24) #7
+  %21 = call i8* @malloc(i64 24) #3
   %22 = bitcast i8* %21 to %struct.Comm*
   store %struct.Comm* %22, %struct.Comm** %7, align 8
   %23 = load i32, i32* %5, align 4
@@ -316,7 +308,7 @@ define double @receive(i32, i32, i8*) #0 {
   store %struct.Context* %10, %struct.Context** %7, align 8
   br label %11
 
-; <label>:11:                                     ; preds = %23, %3
+; <label>:11:                                     ; preds = %3, %23
   %12 = load %struct.Context*, %struct.Context** %7, align 8
   %13 = getelementptr inbounds %struct.Context, %struct.Context* %12, i32 0, i32 1
   %14 = call i32 @"\01_pthread_rwlock_wrlock"(%struct._opaque_pthread_rwlock_t* %13)
@@ -340,150 +332,14 @@ define double @receive(i32, i32, i8*) #0 {
   br label %11
 }
 
-define void @quadratic_0(i8*) {
-entry:
-  %argument = call double @receive(i32 -1, i32 0, i8* %0)
-  %argument1 = call double @receive(i32 -1, i32 1, i8* %0)
-  %argument2 = call double @receive(i32 -1, i32 2, i8* %0)
-  %1 = fmul double %argument1, %argument1, !start !4, !end !5
-  %2 = fmul double %argument, 4.000000e+00, !start !6, !end !7
-  call void @send(double %2, i32 1, i32 3, i8* %0)
-  call void @send(double %argument2, i32 1, i32 4, i8* %0)
-  %receive = call double @receive(i32 1, i32 5, i8* %0)
-  %3 = fsub double %1, %receive, !start !5, !end !8
-  call void @send(double %argument, i32 1, i32 6, i8* %0)
-  %4 = fsub double -0.000000e+00, %argument1, !start !9, !end !4
-  %5 = tail call double @llvm.sqrt.f64(double %3), !start !8, !end !10
-  call void @send(double %5, i32 1, i32 7, i8* %0)
-  call void @send(double %argument1, i32 1, i32 8, i8* %0)
-  %6 = fsub double %4, %5, !start !10, !end !11
-  %receive3 = call double @receive(i32 1, i32 9, i8* %0)
-  %7 = fdiv double %6, %receive3, !start !11, !end !12
-  call void @send(double %7, i32 1, i32 10, i8* %0)
-  ret void
-}
-
-; Function Attrs: nounwind readnone speculatable
-declare double @llvm.sqrt.f64(double) #3
-
-define void @quadratic_1(i8*) {
-entry:
-  %receive = call double @receive(i32 0, i32 3, i8* %0)
-  %receive1 = call double @receive(i32 0, i32 4, i8* %0)
-  %1 = fmul double %receive, %receive1, !start !13, !end !14
-  call void @send(double %1, i32 0, i32 5, i8* %0)
-  %receive2 = call double @receive(i32 0, i32 6, i8* %0)
-  %2 = fmul double %receive2, 2.000000e+00, !start !14, !end !15
-  %receive3 = call double @receive(i32 0, i32 7, i8* %0)
-  %receive4 = call double @receive(i32 0, i32 8, i8* %0)
-  %3 = fsub double %receive3, %receive4, !start !16, !end !17
-  %4 = fdiv double %3, %2, !start !17, !end !18
-  %5 = tail call i32 @puts(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str, i64 0, i64 0)), !start !15, !end !16
-  call void @send(double %2, i32 0, i32 9, i8* %0)
-  %6 = tail call i32 @puts(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.4, i64 0, i64 0)), !start !19, !end !13
-  %7 = fcmp une double %4, 0.000000e+00, !start !18, !end !20
-  %receive5 = call double @receive(i32 0, i32 10, i8* %0)
-  %8 = select i1 %7, double %4, double %receive5, !start !20, !end !21
-  call void @send(double %8, i32 -1, i32 11, i8* %0), !start !21, !end !22
-  ret void
-}
-
-declare i32 @puts(i8*)
-
-; Function Attrs: nounwind ssp uwtable
-define double @quadratic(double, double, double) local_unnamed_addr #4 {
-  %4 = fmul double %1, %1
-  %5 = fmul double %0, 4.000000e+00
-  %6 = fmul double %5, %2
-  %7 = fsub double %4, %6
-  %8 = fmul double %0, 2.000000e+00
-  %9 = fsub double -0.000000e+00, %1
-  %10 = tail call double @llvm.sqrt.f64(double %7)
-  %11 = fsub double %10, %1
-  %12 = fdiv double %11, %8
-  %13 = tail call i32 @puts(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.1, i64 0, i64 0))
-  %14 = fsub double %9, %10
-  %15 = fdiv double %14, %8
-  %16 = tail call i32 @puts(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @str.4.2, i64 0, i64 0))
-  %17 = fcmp une double %12, 0.000000e+00
-  %18 = select i1 %17, double %12, double %15
-  ret double %18
-}
-
-; Function Attrs: nounwind ssp uwtable
-define i32 @main(i32, i8** nocapture readonly) local_unnamed_addr #4 {
-  %3 = tail call i32 @puts(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.5, i64 0, i64 0))
-  %4 = getelementptr inbounds i8*, i8** %1, i64 1
-  %5 = load i8*, i8** %4, align 8, !tbaa !23
-  %6 = tail call i32 @atoi(i8* %5)
-  %7 = sitofp i32 %6 to double
-  %8 = getelementptr inbounds i8*, i8** %1, i64 2
-  %9 = load i8*, i8** %8, align 8, !tbaa !23
-  %10 = tail call i32 @atoi(i8* %9)
-  %11 = sitofp i32 %10 to double
-  %12 = getelementptr inbounds i8*, i8** %1, i64 3
-  %13 = load i8*, i8** %12, align 8, !tbaa !23
-  %14 = tail call i32 @atoi(i8* %13)
-  %15 = sitofp i32 %14 to double
-  %16 = tail call double @replace_quadratic(double %7, double %11, double %15)
-  %17 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.3, i64 0, i64 0), double %16)
-  ret i32 0
-}
-
-; Function Attrs: nounwind readonly
-declare i32 @atoi(i8* nocapture) local_unnamed_addr #5
-
-define double @replace_quadratic(double, double, double) {
-entry:
-  %3 = call i8* @init()
-  %threads = call i8* @call_partitioned_functions(i32 2, void (i8*)** getelementptr inbounds ([2 x void (i8*)*], [2 x void (i8*)*]* @funs, i32 0, i32 1), i8* %3)
-  call void @send(double %0, i32 0, i32 0, i8* %3)
-  call void @send(double %1, i32 0, i32 1, i8* %3)
-  call void @send(double %2, i32 0, i32 2, i8* %3)
-  %return = call double @receive(i32 -1, i32 11, i8* %3)
-  call void @join_partitioned_functions(i32 2, i8* %threads)
-  ret double %return
-}
-
-; Function Attrs: nounwind
-declare i32 @printf(i8* nocapture readonly, ...) local_unnamed_addr #6
-
 attributes #0 = { noinline nounwind optnone ssp uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #1 = { allocsize(0) "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #2 = { "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
-attributes #3 = { nounwind readnone speculatable }
-attributes #4 = { nounwind ssp uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "min-legal-vector-width"="0" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
-attributes #5 = { nounwind readonly "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
-attributes #6 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
-attributes #7 = { allocsize(0) }
+attributes #3 = { allocsize(0) }
 
-!llvm.ident = !{!0, !1}
-!llvm.module.flags = !{!2, !3}
+!llvm.module.flags = !{!0, !1}
+!llvm.ident = !{!2}
 
-!0 = !{!"clang version 7.0.1 (tags/RELEASE_701/final)"}
-!1 = !{!"clang version 8.0.0 (tags/RELEASE_800/final)"}
-!2 = !{i32 1, !"wchar_size", i32 4}
-!3 = !{i32 7, !"PIC Level", i32 2}
-!4 = !{!"11"}
-!5 = !{!"16"}
-!6 = !{!"1"}
-!7 = !{!"6"}
-!8 = !{!"19"}
-!9 = !{!"8"}
-!10 = !{!"29"}
-!11 = !{!"32"}
-!12 = !{!"42"}
-!13 = !{!"10"}
-!14 = !{!"15"}
-!15 = !{!"20"}
-!16 = !{!"30"}
-!17 = !{!"33"}
-!18 = !{!"43"}
-!19 = !{!"0"}
-!20 = !{!"44"}
-!21 = !{!"45"}
-!22 = !{!"46"}
-!23 = !{!24, !24, i64 0}
-!24 = !{!"any pointer", !25, i64 0}
-!25 = !{!"omnipotent char", !26, i64 0}
-!26 = !{!"Simple C/C++ TBAA"}
+!0 = !{i32 1, !"wchar_size", i32 4}
+!1 = !{i32 7, !"PIC Level", i32 2}
+!2 = !{!"clang version 7.0.1 (tags/RELEASE_701/final)"}

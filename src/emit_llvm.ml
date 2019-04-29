@@ -73,12 +73,6 @@ let call_receive name (from_partition : int) id  builder ctx =
   let args = [| source; id; ctx |] in
   build_call callee args name builder
 
-(*
-void *call_partitioned_functions(int num_functions, void (**function_pts)(Context *), Context *context) {
-void join_partitioned_functions(int num_functions, void *threads_arg) {
-*)
-
-
 let declare_external_functions replace_md =
   (* declare init, send, receive, replace, join *)
   let send_t = function_type void_type [| double_type; int_type; int_type; void_pt_type |] in
@@ -93,7 +87,18 @@ let declare_external_functions replace_md =
   let replace_t = function_type void_pt_type [| int_type; replace_funs_t; void_pt_type |] in
   ignore (declare_function replace_name replace_t replace_md);
   let join_t = function_type void_type [| int_type; void_pt_type |] in
-  ignore (declare_function join_name join_t replace_md)
+  ignore (declare_function join_name join_t replace_md);
+
+  let declare_function (f : llvalue) =
+    if (is_declaration f) then
+      ignore (declare_function (value_name f) (return_type (type_of f)) llvm_module)
+  in
+  iter_functions declare_function replace_md;
+
+  let declare_global (g : llvalue) =
+    ignore (declare_global (return_type (type_of g)) (value_name g) llvm_module)
+  in
+  iter_globals declare_global replace_md
 
 let replace_operands inst parent partition builder find_partition func_map instr_map =
   let replace_op idx =
@@ -222,10 +227,16 @@ let emit_llvm (dfg : partitioning) ((replace_md, llvm_to_ast) : (llmodule * (llv
     let indices = Array.init funs_len const_i32 in
     let gep = build_in_bounds_gep funs_global indices "funs" builder in
     let replace = lookup_function_in replace_name replace_md in
-    let args = [| (const_i32 funs_len); gep; ctx |] in
-    let _threads = build_call replace args "threads" builder in
-    ()
+    let args = [| const_i32 funs_len; gep; ctx |] in
+    let threads = build_call replace args "threads" builder in
 
+    let before_ret = match instr_end (entry_block new_fun) with
+    | After v -> Before v
+    | At_start _ -> failwith "builder should be before return"
+    in
+    let end_builder = builder_at context before_ret in
+    let join = lookup_function_in join_name replace_md in
+    ignore (build_call join [| const_i32 funs_len; threads |] "" end_builder)
   in
   ValueMap.iter replace_fun !replace_funs;
   print_module "llvm_out.ll" llvm_module;
@@ -234,8 +245,6 @@ let emit_llvm (dfg : partitioning) ((replace_md, llvm_to_ast) : (llmodule * (llv
 
 
 (*
-
-
   val builder_at : llcontext ->
        (llbasicblock, llvalue) llpos -> llbuilder
 
