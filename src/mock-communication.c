@@ -57,8 +57,14 @@ void join_partitioned_functions(int num_functions, void *threads_arg) {
 }
 
 void send(double value, int to_core, int id, void *context) {
+    Context *c = (Context *)context;
+    pthread_rwlock_wrlock(&c->lock);
+    pthread_rwlock_unlock(&c->lock);
 }
 
 double receive(int from_core, int id, void *context) {
+    Context *c = (Context *)context;
+    pthread_rwlock_wrlock(&c->lock);
+    pthread_rwlock_unlock(&c->lock);
     return 0.0;
 }
