@@ -159,6 +159,7 @@ let builders_from_parent parent p new_funs replace_funs replace_md =
   (new_builder, new_fun, replace_builder, ctx)
 
 let emit_llvm (dfg : partitioning) ((replace_md, llvm_to_ast) : (llmodule * (llvalue * com) list)) (node_map : node ComMap.t) =
+  set_data_layout "e-m:o-i64:64-f80:128-n8:16:32:64-S128" llvm_module;
   let partition_for_com (c : com) =
     let node = ComMap.find c node_map in
     let (_, p, (t1, t2)) = List.find (fun (n, _, _) -> node == n) dfg in
@@ -224,7 +225,7 @@ let emit_llvm (dfg : partitioning) ((replace_md, llvm_to_ast) : (llmodule * (llv
     let funs_arg = const_array replace_funs_t funs in
     let funs_global = define_global "funs" funs_arg replace_md in
     let funs_len = Array.length funs in
-    let indices = Array.init funs_len const_i32 in
+    let indices = [| const_i32 0; const_i32 0|] in
     let gep = build_in_bounds_gep funs_global indices "funs" builder in
     let replace = lookup_function_in replace_name replace_md in
     let args = [| const_i32 funs_len; gep; ctx |] in

@@ -436,7 +436,7 @@ declare i32 @atoi(i8* nocapture) local_unnamed_addr #5
 define double @replace_quadratic(double, double, double) {
 entry:
   %3 = call i8* @init()
-  %threads = call i8* @call_partitioned_functions(i32 2, void (i8*)** getelementptr inbounds ([2 x void (i8*)*], [2 x void (i8*)*]* @funs, i32 0, i32 1), i8* %3)
+  %threads = call i8* @call_partitioned_functions(i32 2, void (i8*)** getelementptr inbounds ([2 x void (i8*)*], [2 x void (i8*)*]* @funs, i32 0, i32 0), i8* %3)
   call void @send(double %0, i32 0, i32 0, i8* %3)
   call void @send(double %1, i32 0, i32 1, i8* %3)
   call void @send(double %2, i32 0, i32 2, i8* %3)

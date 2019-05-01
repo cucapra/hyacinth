@@ -1,14 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <unistd.h>
 
 double quadratic(double a, double b, double c) {
     double s = b * b - 4 * a * c;
     double d = 2 * a;
+    sleep(1);
+    sleep(1);
+    sleep(1);
+    sleep(1);
     double r1 = (-b + sqrt(s)) / d;
-    printf("print1\n");
     double r2 = (-b - sqrt(s)) / d;
-    printf("print2\n");
     return r1 ?: r2; 
 }
 

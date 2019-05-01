@@ -132,6 +132,7 @@ define double @quadratic(double, double, double) local_unnamed_addr #2 {
 
 ; Function Attrs: nounwind ssp uwtable
 define i32 @main(i32, i8** nocapture readonly) local_unnamed_addr #2 {
+  %3 = tail call i32 @puts(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.5, i64 0, i64 0))
   %4 = getelementptr inbounds i8*, i8** %1, i64 1
   %5 = load i8*, i8** %4, align 8, !tbaa !22
   %6 = tail call i32 @atoi(i8* %5)
@@ -155,7 +156,7 @@ declare i32 @atoi(i8* nocapture) local_unnamed_addr #3
 define double @replace_quadratic(double, double, double) {
 entry:
   %3 = call i8* @init()
-  %threads = call i8* @call_partitioned_functions(i32 2, void (i8*)** getelementptr inbounds ([2 x void (i8*)*], [2 x void (i8*)*]* @funs, i32 0, i32 1), i8* %3)
+  %threads = call i8* @call_partitioned_functions(i32 2, void (i8*)** getelementptr inbounds ([2 x void (i8*)*], [2 x void (i8*)*]* @funs, i32 0, i32 0), i8* %3)
   call void @send(double %0, i32 0, i32 0, i8* %3)
   call void @send(double %1, i32 0, i32 1, i8* %3)
   call void @send(double %2, i32 0, i32 2, i8* %3)
