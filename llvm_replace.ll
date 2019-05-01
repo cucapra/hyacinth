@@ -3,9 +3,9 @@ source_filename = "c-examples/quadratic.c"
 target datalayout = "e-m:o-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-apple-macosx10.13.0"
 
-@.str.1 = private unnamed_addr constant [4 x i8] c"%f\0A\00", align 1
+@.str.1 = private unnamed_addr constant [22 x i8] c"quadratic result: %f\0A\00", align 1
 @str = private unnamed_addr constant [14 x i8] c"starting main\00", align 1
-@funs = global [4 x void (i8*)*] [void (i8*)* @quadratic_0, void (i8*)* @quadratic_3, void (i8*)* @quadratic_1, void (i8*)* @quadratic_2]
+@funs = global [4 x void (i8*)*] [void (i8*)* @quadratic_0, void (i8*)* @quadratic_2, void (i8*)* @quadratic_1, void (i8*)* @quadratic_3]
 
 ; Function Attrs: nounwind ssp uwtable
 define double @quadratic(double, double, double) local_unnamed_addr #0 {
@@ -18,15 +18,19 @@ define double @quadratic(double, double, double) local_unnamed_addr #0 {
   %10 = tail call i32 @"\01_sleep"(i32 1) #5
   %11 = tail call i32 @"\01_sleep"(i32 1) #5
   %12 = tail call i32 @"\01_sleep"(i32 1) #5
-  %13 = fsub double -0.000000e+00, %1
-  %14 = tail call double @llvm.sqrt.f64(double %7)
-  %15 = fsub double %14, %1
-  %16 = fdiv double %15, %8
-  %17 = fsub double %13, %14
-  %18 = fdiv double %17, %8
-  %19 = fcmp une double %16, 0.000000e+00
-  %20 = select i1 %19, double %16, double %18
-  ret double %20
+  %13 = tail call i32 @"\01_sleep"(i32 1) #5
+  %14 = tail call i32 @"\01_sleep"(i32 1) #5
+  %15 = tail call i32 @"\01_sleep"(i32 1) #5
+  %16 = tail call i32 @"\01_sleep"(i32 1) #5
+  %17 = fsub double -0.000000e+00, %1
+  %18 = tail call double @llvm.sqrt.f64(double %7)
+  %19 = fsub double %18, %1
+  %20 = fdiv double %19, %8
+  %21 = fsub double %17, %18
+  %22 = fdiv double %21, %8
+  %23 = fcmp une double %20, 0.000000e+00
+  %24 = select i1 %23, double %20, double %22
+  ret double %24
 }
 
 declare i32 @"\01_sleep"(i32) local_unnamed_addr #1
@@ -50,7 +54,7 @@ define i32 @main(i32, i8** nocapture readonly) local_unnamed_addr #0 {
   %14 = tail call i32 @atoi(i8* %13)
   %15 = sitofp i32 %14 to double
   %16 = tail call double @replace_quadratic(double %7, double %11, double %15)
-  %17 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i64 0, i64 0), double %16)
+  %17 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([22 x i8], [22 x i8]* @.str.1, i64 0, i64 0), double %16)
   ret i32 0
 }
 
@@ -87,11 +91,11 @@ entry:
   ret double %return
 }
 
-declare void @quadratic_3(i8*)
+declare void @quadratic_2(i8*)
 
 declare void @quadratic_1(i8*)
 
-declare void @quadratic_2(i8*)
+declare void @quadratic_3(i8*)
 
 attributes #0 = { nounwind ssp uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "min-legal-vector-width"="0" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #1 = { "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
