@@ -5,7 +5,7 @@ target triple = "x86_64-apple-macosx10.13.0"
 
 @.str.1 = private unnamed_addr constant [22 x i8] c"quadratic result: %f\0A\00", align 1
 @str = private unnamed_addr constant [14 x i8] c"starting main\00", align 1
-@funs = global [4 x void (i8*)*] [void (i8*)* @quadratic_0, void (i8*)* @quadratic_2, void (i8*)* @quadratic_1, void (i8*)* @quadratic_3]
+@funs = global [4 x void (i8*)*] [void (i8*)* @quadratic_0, void (i8*)* @quadratic_1, void (i8*)* @quadratic_3, void (i8*)* @quadratic_2]
 
 ; Function Attrs: nounwind ssp uwtable
 define double @quadratic(double, double, double) local_unnamed_addr #0 {
@@ -86,16 +86,16 @@ entry:
   call void @send(double %0, i32 0, i32 0, i8* %3)
   call void @send(double %1, i32 0, i32 1, i8* %3)
   call void @send(double %2, i32 0, i32 2, i8* %3)
-  %return = call double @receive(i32 -1, i32 14, i8* %3)
+  %return = call double @receive(i32 -1, i32 15, i8* %3)
   call void @join_partitioned_functions(i32 4, i8* %threads)
   ret double %return
 }
 
-declare void @quadratic_2(i8*)
-
 declare void @quadratic_1(i8*)
 
 declare void @quadratic_3(i8*)
+
+declare void @quadratic_2(i8*)
 
 attributes #0 = { nounwind ssp uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "min-legal-vector-width"="0" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #1 = { "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }

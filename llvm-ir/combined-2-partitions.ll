@@ -11,8 +11,8 @@ target triple = "x86_64-apple-macosx10.13.0"
 %struct.Context = type { %struct.Comm*, %struct._opaque_pthread_rwlock_t }
 %struct._opaque_pthread_attr_t = type { i64, [56 x i8] }
 
-@.str = private unnamed_addr constant [16 x i8] c"thread id = %d\0A\00", align 1
-@funs = global [4 x void (i8*)*] [void (i8*)* @quadratic_0, void (i8*)* @quadratic_3, void (i8*)* @quadratic_1, void (i8*)* @quadratic_2]
+@.str = private unnamed_addr constant [38 x i8] c"calling function with thread id = %d\0A\00", align 1
+@funs = global [2 x void (i8*)*] [void (i8*)* @quadratic_0, void (i8*)* @quadratic_1]
 @str = private unnamed_addr constant [14 x i8] c"starting main\00", align 1
 @.str.1 = private unnamed_addr constant [4 x i8] c"%f\0A\00", align 1
 
@@ -35,13 +35,15 @@ declare i32 @"\01_pthread_rwlock_init"(%struct._opaque_pthread_rwlock_t*, %struc
 ; Function Attrs: nounwind ssp uwtable
 define noalias i8* @_call_function(i8* nocapture readonly) #0 {
   %2 = tail call %struct._opaque_pthread_t* @pthread_self() #6
-  %3 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([16 x i8], [16 x i8]* @.str, i64 0, i64 0), %struct._opaque_pthread_t* %2)
-  %4 = bitcast i8* %0 to void (%struct.Context*)**
-  %5 = load void (%struct.Context*)*, void (%struct.Context*)** %4, align 8, !tbaa !10
-  %6 = getelementptr inbounds i8, i8* %0, i64 8
-  %7 = bitcast i8* %6 to %struct.Context**
-  %8 = load %struct.Context*, %struct.Context** %7, align 8, !tbaa !12
-  tail call void %5(%struct.Context* %8) #6
+  %3 = ptrtoint %struct._opaque_pthread_t* %2 to i64
+  %4 = trunc i64 %3 to i32
+  %5 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([38 x i8], [38 x i8]* @.str, i64 0, i64 0), i32 %4)
+  %6 = bitcast i8* %0 to void (%struct.Context*)**
+  %7 = load void (%struct.Context*)*, void (%struct.Context*)** %6, align 8, !tbaa !10
+  %8 = getelementptr inbounds i8, i8* %0, i64 8
+  %9 = bitcast i8* %8 to %struct.Context**
+  %10 = load %struct.Context*, %struct.Context** %9, align 8, !tbaa !12
+  tail call void %7(%struct.Context* %10) #6
   ret i8* null
 }
 
@@ -111,83 +113,158 @@ define void @join_partitioned_functions(i32, i8* nocapture readonly) #0 {
 
 declare i32 @"\01_pthread_join"(%struct._opaque_pthread_t*, i8**) local_unnamed_addr #2
 
-; Function Attrs: norecurse nounwind readnone ssp uwtable
-define void @send(double, i32, i32, i8* nocapture) #4 {
+; Function Attrs: nounwind ssp uwtable
+define void @_add_channel(double, i32, %struct.Context* nocapture) local_unnamed_addr #0 {
+  %4 = tail call i8* @malloc(i64 24) #8
+  %5 = bitcast i8* %4 to i32*
+  store i32 %1, i32* %5, align 8, !tbaa !14
+  %6 = getelementptr inbounds i8, i8* %4, i64 8
+  %7 = bitcast i8* %6 to double*
+  store double %0, double* %7, align 8, !tbaa !18
+  %8 = getelementptr inbounds i8, i8* %4, i64 16
+  %9 = bitcast i8* %8 to %struct.Comm**
+  store %struct.Comm* null, %struct.Comm** %9, align 8, !tbaa !19
+  %10 = getelementptr inbounds %struct.Context, %struct.Context* %2, i64 0, i32 0
+  %11 = load %struct.Comm*, %struct.Comm** %10, align 8, !tbaa !3
+  %12 = icmp eq %struct.Comm* %11, null
+  br i1 %12, label %13, label %15
+
+; <label>:13:                                     ; preds = %3
+  %14 = bitcast %struct.Context* %2 to i8**
+  br label %23
+
+; <label>:15:                                     ; preds = %15, %3
+  %16 = phi %struct.Comm* [ %18, %15 ], [ %11, %3 ]
+  %17 = getelementptr inbounds %struct.Comm, %struct.Comm* %16, i64 0, i32 2
+  %18 = load %struct.Comm*, %struct.Comm** %17, align 8, !tbaa !19
+  %19 = icmp eq %struct.Comm* %18, null
+  br i1 %19, label %20, label %15
+
+; <label>:20:                                     ; preds = %15
+  %21 = getelementptr inbounds %struct.Comm, %struct.Comm* %16, i64 0, i32 2
+  %22 = bitcast %struct.Comm** %21 to i8**
+  br label %23
+
+; <label>:23:                                     ; preds = %20, %13
+  %24 = phi i8** [ %22, %20 ], [ %14, %13 ]
+  store i8* %4, i8** %24, align 8, !tbaa !13
   ret void
 }
 
-; Function Attrs: norecurse nounwind readnone ssp uwtable
-define double @receive(i32, i32, i8* nocapture readnone) #4 {
-  ret double 0.000000e+00
+; Function Attrs: norecurse nounwind readonly ssp uwtable
+define double* @_find_channel(i32, %struct.Context* nocapture readonly) local_unnamed_addr #4 {
+  %3 = getelementptr inbounds %struct.Context, %struct.Context* %1, i64 0, i32 0
+  %4 = load %struct.Comm*, %struct.Comm** %3, align 8, !tbaa !13
+  %5 = icmp eq %struct.Comm* %4, null
+  br i1 %5, label %17, label %6
+
+; <label>:6:                                      ; preds = %13, %2
+  %7 = phi %struct.Comm* [ %15, %13 ], [ %4, %2 ]
+  %8 = getelementptr inbounds %struct.Comm, %struct.Comm* %7, i64 0, i32 0
+  %9 = load i32, i32* %8, align 8, !tbaa !14
+  %10 = icmp eq i32 %9, %0
+  br i1 %10, label %11, label %13
+
+; <label>:11:                                     ; preds = %6
+  %12 = getelementptr inbounds %struct.Comm, %struct.Comm* %7, i64 0, i32 1
+  br label %17
+
+; <label>:13:                                     ; preds = %6
+  %14 = getelementptr inbounds %struct.Comm, %struct.Comm* %7, i64 0, i32 2
+  %15 = load %struct.Comm*, %struct.Comm** %14, align 8, !tbaa !13
+  %16 = icmp eq %struct.Comm* %15, null
+  br i1 %16, label %17, label %6
+
+; <label>:17:                                     ; preds = %13, %11, %2
+  %18 = phi double* [ %12, %11 ], [ null, %2 ], [ null, %13 ]
+  ret double* %18
 }
+
+; Function Attrs: nounwind ssp uwtable
+define void @send(double, i32, i32, i8*) #0 {
+  %5 = bitcast i8* %3 to %struct.Context*
+  %6 = getelementptr inbounds i8, i8* %3, i64 8
+  %7 = bitcast i8* %6 to %struct._opaque_pthread_rwlock_t*
+  %8 = tail call i32 @"\01_pthread_rwlock_wrlock"(%struct._opaque_pthread_rwlock_t* nonnull %7) #6
+  tail call void @_add_channel(double %0, i32 %2, %struct.Context* %5)
+  %9 = tail call i32 @"\01_pthread_rwlock_unlock"(%struct._opaque_pthread_rwlock_t* nonnull %7) #6
+  ret void
+}
+
+declare i32 @"\01_pthread_rwlock_wrlock"(%struct._opaque_pthread_rwlock_t*) local_unnamed_addr #2
+
+declare i32 @"\01_pthread_rwlock_unlock"(%struct._opaque_pthread_rwlock_t*) local_unnamed_addr #2
+
+; Function Attrs: nounwind ssp uwtable
+define double @receive(i32, i32, i8*) #0 {
+  %4 = bitcast i8* %2 to %struct.Context*
+  %5 = getelementptr inbounds i8, i8* %2, i64 8
+  %6 = bitcast i8* %5 to %struct._opaque_pthread_rwlock_t*
+  br label %7
+
+; <label>:7:                                      ; preds = %7, %3
+  %8 = tail call i32 @"\01_pthread_rwlock_rdlock"(%struct._opaque_pthread_rwlock_t* nonnull %6) #6
+  %9 = tail call double* @_find_channel(i32 %1, %struct.Context* %4)
+  %10 = tail call i32 @"\01_pthread_rwlock_unlock"(%struct._opaque_pthread_rwlock_t* nonnull %6) #6
+  %11 = icmp eq double* %9, null
+  br i1 %11, label %7, label %12
+
+; <label>:12:                                     ; preds = %7
+  %13 = load double, double* %9, align 8, !tbaa !20
+  ret double %13
+}
+
+declare i32 @"\01_pthread_rwlock_rdlock"(%struct._opaque_pthread_rwlock_t*) local_unnamed_addr #2
 
 define void @quadratic_0(i8*) {
 entry:
   %argument = call double @receive(i32 -1, i32 0, i8* %0)
   %argument1 = call double @receive(i32 -1, i32 1, i8* %0)
   %argument2 = call double @receive(i32 -1, i32 2, i8* %0)
-  call void @send(double %argument1, i32 3, i32 3, i8* %0)
-  call void @send(double %argument1, i32 3, i32 4, i8* %0)
-  call void @send(double %argument, i32 1, i32 5, i8* %0)
-  call void @send(double %argument2, i32 1, i32 6, i8* %0)
-  call void @send(double %argument, i32 3, i32 8, i8* %0)
-  %1 = tail call i32 @"\01_sleep"(i32 1) #6, !start !14, !end !15
-  %2 = tail call i32 @"\01_sleep"(i32 1) #6, !start !16, !end !17
-  %3 = fsub double -0.000000e+00, %argument1, !start !15, !end !18
-  call void @send(double %argument1, i32 3, i32 10, i8* %0)
-  call void @send(double %3, i32 1, i32 11, i8* %0)
+  %1 = fmul double %argument1, %argument1, !start !21, !end !22
+  %2 = fmul double %argument, 4.000000e+00, !start !23, !end !21
+  call void @send(double %2, i32 1, i32 3, i8* %0)
+  call void @send(double %argument2, i32 1, i32 4, i8* %0)
+  call void @send(double %1, i32 1, i32 5, i8* %0)
+  %3 = fmul double %argument, 2.000000e+00, !start !22, !end !24
+  %4 = tail call i32 @"\01_sleep"(i32 1) #6, !start !24, !end !25
+  %5 = tail call i32 @"\01_sleep"(i32 1) #6, !start !26, !end !27
+  %6 = fsub double -0.000000e+00, %argument1, !start !25, !end !28
+  call void @send(double %argument1, i32 1, i32 6, i8* %0)
+  call void @send(double %3, i32 1, i32 7, i8* %0)
+  %receive = call double @receive(i32 1, i32 8, i8* %0)
+  %7 = fsub double %6, %receive, !start !28, !end !29
+  %8 = fdiv double %7, %3, !start !29, !end !26
+  call void @send(double %8, i32 1, i32 9, i8* %0)
   ret void
 }
 
 declare i32 @"\01_sleep"(i32)
 
-define void @quadratic_3(i8*) {
+define void @quadratic_1(i8*) {
 entry:
   %receive = call double @receive(i32 0, i32 3, i8* %0)
   %receive1 = call double @receive(i32 0, i32 4, i8* %0)
-  %1 = fmul double %receive, %receive1, !start !19, !end !14
-  call void @send(double %1, i32 1, i32 7, i8* %0)
-  %receive2 = call double @receive(i32 0, i32 8, i8* %0)
-  %2 = fmul double %receive2, 2.000000e+00, !start !15, !end !20
-  %3 = tail call i32 @"\01_sleep"(i32 1) #6, !start !14, !end !15
-  %receive3 = call double @receive(i32 1, i32 9, i8* %0)
-  %receive4 = call double @receive(i32 0, i32 10, i8* %0)
-  %4 = fsub double %receive3, %receive4, !start !20, !end !21
-  %5 = fdiv double %4, %2, !start !21, !end !22
-  call void @send(double %2, i32 1, i32 12, i8* %0)
-  %6 = fcmp une double %5, 0.000000e+00, !start !22, !end !23
-  %receive5 = call double @receive(i32 1, i32 13, i8* %0)
-  %7 = select i1 %6, double %5, double %receive5, !start !23, !end !17
-  call void @send(double %7, i32 -1, i32 14, i8* %0), !start !17, !end !24
-  ret void
-}
-
-define void @quadratic_1(i8*) {
-entry:
-  %receive = call double @receive(i32 0, i32 5, i8* %0)
-  %1 = fmul double %receive, 4.000000e+00, !start !25, !end !26
-  %receive1 = call double @receive(i32 0, i32 6, i8* %0)
-  %2 = fmul double %1, %receive1, !start !26, !end !27
-  %receive2 = call double @receive(i32 3, i32 7, i8* %0)
-  %3 = fsub double %receive2, %2, !start !27, !end !28
-  %4 = tail call double @llvm.sqrt.f64(double %3), !start !28, !end !29
-  call void @send(double %4, i32 3, i32 9, i8* %0)
-  %receive3 = call double @receive(i32 0, i32 11, i8* %0)
-  %5 = fsub double %receive3, %4, !start !29, !end !30
-  %receive4 = call double @receive(i32 3, i32 12, i8* %0)
-  %6 = fdiv double %5, %receive4, !start !30, !end !31
-  call void @send(double %6, i32 3, i32 13, i8* %0)
+  %1 = fmul double %receive, %receive1, !start !30, !end !31
+  %receive2 = call double @receive(i32 0, i32 5, i8* %0)
+  %2 = fsub double %receive2, %1, !start !31, !end !24
+  %3 = tail call i32 @"\01_sleep"(i32 1) #6, !start !32, !end !33
+  %4 = tail call i32 @"\01_sleep"(i32 1) #6, !start !34, !end !30
+  %5 = tail call double @llvm.sqrt.f64(double %2), !start !24, !end !25
+  %receive3 = call double @receive(i32 0, i32 6, i8* %0)
+  %6 = fsub double %5, %receive3, !start !25, !end !28
+  %receive4 = call double @receive(i32 0, i32 7, i8* %0)
+  %7 = fdiv double %6, %receive4, !start !28, !end !32
+  call void @send(double %5, i32 0, i32 8, i8* %0)
+  %8 = fcmp une double %7, 0.000000e+00, !start !33, !end !35
+  %receive5 = call double @receive(i32 0, i32 9, i8* %0)
+  %9 = select i1 %8, double %7, double %receive5, !start !35, !end !36
+  call void @send(double %9, i32 -1, i32 10, i8* %0), !start !36, !end !27
   ret void
 }
 
 ; Function Attrs: nounwind readnone speculatable
 declare double @llvm.sqrt.f64(double) #5
-
-define void @quadratic_2(i8*) {
-entry:
-  %1 = tail call i32 @"\01_sleep"(i32 1) #6, !start !30, !end !31
-  ret void
-}
 
 ; Function Attrs: nounwind ssp uwtable
 define double @quadratic(double, double, double) local_unnamed_addr #0 {
@@ -240,12 +317,12 @@ declare i32 @atoi(i8* nocapture) local_unnamed_addr #7
 define double @replace_quadratic(double, double, double) {
 entry:
   %3 = call i8* @init()
-  %threads = call i8* @call_partitioned_functions(i32 4, void (i8*)** getelementptr inbounds ([4 x void (i8*)*], [4 x void (i8*)*]* @funs, i32 0, i32 0), i8* %3)
+  %threads = call i8* @call_partitioned_functions(i32 2, void (i8*)** getelementptr inbounds ([2 x void (i8*)*], [2 x void (i8*)*]* @funs, i32 0, i32 0), i8* %3)
   call void @send(double %0, i32 0, i32 0, i8* %3)
   call void @send(double %1, i32 0, i32 1, i8* %3)
   call void @send(double %2, i32 0, i32 2, i8* %3)
-  %return = call double @receive(i32 -1, i32 14, i8* %3)
-  call void @join_partitioned_functions(i32 4, i8* %threads)
+  %return = call double @receive(i32 -1, i32 10, i8* %3)
+  call void @join_partitioned_functions(i32 2, i8* %threads)
   ret double %return
 }
 
@@ -253,7 +330,7 @@ attributes #0 = { nounwind ssp uwtable "correctly-rounded-divide-sqrt-fp-math"="
 attributes #1 = { nounwind allocsize(0) "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #2 = { "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #3 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
-attributes #4 = { norecurse nounwind readnone ssp uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "min-legal-vector-width"="0" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
+attributes #4 = { norecurse nounwind readonly ssp uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "min-legal-vector-width"="0" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #5 = { nounwind readnone speculatable }
 attributes #6 = { nounwind }
 attributes #7 = { nounwind readonly "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
@@ -276,21 +353,26 @@ attributes #8 = { allocsize(0) }
 !11 = !{!"Closure", !5, i64 0, !5, i64 8}
 !12 = !{!11, !5, i64 8}
 !13 = !{!5, !5, i64 0}
-!14 = !{!"11"}
-!15 = !{!"21"}
-!16 = !{!"31"}
-!17 = !{!"41"}
-!18 = !{!"24"}
-!19 = !{!"6"}
-!20 = !{!"26"}
-!21 = !{!"29"}
-!22 = !{!"39"}
-!23 = !{!"40"}
-!24 = !{!"42"}
-!25 = !{!"2"}
-!26 = !{!"7"}
-!27 = !{!"12"}
-!28 = !{!"15"}
-!29 = !{!"25"}
-!30 = !{!"28"}
-!31 = !{!"38"}
+!14 = !{!15, !16, i64 0}
+!15 = !{!"Comm", !16, i64 0, !17, i64 8, !5, i64 16}
+!16 = !{!"int", !6, i64 0}
+!17 = !{!"double", !6, i64 0}
+!18 = !{!15, !17, i64 8}
+!19 = !{!15, !5, i64 16}
+!20 = !{!17, !17, i64 0}
+!21 = !{!"8"}
+!22 = !{!"13"}
+!23 = !{!"3"}
+!24 = !{!"18"}
+!25 = !{!"28"}
+!26 = !{!"44"}
+!27 = !{!"54"}
+!28 = !{!"31"}
+!29 = !{!"34"}
+!30 = !{!"10"}
+!31 = !{!"15"}
+!32 = !{!"41"}
+!33 = !{!"51"}
+!34 = !{!"0"}
+!35 = !{!"52"}
+!36 = !{!"53"}
