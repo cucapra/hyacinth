@@ -1,6 +1,10 @@
 SSA-Spatial Compiler
 =====
 
+Note: this project is under active development, and this documentation may not be fully up-to-date.
+
+-----
+
 This is a compiler that partitions programs in a simple Static-Single Assignment (SSA) form across a spatial architecture of cores, minimizing the estimated idealized cycle count. 
 
 Installing Dependencies
@@ -36,6 +40,19 @@ On Linux:
 
     $ apt install z3
 
+To take in [LLVM][] bitcode as input, install both the distribution and the OCaml bindings:
+
+On OSX:
+
+    $ brew install llvm
+
+On Linux:
+
+    $ apt install llvm
+
+Then:
+
+    $ opam install llvm
 
 [opam]: https://github.com/ocaml/dune 
 [dune]: https://github.com/ocaml/dune
@@ -44,6 +61,7 @@ On Linux:
 [ocamlgraph]: https://github.com/backtracking/ocamlgraph
 [ocaml-z3]: https://github.com/plasma-umass/ocaml-z3
 [z3]: https://github.com/Z3Prover/z3
+[LLVM]: https://llvm.org
 
 Building & Running
 -----
@@ -61,6 +79,7 @@ The `ssac` executable supports the following arguments:
 
     $ SSA-Spatial Compiler
     $ 
+    $   -l Expects LLVM bitcode as the input program
     $   -p Pretty prints the input program
     $   -b Prints the bound variables from the SSA check
     $   -i Prints the interpreter final store
