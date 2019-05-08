@@ -5,7 +5,7 @@ Note: this project is under active development, and this documentation may not b
 
 -----
 
-This is a compiler that partitions programs in a simple Static-Single Assignment (SSA) form across a spatial architecture of cores, minimizing the estimated idealized cycle count. 
+This is a compiler that partitions programs in a simple Static-Single Assignment (SSA) form across a spatial architecture of cores, minimizing the estimated idealized cycle count. It is currently under development to take in a small subset of LLVM. 
 
 Installing Dependencies
 ------
