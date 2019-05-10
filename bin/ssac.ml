@@ -40,34 +40,26 @@ let _ =
   else
     let lexbuf = Lexing.from_channel stdin in
     let com = Parser.prog Lexer.token lexbuf in
-    (com, None)
+
+    (try
+      let vars = Check.check_ssa com in
+      print_endline "Checking for SSA form:";
+      if !bound_ssa then
+        (print_endline "Bound variables:";
+        List.iter print_endline vars)
+      else print_endline "Success";
+    with e ->
+      print_endline ("\nCheck error: " ^ Printexc.to_string e));
+    ([com], None)
   ) in
   if !pretty_print then
-    (print_endline "Program"; print_endline (Pretty.pretty prog););
-
-  (try
-    let vars = Check.check_ssa prog in
-    print_endline "Checking for SSA form:";
-    if !bound_ssa then
-      (print_endline "Bound variables:";
-      List.iter print_endline vars)
-    else print_endline "Success";
-  with e ->
-    print_endline ("\nCheck error: " ^ Printexc.to_string e));
-
-  (try
-    print_endline "\nInterpreting:";
-    let store = Interpreter.interpret prog in
-    if !print_interpreter then
-      (print_endline "\nFinal store:";
-      print_endline (Interpreter.print_store store))
-    else print_endline "Success"
-  with e ->
-    print_endline ("Interpreter error: " ^ Printexc.to_string e));
+    (print_endline "Program";
+     List.iter (fun (x)-> print_endline ("\n" ^(Pretty.pretty x))) prog;);
 
   (try
     print_endline "\nSSA to DFG:";
-    let dfg, com_map = Dfg.ssa_to_dfg prog in
+    let dfgs, com_map = Dfg.ssa_to_dfg prog in
+
     let config =
       {
         rows = !rows;
@@ -80,7 +72,8 @@ let _ =
     print_endline ("\nPartitioning for spatial layout with " ^ (string_of_int !rows)
       ^ " rows, " ^ (string_of_int !columns) ^ " columns, "
       ^ (string_of_int !timeout) ^"s timeout");
-    let dfg_assignments = Partition.solve_dfg dfg config in
+    let solve dfg = Partition.solve_dfg dfg config in
+    let dfg_assignments = List.flatten (List.map solve dfgs) in
     Visualize.visualize_dfg dfg_assignments !out_filename;
     match llvm_ast_map_opt with
     | Some llvm_ast_map -> Emit_llvm.emit_llvm dfg_assignments llvm_ast_map com_map

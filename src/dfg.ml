@@ -29,7 +29,7 @@ and result =
     curr : node option;
     nodes : node list;
     map : int VarMap.t;
-    com_map : node ComMap.t;
+    com_map : node ComMap.t ref;
   }
 
 type dfg = node list
@@ -38,7 +38,7 @@ type dfg = node list
 
 let lookup (r : result) (x : var) : node =
   try let i = VarMap.find x r.map in List.nth r.nodes i
-  with Not_found -> raise (UnboundVariableDFG x)
+  with Not_found -> NInput (-1)
 
 let insert (r : result) (x : var) (n : node) : result =
   let len = List.length r.nodes in
@@ -76,8 +76,8 @@ let rec com_to_nodes (c : com) (r : result) : result =
   | CAssgn(var, expr) ->
     let n = expr_to_node expr r in
     let r' = insert r var n in
-    let map' = ComMap.add c n r'.com_map in
-    {r' with com_map = map'}
+    r'.com_map := ComMap.add c n !(r'.com_map);
+    r'
   | CIf(_, branch) ->
     com_to_nodes branch r
   | CSeq(coms) -> com_seq_to_nodes coms r
@@ -123,11 +123,15 @@ and print_node (n : node) : string =
     " incoming: [" ^ (print_address_list on.incoming) ^ "]\n"
   | NInput n -> "NInput " ^ (string_of_int n)
 
-let ssa_to_dfg (c : com) : dfg * node ComMap.t =
-  let init = {curr = None; map = VarMap.empty; nodes = []; com_map = ComMap.empty} in
-  let r = com_to_nodes c init in
-  let keep n = match n with
-  | NOp _ | NInput _ -> true
-  | NLit _-> false in
-  let nodes = List.filter keep r.nodes in
-  (nodes, r.com_map)
+let ssa_to_dfg (seq_per_block : com list) : dfg list * node ComMap.t =
+  let com_map = ref ComMap.empty in
+  let dfg_per_seq seq =
+    let init = {curr = None; map = VarMap.empty; nodes = []; com_map = com_map} in
+    let r = com_to_nodes seq init in
+    let keep n = match n with
+    | NOp _ | NInput _ -> true
+    | NLit _-> false in
+    List.filter keep r.nodes
+  in
+  let nodes = List.map dfg_per_seq seq_per_block in
+  (nodes, !com_map)

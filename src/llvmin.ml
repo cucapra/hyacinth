@@ -6,7 +6,7 @@ module ValueMap =
 
 type result =
   {
-    coms : com list;
+    coms: (com list) list;
     reg_map : string ValueMap.t;
     idx : int;
     to_ast : (llvalue * com) list;
@@ -20,7 +20,7 @@ let register (v : llvalue) (rs : result ref) : string =
     rs := {!rs with reg_map = map'; idx = !rs.idx + 1};
     name'
 
-let regigister_number (r : string) : int =
+let register_number (r : string) : int =
   int_of_string (Core.String.strip ~drop:(fun c -> c = '%') r)
 
 let rec print_type llty =
@@ -188,42 +188,50 @@ let instr_to_com (rs : result) (instr : llvalue) : result =
   let reg = register instr result in
   let op_expr = EOp (op_from_instr instr, operands) in
   let com = CAssgn (reg, op_expr) in
+  let block_coms = (com::(List.hd !result.coms))::(List.tl !result.coms) in
 
-  {!result with coms = com::rs.coms; to_ast = (instr, com)::rs.to_ast }
+  {!result with coms = block_coms; to_ast = (instr, com)::rs.to_ast }
 
 let params_to_coms (rs : result ref) (fn : llvalue) =
   let param_to_assgn p =
     let r = register p rs in
-    let com = CAssgn (r, EInput (regigister_number r)) in
-    rs :=  {!rs with coms = com::!rs.coms; to_ast = (p, com)::!rs.to_ast} in
+    let com = CAssgn (r, EInput (register_number r)) in
+    let block_coms = (com::(List.hd !rs.coms))::(List.tl !rs.coms) in
+
+    rs :=  {!rs with coms = block_coms; to_ast = (p, com)::!rs.to_ast} in
   iter_params param_to_assgn fn
 
+
+(* Each block should be partitioned seperately *)
 let fold_functions (md : llmodule) : result =
-  let rs =
-    {coms = []; reg_map = ValueMap.empty; idx = 0; to_ast = []} in
 
   let f_block (acc_b : result) (block : llbasicblock) : result =
-    fold_left_instrs instr_to_com acc_b block in
+    let new_result = {acc_b with coms = []::acc_b.coms} in
+    fold_left_instrs instr_to_com new_result block in
 
   let f_function (acc_f : result) (fn : llvalue) : result =
   if (is_declaration fn) || (value_name fn = "main") then
     acc_f
   else
     let acc_f' = ref acc_f in
-    params_to_coms acc_f' fn;
+(*     params_to_coms acc_f' fn;
+ *)
     fold_left_blocks f_block !acc_f' fn
   in
+
+  let rs = {coms = []; reg_map = ValueMap.empty; idx = 0; to_ast = []} in
 
   fold_left_functions f_function rs md
 
 let llvm_to_ast (md : llmodule) : (com list * (llvalue * com) list) =
   let result = fold_functions md in
-  (List.rev result.coms, List.rev result.to_ast)
+  let coms_to_seq acc coms = (CSeq (List.rev coms))::acc in
+  let seq_per_block = List.fold_left coms_to_seq [] result.coms in
+  (seq_per_block, List.rev result.to_ast)
 
-let parse_llvm (_llvm_in : in_channel) : (com * (llmodule * ((llvalue * com) list))) =
-  let llctx = global_context () in
-  let llmem = MemoryBuffer.of_stdin () in
-  let llm = Llvm_bitreader.parse_bitcode llctx llmem in
-(*   iter_functions print_fun llm; *)
-  let coms, to_ast = llvm_to_ast llm in
-  (CSeq coms, (llm, to_ast))
+let parse_llvm (_llvm_in : in_channel) : (com list * (llmodule * ((llvalue * com) list))) =
+  let context = global_context () in
+  let buffer = MemoryBuffer.of_stdin () in
+  let md = Llvm_bitreader.parse_bitcode context buffer in
+  let seq_per_block, to_ast = llvm_to_ast md in
+  (seq_per_block, (md, to_ast))
