@@ -78,17 +78,16 @@ let incoming n =
 let dfg_to_viz_graph (graph : partitioning) : G.t =
   let g = G.create () in
   let add_edge n1 n2 =
-    let n2opt = List.find_opt (fun (n, _, (_, _)) -> n == n2) graph in
-    match n2opt with
-    | Some n2' -> G.add_edge g n2' n1
-    | _ ->
+    match NodeMap.find_opt n2 graph with
+    | Some p -> G.add_edge g (n2, p.partition, (p.start_time, p.end_time)) n1
+    | _ -> (* Literal *)
       let (_, p', (t1', _)) = n1 in
       G.add_edge g (n2, p', (t1', t1')) n1 in
-  let per_node p =
-    G.add_vertex g p;
-    let (n, _, (_, _)) = p in
-    List.iter (add_edge p) (incoming n) in
-  List.iter per_node graph;
+  let per_node n p =
+    G.add_vertex g (n, p.partition, (p.start_time, p.end_time));
+    let p' = (n, p.partition, (p.start_time, p.end_time)) in
+    List.iter (add_edge p') (incoming n) in
+  NodeMap.iter per_node graph;
   g
 
 let visualize_dfg (graph : partitioning) (output : string) =

@@ -1,10 +1,12 @@
 open Smtlib
 open Dfg
 open Ast
-open Core
 open Pervasives
 
 exception UnexpectedTerm of term
+
+module NodeMap =
+  Map.Make(struct type t = Dfg.node;; let compare = compare end)
 
 type config =
   {
@@ -15,9 +17,16 @@ type config =
     direct_distance : bool;
   }
 
+type placement =
+  {
+    partition : int;
+    start_time : int;
+    end_time : int;
+  }
+
 (* node, core assignment, (starting time, ending time) *)
 and assignments = (node * term * (term * term)) list
-and partitioning = (node * int * (int * int)) list
+and partitioning = placement NodeMap.t
 
 let rows = ref 2
 let cols = ref 2
@@ -33,8 +42,8 @@ let declare_int (s : solver) (n : string) =
   declare_const s (Id n) int_sort
 
 let split_prefix (s : string) : (string * string) =
-  let spl = String.split s ~on:'_' in
-  (List.nth_exn spl 0, List.nth_exn spl 1)
+  let spl = Core.String.split s ~on:'_' in
+  (List.nth spl 0, List.nth spl 1)
 
 let term_to_string (t : term) : string =
   (sexp_to_string (term_to_sexp t))
@@ -59,22 +68,22 @@ let pop s : unit =
   Smtlib.pop s
 
 let results_to_strings r : string list =
-  let filter_extra (Id i, _)  = (String.is_prefix i ~prefix:"z3name!") ||
+  let filter_extra (Id i, _)  = (Core.String.is_prefix i ~prefix:"z3name!") ||
     (String.equal "latest_time" i) in
-  let per_node = List.filter ~f:(fun (x) -> not (filter_extra x)) r in
-  let extra = List.filter ~f:filter_extra r in
+  let per_node = List.filter (fun (x) -> not (filter_extra x)) r in
+  let extra = List.filter filter_extra r in
 
   let compare_ids (Id i1, _) (Id i2, _) =
     let (p1, n1) = split_prefix i1 in
     let (p2, n2) = split_prefix i2 in
     let cp = compare (int_of_string n1) (int_of_string n2) in
     if cp != 0 then cp else compare p1 p2 in
-  let sorted_per_node = List.sort ~compare:compare_ids per_node in
-  let sorted_extra = List.sort ~compare:compare extra in
+  let sorted_per_node = List.sort compare_ids per_node in
+  let sorted_extra = List.sort compare extra in
   let sorted = sorted_per_node @ sorted_extra in
 
   let print_term (Id s, t) = s ^ "\t: " ^ (term_to_string t) in
-  List.map ~f:print_term sorted
+  List.map print_term sorted
 
 let time_per_internal_op (uo : internal_op) : int =
   match uo with
@@ -104,7 +113,7 @@ let time_per_op (o : operation) : int =
 (* The cost for communicating between two partitions is their manhattan distance
   in the core grid *)
 let components (p : int) : (int * int) =
-  let x = p % !rows in
+  let x = p mod !rows in
   let y : int = p / !rows in
   (x, y)
 
@@ -114,14 +123,14 @@ let manhattan_dist (x, y) (x', y') =
 let constrain_comms_times_lookup_table (s : solver) =
   declare_fun s dist_fun_id [int_sort; int_sort] int_sort;
   let tiles = !rows * !cols in
-  let parts = List.range 0 tiles in
+  let parts = Core.List.range 0 tiles in
   let map_rel (p1 : int) (p2 : int) =
     let (x1, y1) = components p1 in
     let (x2, y2) = components p2 in
     let time = manhattan_dist (x1, y1) (x2, y2) in
     let args = [int_to_term p1; int_to_term p2] in
     assert_ s (equals (App(dist_fun_id, args)) (int_to_term time)) in
-  List.iter ~f:(fun (p) -> List.iter ~f:(map_rel p) parts) parts
+  List.iter (fun (p) -> List.iter (map_rel p) parts) parts
 
 let constrain_comms_times_direct (s : solver) =
   let abs = "define-fun absolute ((x Int)) Int (ite (>= x 0) x (- x))" in
@@ -144,7 +153,7 @@ let constrain_per_incoming (s : solver) (a : assignments) (i_n : node) pt t1 =
   match i_n with
   | NLit _ -> () (* No cost for incoming literals *)
   | NOp _ | NInput _->
-    let (_, pt', (_, t2')) = List.find_exn ~f:(fun (n', _, _) -> i_n == n') a in
+    let (_, pt', (_, t2')) = List.find (fun (n', _, _) -> i_n == n') a in
     let partition_comms_term = time_for_comms pt pt' in
     (* The starting time must be after the incoming ending time plus the
     communication cost *)
@@ -159,7 +168,7 @@ let constrain_per_node (s : solver) (a : assignments) p  =
     assert_ s (equals (add t1 op_cost_term) t2);
     (* The starting time must be after the ending time of each incoming node *)
     let f (n : node) = constrain_per_incoming s a n pt t1 in
-    List.iter ~f:f op.incoming
+    List.iter f op.incoming
   | (NInput _, pt, (t1, t2)) ->
     (* The ending time must be after the starting time plus the input time *)
     let input_cost = int_to_term 1 in
@@ -168,11 +177,11 @@ let constrain_per_node (s : solver) (a : assignments) p  =
     assert_ s (equals pt term_0)
 
 let constrain_nodes (s : solver) (a : assignments) =
-  List.iter ~f:(fun (p) -> constrain_per_node s a p) a
+  List.iter (fun (p) -> constrain_per_node s a p) a
 
 let constrain_partitions (s : solver) (a : assignments) =
   let tiles = !rows * !cols in
-  List.iter ~f:(fun (_, pt, _) -> assert_ s
+  List.iter (fun (_, pt, _) -> assert_ s
     (and_ (gte pt term_0) (lt pt (int_to_term tiles)))) a
 
 let constrain_times (s : solver) (t1 : term) (t2 : term) =
@@ -184,7 +193,7 @@ let constrain_overlapping_times (s : solver) (a : assignments) =
     assert_ s (implies (equals p p') (or_ (gte t1' t2) (lte t2' t1))) in
   let rec constrain_overlaps (curr : assignments) =
     match curr with
-    | head::tail -> List.iter ~f:(no_overlap head) tail; constrain_overlaps tail
+    | head::tail -> List.iter (no_overlap head) tail; constrain_overlaps tail
     | _ -> ()
   in
   constrain_overlaps a
@@ -193,7 +202,7 @@ let latest_time (s : solver) (a : assignments) : term =
   let l = "latest_time" in
   declare_int s l;
   let max (l : term) (_, _, (_, y)) = assert_ s (equals l (ite (lte l y) y l)) in
-  List.iter ~f:(max (con l)) a;
+  List.iter (max (con l)) a;
   (con l)
 
 let sequential_time (a : assignments) : int =
@@ -201,7 +210,7 @@ let sequential_time (a : assignments) : int =
   | NLit _ -> acc
   | NOp o -> time_per_op o.op + acc
   | NInput _ -> acc in
-  List.fold_left a ~init:0 ~f:total_time
+  List.fold_left total_time 0 a
 
 let solve_for_goal (s : solver) (total : term) (goal : int) =
   print_endline ("Searching for solution for goal: " ^ (string_of_int goal));
@@ -220,7 +229,7 @@ let rec incrememntal_solve_loop (s : solver) (total : term) (goal : int) best =
   match opt_res with
   | Some res ->
     let find_time (Id i, _) = String.equal "latest_time" i in
-    let (_, t) = List.find_exn ~f:find_time res in
+    let (_, t) = List.find find_time res in
     let old_best = match t with
     | Int n -> n
     | _ -> goal in
@@ -245,7 +254,7 @@ let set_configuration (s : solver) (c : config) =
 let solve_dfg (graph : dfg) (config : config) : partitioning =
   let s : solver = Smtlib.make_solver "z3" in
   set_configuration s config;
-  let a = List.mapi ~f:(fun (i : int) (x : node) ->
+  let a = List.mapi (fun (i : int) (x : node) ->
     let pt = "p_" ^ string_of_int i in
     let t1 = "t1_" ^ string_of_int i in
     let t2 = "t2_" ^ string_of_int i in
@@ -268,12 +277,15 @@ let solve_dfg (graph : dfg) (config : config) : partitioning =
   match opt_res with
   | Some res ->
     let s = results_to_strings res in
-    print_endline (String.concat ~sep:"\n" s);
-    List.mapi ~f:(fun (i : int) (x : node) ->
-      let find_t s = List.find_exn ~f:(fun (Id i, _) -> String.equal i s) res in
+    print_endline (Core.String.concat ~sep:"\n" s);
+    let partitioning = ref NodeMap.empty in
+    List.iteri (fun (i : int) (x : node) ->
+      let find_t s = List.find (fun (Id i, _) -> String.equal i s) res in
       let find_int s = (let (_, t) = find_t s in term_to_int t) in
       let pt = find_int ("p_" ^ string_of_int i) in
       let t1 = find_int ("t1_" ^ string_of_int i) in
       let t2 = find_int ("t2_" ^ string_of_int i) in
-      (x, pt, (t1, t2))) graph
-  | None -> []
+      let placement = {partition = pt; start_time = t1; end_time = t2;} in
+      partitioning := NodeMap.add x placement !partitioning) graph;
+    !partitioning
+  | None -> failwith "No partitioning found"

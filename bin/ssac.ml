@@ -16,7 +16,6 @@ let columns : int ref = ref 2
 let timeout : int ref = ref 100000
 let out_filename : string ref = ref "ssac-output.dot"
 
-
 let usage = "SSA-Spatial Compiler\n"
 let spec_list : (Arg.key * Arg.spec * Arg.doc) list =
   [
@@ -31,6 +30,15 @@ let spec_list : (Arg.key * Arg.spec * Arg.doc) list =
     ("-t", Arg.Set_int timeout, "Timeout for z3, in seconds");
     ("-o", Arg.Set_string out_filename, "Filename for the dot output file");
   ]
+
+let flatten_maps maps =
+  let merge _ p1 p2 =
+    if p1 != p2 then
+      failwith "Unexpected inconsistent partitions"
+    else
+      Some p1
+  in
+  List.fold_left (NodeMap.union merge) NodeMap.empty maps
 
 let _ =
   Arg.parse spec_list anon_fun usage;
@@ -56,27 +64,26 @@ let _ =
     (print_endline "Program";
      List.iter (fun (x)-> print_endline ("\n" ^(Pretty.pretty x))) prog;);
 
-  (try
-    print_endline "\nSSA to DFG:";
-    let dfgs, com_map = Dfg.ssa_to_dfg prog in
+  let dfgs, com_map = (try
+      print_endline "\nSSA to DFG:";
+      Dfg.ssa_to_dfg prog
+    with e ->
+      failwith ("SSA to DFG error: " ^ Printexc.to_string e)) in
 
-    let config =
-      {
-        rows = !rows;
-        cols = !columns;
-        timeout = !timeout;
-        debug = !debug;
-        direct_distance = !direct_man_distance;
-      } in
-    print_endline "Success";
-    print_endline ("\nPartitioning for spatial layout with " ^ (string_of_int !rows)
-      ^ " rows, " ^ (string_of_int !columns) ^ " columns, "
-      ^ (string_of_int !timeout) ^"s timeout");
-    let solve dfg = Partition.solve_dfg dfg config in
-    let dfg_assignments = List.flatten (List.map solve dfgs) in
-    Visualize.visualize_dfg dfg_assignments !out_filename;
-    match llvm_ast_map_opt with
-    | Some llvm_ast_map -> Emit_llvm.emit_llvm dfg_assignments llvm_ast_map com_map
-    | None -> print_endline "None"
-   with e ->
-    print_endline ("SSA to DFG error: " ^ Printexc.to_string e));
+  let config =
+    {
+      rows = !rows;
+      cols = !columns;
+      timeout = !timeout;
+      debug = !debug;
+      direct_distance = !direct_man_distance;
+    } in
+  print_endline ("\nPartitioning for spatial layout with " ^ (string_of_int !rows)
+    ^ " rows, " ^ (string_of_int !columns) ^ " columns, "
+    ^ (string_of_int !timeout) ^"s timeout");
+  let partitions = List.map (fun dfg -> Partition.solve_dfg dfg config) dfgs in
+  let dfg_assignments = flatten_maps partitions in
+  Visualize.visualize_dfg dfg_assignments !out_filename;
+  match llvm_ast_map_opt with
+  | Some llvm_ast_map -> Emit_llvm.emit_llvm dfg_assignments llvm_ast_map com_map
+  | None -> print_endline "None"
