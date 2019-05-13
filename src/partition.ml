@@ -153,11 +153,14 @@ let constrain_per_incoming (s : solver) (a : assignments) (i_n : node) pt t1 =
   match i_n with
   | NLit _ -> () (* No cost for incoming literals *)
   | NOp _ | NInput _->
-    let (_, pt', (_, t2')) = List.find (fun (n', _, _) -> i_n == n') a in
-    let partition_comms_term = time_for_comms pt pt' in
-    (* The starting time must be after the incoming ending time plus the
-    communication cost *)
-    assert_ s (gte t1 (add t2' partition_comms_term))
+    begin match (List.find_opt (fun (n', _, _) -> i_n == n') a) with
+    | Some (_, pt', (_, t2')) ->
+      let partition_comms_term = time_for_comms pt pt' in
+      (* The starting time must be after the incoming ending time plus the
+      communication cost *)
+      assert_ s (gte t1 (add t2' partition_comms_term))
+    | None -> print_endline ("Cannot find partition for: " ^ (print_node i_n))
+    end
 
 let constrain_per_node (s : solver) (a : assignments) p  =
   match p with
