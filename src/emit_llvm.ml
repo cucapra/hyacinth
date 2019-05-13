@@ -194,18 +194,21 @@ let emit_llvm (dfg : partitioning) ((replace_md, llvm_to_ast) : (llmodule * (llv
     in
     match (classify_value v) with
     | Instruction op ->
+      print_endline ("Emitting LLVM for instruction: " ^ (string_of_llvalue v));
       let parent = block_parent (instr_parent v) in
       let new_builder, new_fun, replace_builder, r_ctx = builders_from_parent parent p new_funs replace_funs replace_md in
       let ctx = param new_fun 0 in
       begin match (op : Opcode.t) with
       | Ret ->
-        let id = new_comms_id () in
-        let call = call_send (operand v 0) (-1) id new_builder ctx in
-        let return = call_receive "return" (-1) id replace_builder r_ctx in
-        let _ = build_ret return replace_builder in
-        set_metadata call placement;
-        insts_map := ValueMap.add v call !insts_map;
-        replace_operands call parent p new_builder find_partition new_funs insts_map replace_funs replace_md;
+        if (num_operands v) > 0 then begin
+          let id = new_comms_id () in
+          let call = call_send (operand v 0) (-1) id new_builder ctx in
+          let return = call_receive "return" (-1) id replace_builder r_ctx in
+          let _ = build_ret return replace_builder in
+          set_metadata call placement;
+          insts_map := ValueMap.add v call !insts_map;
+          replace_operands call parent p new_builder find_partition new_funs insts_map replace_funs replace_md;
+        end
       | _ ->
         let clone = instr_clone v in
         set_metadata clone placement;

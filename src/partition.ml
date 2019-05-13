@@ -276,12 +276,12 @@ let solve_dfg (graph : dfg) (config : config) : partitioning =
   let upper_bound = sequential_time a in
   print_endline ("Sequential time: " ^ (string_of_int upper_bound) ^"\n");
 
+  let partitioning = ref NodeMap.empty in
   let opt_res = incrememntal_solve_loop s total_time upper_bound None in
-  match opt_res with
+  begin match opt_res with
   | Some res ->
     let s = results_to_strings res in
     print_endline (Core.String.concat ~sep:"\n" s);
-    let partitioning = ref NodeMap.empty in
     List.iteri (fun (i : int) (x : node) ->
       let find_t s = List.find (fun (Id i, _) -> String.equal i s) res in
       let find_int s = (let (_, t) = find_t s in term_to_int t) in
@@ -289,6 +289,12 @@ let solve_dfg (graph : dfg) (config : config) : partitioning =
       let t1 = find_int ("t1_" ^ string_of_int i) in
       let t2 = find_int ("t2_" ^ string_of_int i) in
       let placement = {partition = pt; start_time = t1; end_time = t2;} in
-      partitioning := NodeMap.add x placement !partitioning) graph;
-    !partitioning
-  | None -> failwith "No partitioning found"
+      partitioning := NodeMap.add x placement !partitioning) graph
+  | None ->
+    print_endline "No partitioning found, assigning everything to core 0";
+    List.iter (fun (x : node) ->
+      let placement = {partition = 0; start_time = 0; end_time = 0;} in
+      partitioning := NodeMap.add x placement !partitioning) graph
+  end;
+  !partitioning
+

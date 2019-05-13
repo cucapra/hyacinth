@@ -32,9 +32,10 @@ let spec_list : (Arg.key * Arg.spec * Arg.doc) list =
   ]
 
 let flatten_maps maps =
-  let merge _ p1 p2 =
-    if p1 != p2 then
-      failwith "Unexpected inconsistent partitions"
+  let merge k p1 p2 =
+    if p1.partition != p2.partition then
+      let partitions = (string_of_int p1.partition)^", "^(string_of_int p2.partition) in
+      failwith ("Unexpected inconsistent partitions "^ partitions ^" for: " ^ (Dfg.print_node k))
     else
       Some p1
   in
