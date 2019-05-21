@@ -75,7 +75,7 @@ let incoming n =
   | NOp o -> o.incoming
   | _ -> []
 
-let dfg_to_viz_graph (graph : partitioning) : G.t =
+let dfg_to_viz_graph (graph : placement NodeMap.t) : G.t =
   let g = G.create () in
   let add_edge n1 n2 =
     match NodeMap.find_opt n2 graph with
@@ -90,6 +90,6 @@ let dfg_to_viz_graph (graph : partitioning) : G.t =
   NodeMap.iter per_node graph;
   g
 
-let visualize_dfg (graph : partitioning) (output : string) =
+let visualize_dfg (graph : placement NodeMap.t) (output : string) =
   let file = open_out_bin output in
   Dot.output_graph file (dfg_to_viz_graph graph)

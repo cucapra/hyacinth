@@ -254,7 +254,8 @@ let set_configuration (s : solver) (c : config) =
     lookup_table := not c.debug
 
 (* Idea: take in the list of nodes, return a list with partition assignments *)
-let solve_dfg (graph : dfg) (config : config) : partitioning =
+let solve_dfg (graph : dfg) (config : config) : placement NodeMap.t =
+  print_endline "\nStarting to solve partitioning for subgraph";
   let s : solver = Smtlib.make_solver "z3" in
   set_configuration s config;
   let a = List.mapi (fun (i : int) (x : node) ->
