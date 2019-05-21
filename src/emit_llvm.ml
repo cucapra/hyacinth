@@ -187,8 +187,7 @@ let clone_blocks_per_partition replace_md partitions block_map =
   in
 
   let per_function fn =
-    if include_function fn then
-      List.iter (fun (p : int) -> per_partition fn p) partitions
+    if include_function fn then List.iter (per_partition fn) partitions
   in
   iter_functions per_function replace_md
 
@@ -265,10 +264,19 @@ let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule
       let new_builder, new_fun, replace_builder, r_ctx = builders_from_block block p block_map replace_funs replace_md in
       let ctx = param new_fun 0 in
       begin match (op : Opcode.t) with
-      | Br -> if (is_conditional v) then begin
-          print_endline "cond"
-        end else begin
-          print_endline "not cond"
+      | Br ->
+        begin match get_branch v with
+        | Some (`Conditional _) ->  print_endline "cond"(*  (v0, b1, b2) *)
+        | Some (`Unconditional old_dest) ->
+          let per_partition p =
+            let br_clone = instr_clone v in
+            let new_dest = PartitionBlockMap.find (p, old_dest) !block_map in
+            set_operand br_clone 0 (value_of_block new_dest);
+            let builder, _ = builder_and_fun p block block_map in
+            insert_into_builder br_clone "" builder
+          in
+          List.iter per_partition partitions
+        | _ -> failwith "Instruction must be branch"
         end
       | Ret ->
         if (num_operands v) > 0 then begin
