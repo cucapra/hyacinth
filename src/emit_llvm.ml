@@ -144,7 +144,7 @@ let replace_operands inst block partition builder find_partition block_map insts
         let id = new_comms_id () in
         let ctx = param op_fun 0 in
         let receive = call_receive receive_name op_partition id builder ctx in
-        let _ = call_send new_op partition id op_builder ctx in
+        call_send new_op partition id op_builder ctx |> ignore;
         set_operand inst idx receive
       else
         set_operand inst idx new_op
@@ -156,7 +156,7 @@ let replace_operands inst block partition builder find_partition block_map insts
         if (op != ctx) then (
           let id = new_comms_id () in
           let call = call_receive "argument" (-1) id new_builder ctx in
-          let _ = call_send op partition id replace_builder r_ctx in
+          call_send op partition id replace_builder r_ctx |> ignore;
           insts_map := ValueMap.add op call !insts_map;
           set_operand inst idx call)
       | _ -> ()
@@ -181,15 +181,13 @@ let clone_blocks_per_partition replace_md partitions block_map =
     let fun_type = function_type void_type [| void_pt_type |] in
     let new_name = (value_name fn) ^ "_" ^ (string_of_int partition) in
     let new_fun = define_function new_name fun_type llvm_module in
-    let _ = declare_function new_name fun_type replace_md in
+    declare_function new_name fun_type replace_md |> ignore;
 
     iter_blocks (per_block partition fn new_fun) fn
   in
 
-  let per_function fn =
-    if include_function fn then List.iter (per_partition fn) partitions
-  in
-  iter_functions per_function replace_md
+  let per_function fn = List.iter (per_partition fn) partitions in
+  iter_included_functions per_function replace_md
 
 let new_destination_for_branch partition branch block_map =
   PartitionBlockMap.find (partition, branch) !block_map
@@ -229,6 +227,16 @@ let replace_fun replace_md old_fun (_, ctx, new_fun_set) =
   let join = lookup_function_in join_name replace_md in
   build_call join [| const_i32 funs_len; threads |] "" end_builder |> ignore
 
+let set_branch_destination br destinations p block block_map =
+  let br_clone = instr_clone br in
+  let per_destination (idx, dest) =
+    let new_dest = PartitionBlockMap.find (p, dest) !block_map in
+    set_operand br_clone idx (value_of_block new_dest)
+  in
+  List.iter per_destination destinations;
+  let builder, _ = builder_and_fun p block block_map in
+  insert_into_builder br_clone "" builder
+
 let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule * (llvalue * com) list)) (node_map : node ComMap.t) =
   print_endline "\nStarting to emit LLVM";
   set_data_layout "e-m:o-i64:64-f80:128-n8:16:32:64-S128" llvm_module;
@@ -266,17 +274,21 @@ let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule
       begin match (op : Opcode.t) with
       | Br ->
         begin match get_branch v with
-        | Some (`Conditional _) ->  print_endline "cond"(*  (v0, b1, b2) *)
-        | Some (`Unconditional old_dest) ->
+        | Some (`Conditional (_v0, b1, b2)) ->
+          (* Send v0 to every core but the one it's already on *)
+          ();
+
+          (* Set branching destinations to mapped blocks per paritition *)
           let per_partition p =
-            let br_clone = instr_clone v in
-            let new_dest = PartitionBlockMap.find (p, old_dest) !block_map in
-            set_operand br_clone 0 (value_of_block new_dest);
-            let builder, _ = builder_and_fun p block block_map in
-            insert_into_builder br_clone "" builder
+            set_branch_destination v [(1, b1); (2, b2)] p block block_map
           in
           List.iter per_partition partitions
-        | _ -> failwith "Instruction must be branch"
+        | Some (`Unconditional old_dest) ->
+          let per_partition p =
+            set_branch_destination v [(0, old_dest)] p block block_map
+          in
+          List.iter per_partition partitions
+        | None -> failwith "Instruction must be branch"
         end
       | Ret ->
         if (num_operands v) > 0 then begin
@@ -299,11 +311,7 @@ let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule
       end
     | _ -> failwith "Not intruction"
   in
-
-  let f_function fn =
-    if include_function fn then iter_blocks (iter_instrs add_instruction) fn
-  in
-  iter_functions f_function replace_md;
+  iter_included_functions (iter_blocks (iter_instrs add_instruction)) replace_md;
 
   ValueMap.iter (replace_fun replace_md) !replace_funs;
   print_module "llvm_out.ll" llvm_module;

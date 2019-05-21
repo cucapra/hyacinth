@@ -4,6 +4,9 @@ let include_function fn =
   let name = value_name fn in
   not ((is_declaration fn) || (name = "main") || (Core.String.is_prefix name ~prefix:"replace_"))
 
+let iter_included_functions (f : llvalue -> unit) (md : llmodule) =
+  iter_functions (fun fn -> if include_function fn then f fn) md
+
 let rec print_type llty =
   let ty = classify_type llty in
   match ty with
