@@ -64,8 +64,8 @@ let new_comms_id () : llvalue =
   id
 
 let call_init builder md =
-  let callee = lookup_function_in init_name md in
-  build_call callee [||] "" builder
+  let init = lookup_function_in init_name md in
+  build_call init [||] "" builder
 
 let value_to_value_ptr value builder =
   let ty = (type_of value) in
@@ -84,16 +84,18 @@ let value_to_value_ptr value builder =
 
 let call_send value (to_partition : int) id builder ctx =
   let value_ptr, size = value_to_value_ptr value builder in
-  let callee = lookup_function_in send_name llvm_module in
+  let send = lookup_function_in send_name llvm_module in
   let destination = const_i32 to_partition in
   let args = [| value_ptr; size;  destination; id; ctx |] in
-  build_call callee args "" builder
+  build_call send args "" builder
 
-let call_receive name (_ty : lltype) (from_partition : int) id  builder ctx =
-  let callee = lookup_function_in receive_name llvm_module in
-  let source = const_i32 from_partition in
-  let args = [| source; id; ctx |] in
-  build_call callee args name builder
+
+let call_receive name (ty : lltype) (from_partition : int) id  builder ctx =
+  let receive = lookup_function_in receive_name llvm_module in
+  let args = [| (const_i32 from_partition); id; ctx |] in
+  let value = build_call receive args name builder in
+  let bitcast = build_bitcast value (pointer_type ty) "bitcast" builder in
+  build_load bitcast "receive_load" builder
 
 let broadcast_value value from_partition branches block block_map builder ctx =
   let value_ptr, size = value_to_value_ptr value builder in
