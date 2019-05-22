@@ -7,32 +7,26 @@ let include_function fn =
 let iter_included_functions (f : llvalue -> unit) (md : llmodule) =
   iter_functions (fun fn -> if include_function fn then f fn) md
 
-let rec print_type llty =
+let rec print_type llty : string =
   let ty = classify_type llty in
   match ty with
-  | TypeKind.Void -> Printf.printf "  void\n"
-  | TypeKind.Half -> Printf.printf "  half\n"
-  | TypeKind.Float -> Printf.printf "  float\n"
-  | TypeKind.Double -> Printf.printf "  double\n"
-  | TypeKind.X86fp80 -> Printf.printf "  X86fp80\n"
-  | TypeKind.Fp128 -> Printf.printf "  Fp128\n"
-  | TypeKind.Ppc_fp128 -> Printf.printf "  Ppc_fp128\n"
-  | TypeKind.Label -> Printf.printf "  Label\n"
-  | TypeKind.Struct -> Printf.printf "  Struct\n"
-  | TypeKind.Integer -> Printf.printf "  integer\n"
-  | TypeKind.Function -> Printf.printf "  function\n"
-  | TypeKind.Array ->
-    Printf.printf "  array of";
-    print_type (element_type llty)
-  | TypeKind.Pointer  ->
-    Printf.printf "  pointer to";
-    print_type (element_type llty)
-  | TypeKind.Vector ->
-    Printf.printf "  vector of";
-      print_type (element_type llty)
-  | TypeKind.Metadata -> Printf.printf "  Metadata\n"
-  | TypeKind.X86_mmx -> Printf.printf "  X86_mmx\n"
-  | TypeKind.Token -> Printf.printf "  Token\n"
+  | TypeKind.Void -> "  void\n"
+  | TypeKind.Half -> "  half\n"
+  | TypeKind.Float -> "  float\n"
+  | TypeKind.Double -> "  double\n"
+  | TypeKind.X86fp80 -> "  X86fp80\n"
+  | TypeKind.Fp128 -> "  Fp128\n"
+  | TypeKind.Ppc_fp128 -> "  Ppc_fp128\n"
+  | TypeKind.Label -> "  Label\n"
+  | TypeKind.Struct -> "  Struct\n"
+  | TypeKind.Integer -> "  integer\n"
+  | TypeKind.Function -> "  function\n"
+  | TypeKind.Array -> "  array of" ^ (print_type (element_type llty))
+  | TypeKind.Pointer  -> "  pointer to" ^ (print_type (element_type llty))
+  | TypeKind.Vector -> "  vector of" ^ (print_type (element_type llty))
+  | TypeKind.Metadata -> "  Metadata\n"
+  | TypeKind.X86_mmx -> "  X86_mmx\n"
+  | TypeKind.Token -> "  Token\n"
 
 let opcode_cost (opcode : Opcode.t) : int =
   match opcode with
@@ -119,7 +113,7 @@ let print_val lv =
   Printf.printf "  name %s\n" (value_name lv) ;
   let llty = type_of lv in
   Printf.printf "  type %s\n" (string_of_lltype llty) ;
-  print_type llty ;
+  print_endline (print_type llty);
   ()
 
 let print_fun lv =

@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <pthread.h> 
 #include <stdlib.h>
 #include <stdio.h>
@@ -9,6 +10,7 @@ void a(void *c) {
     printf("a\n");
     // Receive first argument from main
     double argA = receive(-1, 0, c);
+    assert((int)argA == 0);
     // Send argument + 1 to b
     argA += 1.0;
     send(argA, 1, 2, c);
@@ -18,7 +20,9 @@ void b(void *c) {
     printf("b\n");
     // Receive second argument from main
     double argB = receive(-1, 1, c);
+    assert((int)argB == 5);
     double receiveFromA = receive(0, 2, c);
+    assert((int)receiveFromA == 1);
     receiveFromA += 2.0;
     send(receiveFromA, -1, 3, c);
 }
@@ -39,6 +43,7 @@ int main(int argc, char const *argv[]) {
 
     // Receive result from B
     double result = receive(1, 3, context);
+    assert((int)result == 3);
 
     join_partitioned_functions(1, threads);
 
