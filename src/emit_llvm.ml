@@ -24,6 +24,7 @@ let context = global_context ()
 let void_type = void_type context
 let void_pt_type = pointer_type (i8_type context)
 let int_type = i32_type context
+let int64_type = i64_type context
 let float_type = float_type context
 let double_type = double_type context
 let const_i32 = const_int int_type
@@ -50,6 +51,13 @@ let lookup_function_in name md =
   in
   callee
 
+let builder_and_fun partition block block_map =
+  let key = (partition, block) in
+  let new_block = PartitionBlockMap.find key !block_map in
+  let new_builder = builder_at_end context new_block in
+  let new_fun = block_parent new_block in
+  (new_builder, new_fun)
+
 let new_comms_id () : llvalue =
   let id = const_i32 (!comms_id) in
   comms_id := !comms_id + 1;
@@ -59,31 +67,57 @@ let call_init builder md =
   let callee = lookup_function_in init_name md in
   build_call callee [||] "" builder
 
-let call_send value (to_partition : int) id builder ctx =
-  let double = match classify_type (type_of value) with
-  | TypeKind.Double -> value
+let value_to_value_ptr value builder =
+  let ty = (type_of value) in
+  let value_ptr = match classify_type ty with
+  | TypeKind.Double | TypeKind.Integer | TypeKind.Pointer ->
+    let alloca = build_alloca ty "send_alloca" builder in
+    build_store value alloca builder |> ignore;
+    let bitcast = build_bitcast alloca void_pt_type "send_cast" builder in
+    bitcast
   | _ ->
-    print_endline ("should bitcast send for non-double: " ^ string_of_llvalue value);
+    print_endline ("should bitcast send for: " ^ (print_type ty) ^ ", " ^  string_of_llvalue value);
     value
-(*     build_sitofp value double_type "cast" builder *)
   in
+  let size = size_of ty in
+  (value_ptr, size)
+
+let call_send value (to_partition : int) id builder ctx =
+  let value_ptr, size = value_to_value_ptr value builder in
   let callee = lookup_function_in send_name llvm_module in
   let destination = const_i32 to_partition in
-  let args = [| double; destination; id; ctx |] in
+  let args = [| value_ptr; size;  destination; id; ctx |] in
   build_call callee args "" builder
 
-let call_receive name (from_partition : int) id  builder ctx =
+let call_receive name (_ty : lltype) (from_partition : int) id  builder ctx =
   let callee = lookup_function_in receive_name llvm_module in
   let source = const_i32 from_partition in
   let args = [| source; id; ctx |] in
   build_call callee args name builder
 
+let broadcast_value value from_partition branches block block_map builder ctx =
+  let value_ptr, size = value_to_value_ptr value builder in
+  let send_fun = lookup_function_in send_name llvm_module in
+  let insert_comms (p, br) =
+    if (p != from_partition) then begin
+      let id = new_comms_id () in
+      let destination = const_i32 p in
+      let args = [| value_ptr; size;  destination; id; ctx |] in
+      build_call send_fun args "" builder |> ignore;
+
+      let dest_builder, _ = builder_and_fun p block block_map in
+      let receive = call_receive receive_name (type_of value) from_partition id dest_builder ctx in
+      set_operand br 0 receive
+    end
+  in
+  List.iter insert_comms branches
+
 let declare_external_functions replace_md =
   (* declare init, send, receive, replace, join *)
-  let send_t = function_type void_type [| double_type; int_type; int_type; void_pt_type |] in
+  let send_t = function_type void_type [| void_pt_type; int64_type; int_type; int_type; void_pt_type |] in
   declare_function send_name send_t llvm_module |> ignore;
   declare_function send_name send_t replace_md |> ignore;
-  let receive_t = function_type double_type [| int_type; int_type; void_pt_type |] in
+  let receive_t = function_type void_pt_type [| int_type; int_type; void_pt_type |] in
   declare_function receive_name receive_t llvm_module |> ignore;
   declare_function receive_name receive_t replace_md |> ignore;
   let init_t = function_type void_pt_type [||] in
@@ -104,13 +138,6 @@ let declare_external_functions replace_md =
     declare_global (return_type (type_of g)) (value_name g) llvm_module |> ignore
   in
   iter_globals declare_global replace_md
-
-let builder_and_fun partition block block_map =
-  let key = (partition, block) in
-  let new_block = PartitionBlockMap.find key !block_map in
-  let new_builder = builder_at_end context new_block in
-  let new_fun = block_parent new_block in
-  (new_builder, new_fun)
 
 let builders_from_block block p block_map replace_funs replace_md =
   let new_builder, new_fun = builder_and_fun p block block_map in
@@ -144,7 +171,7 @@ let replace_operand idx inst block partition builder find_partition block_map in
       let op_builder, op_fun = builder_and_fun op_partition block block_map in
       let id = new_comms_id () in
       let ctx = param op_fun 0 in
-      let receive = call_receive receive_name op_partition id builder ctx in
+      let receive = call_receive receive_name (type_of new_op) op_partition id builder ctx in
       call_send new_op partition id op_builder ctx |> ignore;
       set_operand inst idx receive
     else
@@ -157,7 +184,7 @@ let replace_operand idx inst block partition builder find_partition block_map in
       let ctx = param new_fun 0 in
       if (op != ctx) then (
         let id = new_comms_id () in
-        let call = call_receive "argument" (-1) id new_builder ctx in
+        let call = call_receive "argument" (type_of op) (-1) id new_builder ctx in
         call_send op partition id replace_builder r_ctx |> ignore;
         insts_map := ValueMap.add op call !insts_map;
         set_operand inst idx call)
@@ -291,16 +318,8 @@ let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule
             (p, br)
           in
           let branches = List.map per_partition partitions in
-          let insert_sends (p, br) =
-            if (p != p0) then begin
-              let id = new_comms_id () in
-              call_send !v0' p0 id p0_builder ctx |> ignore;
-              let dest_builder, _ = builder_and_fun p block block_map in
-              let receive = call_receive receive_name p0 id dest_builder ctx in
-              set_operand br 0 receive
-            end
-          in
-          List.iter insert_sends branches;
+          broadcast_value !v0' p0 branches block block_map p0_builder ctx;
+
           (* Set branching destinations to mapped blocks per paritition *)
           let dests = [(1, b1); (2, b2)] in
           List.iter (fun (p, br) -> set_branch_destination br dests p block block_map) branches
@@ -315,8 +334,9 @@ let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule
       | Ret ->
         if (num_operands v) > 0 then begin
           let id = new_comms_id () in
-          let call = call_send (operand v 0) (-1) id new_builder ctx in
-          let return = call_receive "return" (-1) id replace_builder r_ctx in
+          let ret = operand v 0 in
+          let call = call_send ret (-1) id new_builder ctx in
+          let return = call_receive "return" (type_of ret) (-1) id replace_builder r_ctx in
           build_ret return replace_builder |> ignore;
           set_metadata call placement;
           insts_map := ValueMap.add v call !insts_map;

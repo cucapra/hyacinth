@@ -2,11 +2,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 
 typedef struct Comm Comm;
 struct Comm {
     int id;
-    double value;
+    void *value;
     Comm *next;
 };
 
@@ -58,10 +59,11 @@ void join_partitioned_functions(int num_functions, void *threads_arg) {
     }
 }
 
-void _add_channel(double value, int id, Context *context) {
+void _add_channel(void *value, int size, int id, Context *context) {
     Comm *new = malloc(sizeof(Comm));
     new->id = id;
-    new->value = value;
+    new->value = malloc(size);
+    memcpy(new->value, value, size);
     new->next = NULL;
 
     Comm *node = context->channelList;
@@ -75,35 +77,35 @@ void _add_channel(double value, int id, Context *context) {
     }
 }
 
-double *_find_channel(int id, Context *context) {
+void *_find_channel(int id, Context *context) {
     Comm *node = context->channelList;
 
     while (node) {
         if (id == node->id) {
             // TODO: remove from the list
-            return &node->value;
+            return node->value;
         }
         node = node->next;
     }
     return NULL;
 }
 
-void send(double value, int to_core, int id, void *context) {
+void send(void *value, int size, int to_core, int id, void *context) {
     Context *c = (Context *)context;
     pthread_rwlock_wrlock(&c->lock);
-    _add_channel(value, id, c);
+    _add_channel(value, size, id, c);
     pthread_rwlock_unlock(&c->lock);
 }
 
-double receive(int from_core, int id, void *context) {
+void *receive(int from_core, int id, void *context) {
     Context *c = (Context *)context;
     while (1) {
         pthread_rwlock_rdlock(&c->lock);
-        double *value = _find_channel(id, c);
+        void *value = _find_channel(id, c);
         pthread_rwlock_unlock(&c->lock);
         if (value) {
-            return *value;
+            return value;
         }
     }
-    return 0.0;
+    return NULL;
 }

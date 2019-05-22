@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-void multiply(double a[][3], double b[][3], double res[][3]) { 
+void multiply(double a[3][3], double b[3][3], double res[3][3]) { 
     for (int i = 0; i < 3; i++) { 
         for (int j = 0; j < 3; j++) { 
             res[i][j] = 0; 
