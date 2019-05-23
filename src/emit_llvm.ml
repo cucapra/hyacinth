@@ -163,6 +163,13 @@ let builders_from_block block p block_map replace_funs replace_md =
 
   (new_builder, new_fun, replace_builder, ctx)
 
+let builder_before_last_instr block =
+  let before_last = match instr_end block with
+  | After v -> Before v
+  | At_start _ -> failwith "builder should be before last instruction"
+  in
+  builder_at context before_last
+
 let replace_operand idx inst block partition builder find_partition block_map insts_map replace_funs replace_md =
   let op = operand inst idx in
   match (ValueMap.find_opt op !insts_map) with
@@ -201,12 +208,49 @@ let replace_operands inst block partition builder find_partition block_map insts
   let arity_range = Core.List.range 0 arity in
   List.iter replace_op arity_range
 
+let repair_phi_node find_partition block_map insts_map phi =
+  let partition = find_partition phi in
+  let map_incoming (v, block) =
+    let prev_block = PartitionBlockMap.find (partition, block) !block_map in
+    match (ValueMap.find_opt v !insts_map) with
+    | Some new_val ->
+      let op_partition = find_partition v in
+      let op_block = PartitionBlockMap.find (op_partition, block) !block_map in
+      (* If the operand is on a different partition, insert send/receive
+         on the SOURCE block, not the current block *)
+      if partition != op_partition then begin
+        let op_builder = builder_before_last_instr op_block in
+        let prev_block_builder = builder_before_last_instr prev_block in
+        let id = new_comms_id () in
+        let ctx = param (block_parent op_block) 0 in
+        call_send new_val partition id op_builder ctx |> ignore;
+        let receive = call_receive receive_name (type_of new_val) op_partition id prev_block_builder ctx in
+        (receive, op_block)
+      end
+      else
+        (new_val, prev_block)
+    | None -> (v, prev_block)
+  in
+  match (classify_value phi) with
+  | Instruction opcode ->
+    begin match (opcode : Opcode.t) with
+    | PHI ->
+      let phi' = ValueMap.find phi !insts_map in
+      let new_incoming = List.map map_incoming (incoming phi') in
+      let builder = builder_at context (instr_begin (instr_parent phi')) in
+      let new_phi = build_phi new_incoming "new_phi" builder in
+      replace_all_uses_with phi' new_phi;
+      delete_instruction phi'
+    | _ -> ()
+    end
+  | _ -> failwith "Not instruction"
+
 let clone_blocks_per_partition replace_md partitions block_map =
   (* Get all the basic blocks, and map them to new blocks per partition *)
   let per_block partition old_fun new_fun old_block =
     let new_block = if old_block == entry_block old_fun
       then entry_block new_fun
-      else append_block context "b" new_fun
+      else append_block context "l" new_fun
     in
     let key = (partition, old_block) in
     block_map := PartitionBlockMap.add key new_block !block_map
@@ -253,11 +297,7 @@ let replace_fun replace_md old_fun (_, ctx, new_fun_set) =
   let args = [| const_i32 funs_len; gep; ctx |] in
   let threads = build_call replace args "threads" builder in
 
-  let before_ret = match instr_end (entry_block new_fun) with
-  | After v -> Before v
-  | At_start _ -> failwith "builder should be before return"
-  in
-  let end_builder = builder_at context before_ret in
+  let end_builder = builder_before_last_instr (entry_block new_fun) in
   let join = lookup_function_in join_name replace_md in
   build_call join [| const_i32 funs_len; threads |] "" end_builder |> ignore
 
@@ -280,6 +320,12 @@ let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule
   let replace_funs = ref ValueMap.empty in
   let insts_map = ref ValueMap.empty in
 
+  let find_partition v' =
+    let pair_opt = List.find_opt (fun (x, _) -> x == v') llvm_to_ast in
+    match pair_opt with
+    | Some (_, c) -> (placement_for_com c).partition
+    | None -> failwith "No partition"
+  in
   (* (partition, old block) -> new block *)
   let block_map = ref PartitionBlockMap.empty in
   clone_blocks_per_partition replace_md partitions block_map;
@@ -291,12 +337,6 @@ let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule
     | None -> failwith ("failed to find com for: " ^ (string_of_llvalue v)) in
     let placement = placement_for_com com in
     let p = placement.partition in
-    let find_partition v' =
-      let pair_opt = List.find_opt (fun (x, _) -> x == v') llvm_to_ast in
-      match pair_opt with
-      | Some (_, c) -> (placement_for_com c).partition
-      | None -> p
-    in
     match (classify_value v) with
     | Instruction op ->
       (* print_endline ("Emitting LLVM for instruction: " ^ (string_of_llvalue v)); *)
@@ -353,9 +393,12 @@ let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule
         replace_operands clone block p new_builder find_partition block_map insts_map replace_funs replace_md;
         insert_into_builder clone "" new_builder
       end
-    | _ -> failwith "Not intruction"
+    | _ -> failwith "Not instruction"
   in
   iter_included_functions (iter_blocks (iter_instrs add_instruction)) replace_md;
+
+  let repair_phi = repair_phi_node find_partition block_map insts_map in
+  iter_included_functions (iter_blocks (iter_instrs repair_phi)) replace_md;
 
   ValueMap.iter (replace_fun replace_md) !replace_funs;
   print_module "llvm_out.ll" llvm_module;
