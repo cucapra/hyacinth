@@ -297,9 +297,10 @@ let replace_fun replace_md old_fun (_, ctx, new_fun_set) =
   let args = [| const_i32 funs_len; gep; ctx |] in
   let threads = build_call replace args "threads" builder in
 
-  let end_builder = builder_before_last_instr (entry_block new_fun) in
+  let end_builder = builder_at_end context (entry_block new_fun) in
   let join = lookup_function_in join_name replace_md in
-  build_call join [| const_i32 funs_len; threads |] "" end_builder |> ignore
+  build_call join [| const_i32 funs_len; threads |] "" end_builder |> ignore;
+  build_ret_void end_builder |> ignore
 
 let set_branch_destination br destinations p block block_map =
   let per_destination (idx, dest) =
