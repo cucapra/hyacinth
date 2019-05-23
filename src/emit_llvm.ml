@@ -35,6 +35,7 @@ let receive_name = "receive"
 let replace_name = "call_partitioned_functions"
 let join_name = "join_partitioned_functions"
 let comms_id = ref 0
+let host_id = -1
 
 let set_metadata inst placement  =
   let s_id = mdkind_id context "start" in
@@ -69,26 +70,26 @@ let call_init builder md =
 
 let value_to_value_ptr value builder =
   let ty = (type_of value) in
-  let value_ptr = match classify_type ty with
+  let value_ptr, to_replace = match classify_type ty with
   | TypeKind.Double | TypeKind.Integer | TypeKind.Pointer ->
     let alloca = build_alloca ty "send_alloca" builder in
-    build_store value alloca builder |> ignore;
+    let store = build_store value alloca builder in
     let bitcast = build_bitcast alloca void_pt_type "send_cast" builder in
-    bitcast
+    bitcast, store
   | _ ->
     print_endline ("should bitcast send for: " ^ (print_type ty) ^ ", " ^  string_of_llvalue value);
-    value
+    value, value
   in
   let size = size_of ty in
-  (value_ptr, size)
+  (value_ptr, size, to_replace)
 
 let call_send value (to_partition : int) id builder ctx =
-  let value_ptr, size = value_to_value_ptr value builder in
+  let value_ptr, size, to_replace = value_to_value_ptr value builder in
   let send = lookup_function_in send_name llvm_module in
   let destination = const_i32 to_partition in
   let args = [| value_ptr; size;  destination; id; ctx |] in
-  build_call send args "" builder
-
+  build_call send args "" builder |> ignore;
+  to_replace
 
 let call_receive name (ty : lltype) (from_partition : int) id  builder ctx =
   let receive = lookup_function_in receive_name llvm_module in
@@ -98,7 +99,7 @@ let call_receive name (ty : lltype) (from_partition : int) id  builder ctx =
   build_load bitcast "receive_load" builder
 
 let broadcast_value value from_partition branches block block_map builder ctx =
-  let value_ptr, size = value_to_value_ptr value builder in
+  let value_ptr, size, _ = value_to_value_ptr value builder in
   let send_fun = lookup_function_in send_name llvm_module in
   let insert_comms (p, br) =
     if (p != from_partition) then begin
@@ -193,7 +194,7 @@ let replace_operand idx inst block partition builder find_partition block_map in
       let ctx = param new_fun 0 in
       if (op != ctx) then (
         let id = new_comms_id () in
-        let call = call_receive "argument" (type_of op) (-1) id new_builder ctx in
+        let call = call_receive "argument" (type_of op) host_id id new_builder ctx in
         call_send op partition id replace_builder r_ctx |> ignore;
         insts_map := ValueMap.add op call !insts_map;
         set_operand inst idx call)
@@ -231,19 +232,16 @@ let repair_phi_node find_partition block_map insts_map phi =
         (new_val, prev_block)
     | None -> (v, prev_block)
   in
-  match (classify_value phi) with
-  | Instruction opcode ->
-    begin match (opcode : Opcode.t) with
-    | PHI ->
-      let phi' = ValueMap.find phi !insts_map in
-      let new_incoming = List.map map_incoming (incoming phi') in
-      let builder = builder_at context (instr_begin (instr_parent phi')) in
-      let new_phi = build_phi new_incoming "new_phi" builder in
-      replace_all_uses_with phi' new_phi;
-      delete_instruction phi'
-    | _ -> ()
-    end
-  | _ -> failwith "Not instruction"
+  let opcode = instr_opcode phi in
+  match (opcode : Opcode.t) with
+  | PHI ->
+    let phi' = ValueMap.find phi !insts_map in
+    let new_incoming = List.map map_incoming (incoming phi') in
+    let builder = builder_at context (instr_begin (instr_parent phi')) in
+    let new_phi = build_phi new_incoming "new_phi" builder in
+    replace_all_uses_with phi' new_phi;
+    delete_instruction phi'
+  | _ -> ()
 
 let clone_blocks_per_partition replace_md partitions block_map =
   (* Get all the basic blocks, and map them to new blocks per partition *)
@@ -280,6 +278,7 @@ let insert_ret_void block block_map partition =
 let replace_fun replace_md old_fun (_, ctx, new_fun_set) =
   let old_name = value_name old_fun in
   let new_fun = lookup_function_in ("replace_" ^ old_name) replace_md in
+  let return_t = return_type (return_type (type_of old_fun)) in
   replace_all_uses_with old_fun new_fun;
   let after_init = match instr_begin (entry_block new_fun) with
   | Before v -> instr_succ v
@@ -298,9 +297,20 @@ let replace_fun replace_md old_fun (_, ctx, new_fun_set) =
   let threads = build_call replace args "threads" builder in
 
   let end_builder = builder_at_end context (entry_block new_fun) in
-  let join = lookup_function_in join_name replace_md in
-  build_call join [| const_i32 funs_len; threads |] "" end_builder |> ignore;
-  build_ret_void end_builder |> ignore
+  let call_join _ =
+    let join = lookup_function_in join_name replace_md in
+    build_call join [| const_i32 funs_len; threads |] "" end_builder |> ignore
+  in
+
+  if return_t == void_type then begin
+    call_join ();
+    build_ret_void end_builder |> ignore
+  end
+  else begin
+    let return = call_receive "return" return_t host_id (const_i32 host_id) end_builder ctx in
+    call_join ();
+    build_ret return end_builder |> ignore
+  end
 
 let set_branch_destination br destinations p block block_map =
   let per_destination (idx, dest) =
@@ -321,11 +331,11 @@ let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule
   let replace_funs = ref ValueMap.empty in
   let insts_map = ref ValueMap.empty in
 
-  let find_partition v' =
+  let find_partition_opt v' =
     let pair_opt = List.find_opt (fun (x, _) -> x == v') llvm_to_ast in
     match pair_opt with
-    | Some (_, c) -> (placement_for_com c).partition
-    | None -> failwith "No partition"
+    | Some (_, c) -> Some (placement_for_com c).partition
+    | None -> None
   in
   (* (partition, old block) -> new block *)
   let block_map = ref PartitionBlockMap.empty in
@@ -338,66 +348,69 @@ let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule
     | None -> failwith ("failed to find com for: " ^ (string_of_llvalue v)) in
     let placement = placement_for_com com in
     let p = placement.partition in
-    match (classify_value v) with
-    | Instruction op ->
-      (* print_endline ("Emitting LLVM for instruction: " ^ (string_of_llvalue v)); *)
-      let block = instr_parent v in
-      let new_builder, new_fun, replace_builder, r_ctx = builders_from_block block p block_map replace_funs replace_md in
-      let ctx = param new_fun 0 in
-      begin match (op : Opcode.t) with
-      | Br ->
-        begin match get_branch v with
-        | Some (`Conditional (v0, b1, b2)) ->
-          let p0 = find_partition v0 in
-          let p0_builder, _ = builder_and_fun p0 block block_map in
-          let v0' = ref v0 in
-          let per_partition p : (int * llvalue) =
-            let br = instr_clone v in
-            (* Send v0 to every core but the one it's already on *)
-            if (p == p0) then begin
-              replace_operand 0 br block p p0_builder find_partition block_map insts_map replace_funs replace_md;
-              v0' := operand br 0
-            end;
-            (p, br)
-          in
-          let branches = List.map per_partition partitions in
-          broadcast_value !v0' p0 branches block block_map p0_builder ctx;
+    let find_partition v' = match find_partition_opt v' with
+    | Some p' -> p'
+    | None -> p
+    in
+    let op = instr_opcode v in
+    let block = instr_parent v in
+    let new_builder, new_fun, _, _ = builders_from_block block p block_map replace_funs replace_md in
+    let ctx = param new_fun 0 in
+    begin match (op : Opcode.t) with
+    | Br ->
+      begin match get_branch v with
+      | Some (`Conditional (v0, b1, b2)) ->
+        let p0 = find_partition v0 in
+        let p0_builder, _ = builder_and_fun p0 block block_map in
+        let v0' = ref v0 in
+        let per_partition p : (int * llvalue) =
+          let br = instr_clone v in
+          (* Send v0 to every core but the one it's already on *)
+          if (p == p0) then begin
+            replace_operand 0 br block p p0_builder find_partition block_map insts_map replace_funs replace_md;
+            v0' := operand br 0
+          end;
+          (p, br)
+        in
+        let branches = List.map per_partition partitions in
+        broadcast_value !v0' p0 branches block block_map p0_builder ctx;
 
-          (* Set branching destinations to mapped blocks per paritition *)
-          let dests = [(1, b1); (2, b2)] in
-          List.iter (fun (p, br) -> set_branch_destination br dests p block block_map) branches
-        | Some (`Unconditional old_dest) ->
-          let per_partition p =
-            let br = instr_clone v in
-            set_branch_destination br [(0, old_dest)] p block block_map
-          in
-          List.iter per_partition partitions
-        | None -> failwith "Instruction must be branch"
-        end
-      | Ret ->
-        if (num_operands v) > 0 then begin
-          let id = new_comms_id () in
-          let ret = operand v 0 in
-          let call = call_send ret (-1) id new_builder ctx in
-          let return = call_receive "return" (type_of ret) (-1) id replace_builder r_ctx in
-          build_ret return replace_builder |> ignore;
-          set_metadata call placement;
-          insts_map := ValueMap.add v call !insts_map;
-          replace_operands call block p new_builder find_partition block_map insts_map replace_funs replace_md;
-        end;
-        (* Insert void return at this block for all partitions *)
-        List.iter (insert_ret_void block block_map) partitions
-      | _ ->
-        let clone = instr_clone v in
-        set_metadata clone placement;
-        insts_map := ValueMap.add v clone !insts_map;
-        replace_operands clone block p new_builder find_partition block_map insts_map replace_funs replace_md;
-        insert_into_builder clone "" new_builder
+        (* Set branching destinations to mapped blocks per paritition *)
+        let dests = [(1, b1); (2, b2)] in
+        List.iter (fun (p, br) -> set_branch_destination br dests p block block_map) branches
+      | Some (`Unconditional old_dest) ->
+        let per_partition p =
+          let br = instr_clone v in
+          set_branch_destination br [(0, old_dest)] p block block_map
+        in
+        List.iter per_partition partitions
+      | None -> failwith "Instruction must be branch"
       end
-    | _ -> failwith "Not instruction"
+    | Ret ->
+      (* If it's not a void return, it needs to be sent back to the host;
+      there may be multiple returns per function, so we'll insert the receive
+      once, later. *)
+      if (num_operands v) > 0 then begin
+        let ret = operand v 0 in
+        let call = call_send ret host_id (const_i32 host_id) new_builder ctx in
+        replace_operands call block p new_builder find_partition block_map insts_map replace_funs replace_md;
+      end;
+      (* Insert void return at this block for all partitions *)
+      List.iter (insert_ret_void block block_map) partitions
+    | _ ->
+      let clone = instr_clone v in
+      set_metadata clone placement;
+      insts_map := ValueMap.add v clone !insts_map;
+      replace_operands clone block p new_builder find_partition block_map insts_map replace_funs replace_md;
+      insert_into_builder clone "" new_builder
+    end
   in
   iter_included_functions (iter_blocks (iter_instrs add_instruction)) replace_md;
 
+  let find_partition v' = match find_partition_opt v' with
+  | Some p' -> p'
+  | None -> failwith "No partition"
+  in
   let repair_phi = repair_phi_node find_partition block_map insts_map in
   iter_included_functions (iter_blocks (iter_instrs repair_phi)) replace_md;
 
