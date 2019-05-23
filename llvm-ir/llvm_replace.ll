@@ -143,8 +143,9 @@ entry:
   %send_alloca3 = alloca [3 x double]*
   store [3 x double]* %1, [3 x double]** %send_alloca3
   %send_cast4 = bitcast [3 x double]** %send_alloca3 to i8*
-  call void @join_partitioned_functions(i32 4, i8* %threads)
   call void @send(i8* %send_cast4, i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i32 0, i32 12, i8* %3)
+  call void @join_partitioned_functions(i32 4, i8* %threads)
+  ret void
 }
 
 attributes #0 = { norecurse nounwind ssp uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "min-legal-vector-width"="0" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
