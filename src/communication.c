@@ -71,6 +71,9 @@ void _add_channel(void *value, int size, int id, Context *context) {
         context->channelList = new;
     } else {
         while (node->next) {
+            if (id == node->id) {
+                printf("WARNING: sending with ID [%d] already in use\n", id);
+            }
             node = node->next;
         }
         node->next = new;
