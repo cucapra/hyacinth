@@ -3,10 +3,13 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include  <stdbool.h>
+#include "communication.h"
 
 typedef struct Comm Comm;
 struct Comm {
     int id;
+    int size;
     void *value;
     Comm *next;
 };
@@ -62,6 +65,7 @@ void join_partitioned_functions(int num_functions, void *threads_arg) {
 void _add_channel(void *value, int size, int id, Context *context) {
     Comm *new = malloc(sizeof(Comm));
     new->id = id;
+    new->size = size;
     new->value = malloc(size);
     memcpy(new->value, value, size);
     new->next = NULL;
@@ -80,13 +84,13 @@ void _add_channel(void *value, int size, int id, Context *context) {
     }
 }
 
-void *_find_channel(int id, Context *context) {
+ Comm *_find_channel(int id, Context *context) {
     Comm *node = context->channelList;
 
     while (node) {
         if (id == node->id) {
             // TODO: remove from the list
-            return node->value;
+            return node;
         }
         node = node->next;
     }
@@ -94,20 +98,46 @@ void *_find_channel(int id, Context *context) {
 }
 
 void send(void *value, int size, int to_core, int id, void *context) {
+    #ifdef DEBUGGING
+    if (size == 8) {
+        double v = *((double *)value);
+        printf("ID [%d] Sending value: %f\n", id, v);
+    }
+    if (size == 1) {
+        bool v = *((bool *)value);
+        printf("ID [%d] Sending value: %d\n", id, v);
+    }
+    #endif // DEBUGGING
+
     Context *c = (Context *)context;
     pthread_rwlock_wrlock(&c->lock);
     _add_channel(value, size, id, c);
     pthread_rwlock_unlock(&c->lock);
 }
 
-void *receive(int from_core, int id, void *context) {
+void *receive(int size, int from_core, int id, void *context) {
     Context *c = (Context *)context;
     while (1) {
         pthread_rwlock_rdlock(&c->lock);
-        void *value = _find_channel(id, c);
+        Comm *node = _find_channel(id, c);
         pthread_rwlock_unlock(&c->lock);
-        if (value) {
-            return value;
+        if (node) {
+            if (node->size != size) {
+                printf("WARNING: receive with ID [%d] expected size %d but has size %d\n", id, size, node->size);
+            }
+
+            #ifdef DEBUGGING
+            if (size == 8) {
+                double v = *((double *)node->value);
+                printf("ID [%d] Receiving value: %f\n", id, v);
+            }
+            if (size == 1) {
+                bool v = *((bool *)node->value);
+                printf("ID [%d] Receiving value: %d\n", id, v);
+            }
+            #endif // DEBUGGING
+
+            return node->value;
         }
     }
     return NULL;

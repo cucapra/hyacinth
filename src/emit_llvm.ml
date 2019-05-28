@@ -93,7 +93,8 @@ let call_send value (to_partition : int) id builder ctx =
 
 let call_receive name (ty : lltype) (from_partition : int) id  builder ctx =
   let receive = lookup_function_in receive_name llvm_module in
-  let args = [| (const_i32 from_partition); id; ctx |] in
+  let size = size_of ty in
+  let args = [| size; (const_i32 from_partition); id; ctx |] in
   let value = build_call receive args name builder in
   let bitcast = build_bitcast value (pointer_type ty) "bitcast" builder in
   build_load bitcast "receive_load" builder
@@ -120,7 +121,7 @@ let declare_external_functions replace_md =
   let send_t = function_type void_type [| void_pt_type; int64_type; int_type; int_type; void_pt_type |] in
   declare_function send_name send_t llvm_module |> ignore;
   declare_function send_name send_t replace_md |> ignore;
-  let receive_t = function_type void_pt_type [| int_type; int_type; void_pt_type |] in
+  let receive_t = function_type void_pt_type [| int64_type; int_type; int_type; void_pt_type |] in
   declare_function receive_name receive_t llvm_module |> ignore;
   declare_function receive_name receive_t replace_md |> ignore;
   let init_t = function_type void_pt_type [||] in

@@ -14,7 +14,7 @@ void send_double(double value, int to_core, int id, void *context) {
 }
 
 double receive_double(int from_core, int id, void *context){
-    double *result = (double *)receive(from_core, id, context);
+    double *result = (double *)receive(sizeof(double), from_core, id, context);
     return *result;
 }
 
@@ -27,7 +27,7 @@ void send_3_double(double value[3], int to_core, int id, void *context) {
 }
 
 double *receive_3x3_double(int from_core, int id, void *context){
-    double *result = (double *)receive(from_core, id, context);
+    double *result = (double *)receive(sizeof(double[3]), from_core, id, context);
     return result;
 }
 
@@ -76,7 +76,7 @@ void simple_test () {
 void array_a(void *c) {
     // Receive first argument from main
     int *result1 = malloc(sizeof(int[3]));
-    memcpy(result1, receive(-1, 0, c), sizeof(int[3]));
+    memcpy(result1, receive(sizeof(int[3]),-1, 0, c), sizeof(int[3]));
     for (int i = 0; i < 3; i++) {
         assert(arr1[i] == result1[i]);
         printf("array result1[%d]: %d\n", i, result1[i]);
@@ -84,7 +84,7 @@ void array_a(void *c) {
 
     // Receive second argument from main
     int *result2 = malloc(sizeof(int[3]));
-    memcpy(result2, receive(-1, 1, c), sizeof(int[3]));
+    memcpy(result2, receive(sizeof(int[3]),-1, 1, c), sizeof(int[3]));
     for (int i = 0; i < 3; i++) {
         assert(arr2[i] == result2[i]);
         printf("array result1[%d]: %d\n", i, result2[i]);
