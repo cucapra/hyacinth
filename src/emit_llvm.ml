@@ -5,22 +5,6 @@ open Llvm
 open Llvm_shared
 open Emit_utils
 
-let compare_partition_values (p1, v1) (p2, v2) =
-  let same_partitions = compare p1 p2 in
-  if same_partitions != 0 then same_partitions else compare v1 v2
-
-module PartitionValueMap =
-  Map.Make(struct type t = int * llvalue;; let compare = compare_partition_values end)
-
-module PartitionBlockMap =
-  Map.Make(struct type t = int * llbasicblock;; let compare = compare_partition_values end)
-
-module ValueMap =
-  Map.Make(struct type t = llvalue;; let compare = compare end)
-
-module ValueSet =
-  Set.Make(struct type t = llvalue;; let compare = compare end)
-
 let context = global_context ()
 let void_type = void_type context
 let void_pt_type = pointer_type (i8_type context)
@@ -267,9 +251,6 @@ let clone_blocks_per_partition replace_md partitions mappings =
   in
   let per_function fn = List.iter (per_partition fn) partitions in
   iter_included_functions per_function replace_md
-
-let new_destination_for_branch partition branch block_map =
-  PartitionBlockMap.find (partition, branch) !block_map
 
 let get_nonempty_partitions (dfg : placement NodeMap.t) : int list =
   NodeMap.bindings dfg |> List.map (fun (_, p) -> p.partition) |> List.sort_uniq compare
