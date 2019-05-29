@@ -26,7 +26,6 @@ type placement =
 
 (* node, core assignment, (starting time, ending time) *)
 and assignments = (node * term * (term * term)) list
-and partitioning = placement NodeMap.t
 
 let rows = ref 2
 let cols = ref 2
@@ -150,10 +149,11 @@ let time_for_comms (p1 : term) (p2 : term) : term =
   App(dist_fun_id, [p1; p2])
 
 let constrain_per_incoming (s : solver) (a : assignments) (i_n : node) pt t1 =
-  match i_n with
+  let _, i_n' = i_n in
+  match i_n' with
   | NLit _ -> () (* No cost for incoming literals *)
   | NOp _ | NInput _->
-    begin match (List.find_opt (fun (n', _, _) -> i_n == n') a) with
+    begin match (List.find_opt (fun ((_, n'), _, _) -> i_n' == n') a) with
     | Some (_, pt', (_, t2')) ->
       let partition_comms_term = time_for_comms pt pt' in
       (* The starting time must be after the incoming ending time plus the
@@ -162,17 +162,17 @@ let constrain_per_incoming (s : solver) (a : assignments) (i_n : node) pt t1 =
     | None -> print_endline ("Cannot find partition for: " ^ (print_node i_n))
     end
 
-let constrain_per_node (s : solver) (a : assignments) p  =
+let constrain_per_node (s : solver) (a : assignments) p : unit =
   match p with
-  | (NLit(_), _, _) -> failwith "Literals should not be directly constrained"
-  | (NOp(op), pt, (t1, t2)) ->
+  | ((_, NLit(_)), _, _) -> failwith "Literals should not be directly constrained"
+  | ((_, NOp(op)), pt, (t1, t2)) ->
     (* The ending time must be after the starting time plus the op time *)
     let op_cost_term = int_to_term (time_per_op op.op) in
     assert_ s (equals (add t1 op_cost_term) t2);
     (* The starting time must be after the ending time of each incoming node *)
     let f (n : node) = constrain_per_incoming s a n pt t1 in
     List.iter f op.incoming
-  | (NInput _, pt, (t1, t2)) ->
+  | ((_, NInput _), pt, (t1, t2)) ->
     (* The ending time must be after the starting time plus the input time *)
     let input_cost = int_to_term 1 in
     assert_ s (equals (add t1 input_cost) t2);
@@ -209,7 +209,7 @@ let latest_time (s : solver) (a : assignments) : term =
   (con l)
 
 let sequential_time (a : assignments) : int =
-  let total_time (acc : int) (n, _, _) = match n with
+  let total_time (acc : int) ((_, n), _, _) = match n with
   | NLit _ -> acc
   | NOp o -> time_per_op o.op + acc
   | NInput _ -> acc in

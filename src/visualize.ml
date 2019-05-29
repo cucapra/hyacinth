@@ -12,7 +12,7 @@ let print_address n : string =
   let address = 2*(Obj.magic n) in
   Printf.sprintf "(%d)" address
 
-let string_of_node (n : node) : string =
+let string_of_node (_, n : node) : string =
   match n with
   | NLit fl -> "literal: " ^ (string_of_float fl)
   | NOp o -> "operation: " ^ (print_operation o.op)
@@ -24,7 +24,7 @@ let string_of_partition (n, p, (t1, t2)) =
     ^ "\nTime: (" ^ (string_of_int t1) ^ ", " ^ (string_of_int t2) ^ ")" in
   "\"" ^ node ^ sched ^ "\""
 
-let vertex_attribute (n, p, _) =
+let vertex_attribute ((_, n), p, _) =
   let color = match p with
   | 0 -> 0xb7d2ff
   | 1 -> 0xf7f08a
@@ -70,7 +70,7 @@ module Dot = Graphviz.Dot(struct
   let graph_attributes _ = []
 end)
 
-let incoming n =
+let incoming ((_, n) : node) : node list=
   match n with
   | NOp o -> o.incoming
   | _ -> []
