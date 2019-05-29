@@ -6,6 +6,8 @@
 #include  <stdbool.h>
 #include "communication.h"
 
+#define DEBUGGING 0
+
 typedef struct Comm Comm;
 struct Comm {
     int id;
@@ -98,7 +100,8 @@ void _add_channel(void *value, int size, int id, Context *context) {
 }
 
 void send(void *value, int size, int to_core, int id, void *context) {
-    #ifdef DEBUGGING
+    #if DEBUGGING
+    printf("send size: %d\n", size);
     if (size == 8) {
         double v = *((double *)value);
         printf("ID [%d] Sending value: %f\n", id, v);
@@ -126,7 +129,8 @@ void *receive(int size, int from_core, int id, void *context) {
                 printf("WARNING: receive with ID [%d] expected size %d but has size %d\n", id, size, node->size);
             }
 
-            #ifdef DEBUGGING
+            #if DEBUGGING
+            printf("receive size: %d\n", size);
             if (size == 8) {
                 double v = *((double *)node->value);
                 printf("ID [%d] Receiving value: %f\n", id, v);

@@ -305,12 +305,70 @@ let set_branch_destination br destinations p block mappings =
   let builder, _ = builder_and_fun p block mappings in
   insert_into_builder br "" builder
 
+let add_branch_instructions v block find_partition partitions mappings replace_md =
+  match get_branch v with
+  | Some (`Conditional (v0, b1, b2)) ->
+    let p0 = find_partition v0 in
+    let p0_builder, p0_f = builder_and_fun p0 block mappings in
+    let ctx = param p0_f 0 in
+    let v0' = ref v0 in
+    let per_partition p : (int * llvalue) =
+      let br = instr_clone v in
+      (* Send v0 to every core but the one it's already on *)
+      if (p == p0) then begin
+        replace_operand 0 br block p p0_builder find_partition mappings replace_md;
+        v0' := operand br 0
+      end;
+      (p, br)
+    in
+    let branches = List.map per_partition partitions in
+    broadcast_value !v0' p0 branches block mappings p0_builder ctx;
+
+    (* Set branching destinations to mapped blocks per paritition *)
+    let dests = [(1, b1); (2, b2)] in
+    List.iter (fun (p, br) -> set_branch_destination br dests p block mappings) branches
+  | Some (`Unconditional old_dest) ->
+    let per_partition p =
+      let br = instr_clone v in
+      set_branch_destination br [(0, old_dest)] p block mappings
+    in
+    List.iter per_partition partitions
+  | None -> failwith "Instruction must be branch"
+
+let add_straightline_instructions v block placement find_partition partitions mappings replace_md =
+  let p = placement.partition in
+  let new_builder, new_fun, _, _ = builders_from_block block p mappings replace_md in
+  let ctx = param new_fun 0 in
+  match (instr_opcode v) with
+  | Ret ->
+    (* If it's not a void return, it needs to be sent back to the host;
+    there may be multiple returns per function, so we'll insert the receive
+    once, later. *)
+    if (num_operands v) > 0 then begin
+      let ret = operand v 0 in
+      let call = call_send ret host_id (const_i32 host_id) new_builder ctx in
+      replace_operands call block p new_builder find_partition mappings replace_md;
+    end;
+    (* Insert void return at this block for all partitions *)
+    List.iter (insert_ret_void block mappings) partitions
+  | _ ->
+    let clone = instr_clone v in
+    set_metadata clone placement;
+    add_instr mappings v clone;
+    replace_operands clone block p new_builder find_partition mappings replace_md;
+    insert_into_builder clone "" new_builder
+
 let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule * (llvalue * com) list)) (node_map : node ComMap.t) =
   print_endline "\nStarting to emit LLVM";
   set_data_layout "e-m:o-i64:64-f80:128-n8:16:32:64-S128" llvm_module;
   declare_external_functions replace_md;
 
-  let placement_for_com c = NodeMap.find (ComMap.find c node_map) dfg in
+  let placement_for_com c =
+    let n = ComMap.find c node_map in
+    match NodeMap.find_opt n dfg with
+    | Some p -> p
+    | None -> failwith ("No placement for:" ^ (print_node n) ^ ",  com: " ^ (Pretty.pretty c))
+  in
   let partitions = get_nonempty_partitions dfg in
   let mappings = init_mappings () in
 
@@ -320,78 +378,32 @@ let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule
     | Some (_, c) -> Some (placement_for_com c).partition
     | None -> None
   in
-  clone_blocks_per_partition replace_md partitions mappings;
-
-  let add_instruction (v : llvalue) =
-    let com_opt = List.find_opt (fun (x, _) -> x == v) llvm_to_ast in
-    let com = match com_opt with
-    | Some (_, com) -> com
-    | None -> failwith ("failed to find com for: " ^ (string_of_llvalue v)) in
-    let placement = placement_for_com com in
-    let p = placement.partition in
-    let find_partition v' = match find_partition_opt v' with
-    | Some p' -> p'
-    | None -> p
-    in
-    let op = instr_opcode v in
-    let block = instr_parent v in
-    let new_builder, new_fun, _, _ = builders_from_block block p mappings replace_md in
-    let ctx = param new_fun 0 in
-    begin match (op : Opcode.t) with
-    | Br ->
-      begin match get_branch v with
-      | Some (`Conditional (v0, b1, b2)) ->
-        let p0 = find_partition v0 in
-        let p0_builder, _ = builder_and_fun p0 block mappings in
-        let v0' = ref v0 in
-        let per_partition p : (int * llvalue) =
-          let br = instr_clone v in
-          (* Send v0 to every core but the one it's already on *)
-          if (p == p0) then begin
-            replace_operand 0 br block p p0_builder find_partition mappings replace_md;
-            v0' := operand br 0
-          end;
-          (p, br)
-        in
-        let branches = List.map per_partition partitions in
-        broadcast_value !v0' p0 branches block mappings p0_builder ctx;
-
-        (* Set branching destinations to mapped blocks per paritition *)
-        let dests = [(1, b1); (2, b2)] in
-        List.iter (fun (p, br) -> set_branch_destination br dests p block mappings) branches
-      | Some (`Unconditional old_dest) ->
-        let per_partition p =
-          let br = instr_clone v in
-          set_branch_destination br [(0, old_dest)] p block mappings
-        in
-        List.iter per_partition partitions
-      | None -> failwith "Instruction must be branch"
-      end
-    | Ret ->
-      (* If it's not a void return, it needs to be sent back to the host;
-      there may be multiple returns per function, so we'll insert the receive
-      once, later. *)
-      if (num_operands v) > 0 then begin
-        let ret = operand v 0 in
-        let call = call_send ret host_id (const_i32 host_id) new_builder ctx in
-        replace_operands call block p new_builder find_partition mappings replace_md;
-      end;
-      (* Insert void return at this block for all partitions *)
-      List.iter (insert_ret_void block mappings) partitions
-    | _ ->
-      let clone = instr_clone v in
-      set_metadata clone placement;
-      add_instr mappings v clone;
-      replace_operands clone block p new_builder find_partition mappings replace_md;
-      insert_into_builder clone "" new_builder
-    end
-  in
-  iter_included_functions (iter_blocks (iter_instrs add_instruction)) replace_md;
-
   let find_partition v' = match find_partition_opt v' with
   | Some p' -> p'
   | None -> failwith "No partition"
   in
+  clone_blocks_per_partition replace_md partitions mappings;
+
+  let add_instructions (v : llvalue) =
+    let com_opt = List.find_opt (fun (x, _) -> x == v) llvm_to_ast in
+    let com = match com_opt with
+    | Some (_, com) -> com
+    | None -> failwith ("failed to find com for: " ^ (string_of_llvalue v)) in
+    let op = instr_opcode v in
+    let block = instr_parent v in
+    begin match (op : Opcode.t) with
+    | Br ->
+      add_branch_instructions v block find_partition partitions mappings replace_md
+    | _ ->
+      let placement = placement_for_com com in
+      let find_partition_default v' = match find_partition_opt v' with
+      | Some p' -> p'
+      | None -> placement.partition
+      in
+      add_straightline_instructions v block placement find_partition_default partitions mappings replace_md
+    end
+  in
+  iter_included_functions (iter_blocks (iter_instrs add_instructions)) replace_md;
   let repair_phi = repair_phi_node find_partition mappings in
   iter_included_functions (iter_blocks (iter_instrs repair_phi)) replace_md;
 
