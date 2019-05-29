@@ -347,7 +347,8 @@ let add_straightline_instructions v block placement find_partition partitions ma
     if (num_operands v) > 0 then begin
       let ret = operand v 0 in
       let call = call_send ret host_id (const_i32 host_id) new_builder ctx in
-      replace_operands call block p new_builder find_partition mappings replace_md;
+      let before = builder_before context call in
+      replace_operands call block p before find_partition mappings replace_md;
     end;
     (* Insert void return at this block for all partitions *)
     List.iter (insert_ret_void block mappings) partitions
