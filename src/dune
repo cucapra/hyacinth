@@ -5,4 +5,4 @@
 
 (library
   (name ssacompiler)
-  (libraries core z3 ocamlgraph llvm llvm.bitreader))
+  (libraries core z3 ocamlgraph llvm llvm.bitreader llvm.analysis llvm.transform_utils))

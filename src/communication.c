@@ -101,7 +101,7 @@ void _add_channel(void *value, int size, int id, Context *context) {
 
 void send(void *value, int size, int to_core, int id, void *context) {
     #if DEBUGGING
-    printf("send size: %d\n", size);
+    printf("ID [%d] Send size: %d\n", id, size);
     if (size == 8) {
         double v = *((double *)value);
         printf("ID [%d] Sending value: %f\n", id, v);
@@ -130,7 +130,7 @@ void *receive(int size, int from_core, int id, void *context) {
             }
 
             #if DEBUGGING
-            printf("receive size: %d\n", size);
+            printf("ID [%d] Receive size: %d\n", id, size);
             if (size == 8) {
                 double v = *((double *)node->value);
                 printf("ID [%d] Receiving value: %f\n", id, v);

@@ -122,10 +122,10 @@ let declare_external_functions replace_md =
   in
   iter_functions declare_function replace_md;
 
-  let declare_global (g : llvalue) =
-    declare_global (return_type (type_of g)) (value_name g) llvm_module |> ignore
+  let define_global (g : llvalue) =
+    define_global (value_name g) (global_initializer g) llvm_module |> ignore
   in
-  iter_globals declare_global replace_md
+  iter_globals define_global replace_md
 
 let builders_from_block block p mappings replace_md =
   let new_builder, new_fun = builder_and_fun p block mappings in
