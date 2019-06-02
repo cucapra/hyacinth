@@ -404,7 +404,12 @@ let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule
       add_straightline_instructions v block placement find_partition_default partitions mappings replace_md
     end
   in
-  iter_included_functions (iter_blocks (iter_instrs add_instructions)) replace_md;
+  let per_function f =
+    let blocks = fold_left_blocks (fun bs b -> b::bs) [] f in
+    let sorted = Sort_basic_blocks.sort_blocks blocks in
+    List.iter (iter_instrs add_instructions) sorted
+  in
+  iter_included_functions per_function replace_md;
   let repair_phi = repair_phi_node find_partition mappings in
   iter_included_functions (iter_blocks (iter_instrs repair_phi)) replace_md;
 

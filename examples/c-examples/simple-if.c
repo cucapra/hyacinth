@@ -4,13 +4,17 @@
 #include <unistd.h>
 
 void if_f(int a) {
+    int b = 0;
     if (a < 5) {
         printf("1\n");
         printf("2\n");
+        b = 0;
     } else {
         printf("3\n");
         printf("4\n");
+        b = 1;
     }
+    printf("b: %d\n", b);
 }
 
 int main(int argc, char **argv) {
