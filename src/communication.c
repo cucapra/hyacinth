@@ -80,23 +80,31 @@ void _add_channel(void *value, int size, int id, Context *context) {
         context->channelList = new;
     } else {
         while (node->next) {
-            if (id == node->id) {
-                printf("WARNING: sending with ID [%d] already in use\n", id);
-            }
             node = node->next;
         }
         node->next = new;
     }
 }
 
- Comm *_find_channel(int id, Context *context) {
+ Comm *_find_channel(bool destructive, int id, Context *context) {
     Comm *node = context->channelList;
+    Comm *prev = NULL;
 
     while (node) {
         if (id == node->id) {
-            // TODO: remove from the list
+            if (destructive) {
+                #if DEBUGGING
+                printf("ID [%d] Deleting node\n", id);
+                #endif // DEBUGGING
+                if (prev) {
+                    prev->next = node->next;
+                } else {
+                    context->channelList = node->next;
+                }
+            }
             return node;
         }
+        prev = node;
         node = node->next;
     }
     return NULL;
@@ -125,11 +133,19 @@ void send(void *value, int size, int to_core, int id, void *context) {
     pthread_rwlock_unlock(&c->lock);
 }
 
-void *receive(int size, int from_core, int id, void *context) {
+void *_receive(bool destructive, int size, int from_core, int id, void *context) {
+    #if DEBUGGING
+    printf("ID [%d] Receive size: %d\n", id, size);
+    #endif // DEBUGGING
+
     Context *c = (Context *)context;
     while (1) {
-        pthread_rwlock_rdlock(&c->lock);
-        Comm *node = _find_channel(id, c);
+        if (destructive) {
+            pthread_rwlock_wrlock(&c->lock);
+        } else {
+            pthread_rwlock_rdlock(&c->lock);
+        }
+        Comm *node = _find_channel(destructive, id, c);
         pthread_rwlock_unlock(&c->lock);
         if (node) {
             if (node->size != size) {
@@ -137,7 +153,6 @@ void *receive(int size, int from_core, int id, void *context) {
             }
 
             #if DEBUGGING
-            printf("ID [%d] Receive size: %d\n", id, size);
             if (size == 8) {
                 double v = *((double *)node->value);
                 printf("ID [%d] Receiving value: %f\n", id, v);
@@ -157,3 +172,12 @@ void *receive(int size, int from_core, int id, void *context) {
     }
     return NULL;
 }
+
+void *receive(int size, int from_core, int id, void *context) {
+    return _receive(true, size, from_core, id, context);
+}
+
+void *receive_argument(int size, int from_core, int id, void *context) {
+    return _receive(false, size, from_core, id, context);
+}
+
