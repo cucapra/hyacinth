@@ -36,7 +36,10 @@ void *init() {
 }
 
 void *_call_function(void *function) {
+    #if DEBUGGING
     printf("calling function with thread id = %d\n", (int)pthread_self()); 
+    #endif // DEBUGGING
+
     Closure *closure = (Closure *)function;
     void (*fun)(Context *) = closure->function;
     Context *context = closure->context;
@@ -106,6 +109,10 @@ void send(void *value, int size, int to_core, int id, void *context) {
         double v = *((double *)value);
         printf("ID [%d] Sending value: %f\n", id, v);
     }
+    if (size == 4) {
+        int v = *((int *)value);
+        printf("ID [%d] Sending value: %d\n", id, v);
+    }
     if (size == 1) {
         bool v = *((bool *)value);
         printf("ID [%d] Sending value: %d\n", id, v);
@@ -134,6 +141,10 @@ void *receive(int size, int from_core, int id, void *context) {
             if (size == 8) {
                 double v = *((double *)node->value);
                 printf("ID [%d] Receiving value: %f\n", id, v);
+            }
+            if (size == 4) {
+                int v = *((int *)node->value);
+                printf("ID [%d] Receiving value: %d\n", id, v);
             }
             if (size == 1) {
                 bool v = *((bool *)node->value);

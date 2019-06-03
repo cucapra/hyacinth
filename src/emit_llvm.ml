@@ -22,13 +22,18 @@ let join_name = "join_partitioned_functions"
 let comms_id = ref 0
 let host_id = -1
 
-let set_metadata inst placement  =
+let set_metadata_placement inst placement  =
   let s_id = mdkind_id context "start" in
   let e_id = mdkind_id context "end" in
   let s = mdstring context (string_of_int placement.start_time) in
   let e = mdstring context (string_of_int placement.end_time) in
   set_metadata inst s_id s;
   set_metadata inst e_id e
+
+let set_metadata_string (s : string) inst =
+  let s_id = mdkind_id context "reason" in
+  let v = mdstring context s in
+  set_metadata inst s_id v
 
 let lookup_function_in name md =
   let callee = match lookup_function name md with
@@ -52,13 +57,14 @@ let call_init builder md =
   let init = lookup_function_in init_name md in
   build_call init [||] "" builder
 
-let value_to_value_ptr value builder =
+let value_to_value_ptr value reason builder =
   let ty = (type_of value) in
   let value_ptr, to_replace = match classify_type ty with
   | TypeKind.Double | TypeKind.Integer | TypeKind.Pointer ->
     let alloca = build_alloca ty "send_alloca" builder in
     let store = build_store value alloca builder in
     let bitcast = build_bitcast alloca void_pt_type "send_cast" builder in
+    List.iter (set_metadata_string reason) [alloca; store; bitcast];
     bitcast, store
   | _ ->
     print_endline ("should bitcast send for: " ^ (print_type ty) ^ ", " ^  string_of_llvalue value);
@@ -67,34 +73,38 @@ let value_to_value_ptr value builder =
   let size = size_of ty in
   (value_ptr, size, to_replace)
 
-let call_send value (to_partition : int) id builder ctx =
-  let value_ptr, size, to_replace = value_to_value_ptr value builder in
+let call_send value reason (to_partition : int) id builder ctx =
+  let value_ptr, size, to_replace = value_to_value_ptr value reason builder in
   let send = lookup_function_in send_name llvm_module in
   let destination = const_i32 to_partition in
   let args = [| value_ptr; size;  destination; id; ctx |] in
-  build_call send args "" builder |> ignore;
+  let send = build_call send args "" builder in
+  set_metadata_string reason send;
   to_replace
 
-let call_receive name (ty : lltype) (from_partition : int) id  builder ctx =
+let call_receive name reason (ty : lltype) (from_partition : int) id  builder ctx =
   let receive = lookup_function_in receive_name llvm_module in
   let size = size_of ty in
   let args = [| size; (const_i32 from_partition); id; ctx |] in
   let value = build_call receive args name builder in
   let bitcast = build_bitcast value (pointer_type ty) "bitcast" builder in
-  build_load bitcast "receive_load" builder
+  let load = build_load bitcast "receive_load" builder in
+  List.iter (set_metadata_string reason) [value; bitcast; load];
+  load
 
 let broadcast_value value from_partition branches block block_map builder ctx =
-  let value_ptr, size, _ = value_to_value_ptr value builder in
+  let value_ptr, size, _ = value_to_value_ptr value "broadcast" builder in
   let send_fun = lookup_function_in send_name llvm_module in
   let insert_comms (p, br) =
     if (p != from_partition) then begin
       let id = new_comms_id () in
       let destination = const_i32 p in
       let args = [| value_ptr; size;  destination; id; ctx |] in
-      build_call send_fun args "" builder |> ignore;
+      let send = build_call send_fun args "" builder in
+      set_metadata_string "broadcast" send;
 
       let dest_builder, _ = builder_and_fun p block block_map in
-      let receive = call_receive receive_name (type_of value) from_partition id dest_builder ctx in
+      let receive = call_receive "broadcast" receive_name (type_of value) from_partition id dest_builder ctx in
       set_operand br 0 receive
     end
   in
@@ -165,8 +175,8 @@ let replace_operand idx inst block partition builder find_partition mappings rep
       let op_builder, op_fun = builder_and_fun op_partition block mappings in
       let id = new_comms_id () in
       let ctx = param op_fun 0 in
-      let receive = call_receive receive_name (type_of new_op) op_partition id builder ctx in
-      call_send new_op partition id op_builder ctx |> ignore;
+      let receive = call_receive "replace mapped op" receive_name (type_of new_op) op_partition id builder ctx in
+      call_send new_op "replace mapped op" partition id op_builder ctx |> ignore;
       set_operand inst idx receive
     else
       set_operand inst idx new_op
@@ -181,8 +191,8 @@ let replace_operand idx inst block partition builder find_partition mappings rep
         let ctx = param new_fun 0 in
         if (op != ctx) then (
           let id = new_comms_id () in
-          let call = call_receive "argument" (type_of op) host_id id new_builder ctx in
-          call_send op partition id replace_builder r_ctx |> ignore;
+          let call = call_receive "argument" "replace argument" (type_of op) host_id id new_builder ctx in
+          call_send op "replace argument" partition id replace_builder r_ctx |> ignore;
           add_arg mappings partition op call;
           set_operand inst idx call)
       end
@@ -212,8 +222,8 @@ let repair_phi_node find_partition mappings phi =
         let prev_block_builder = builder_before_last_instr prev_block in
         let id = new_comms_id () in
         let ctx = param (block_parent op_block) 0 in
-        call_send new_val partition id op_builder ctx |> ignore;
-        let receive = call_receive receive_name (type_of new_val) op_partition id prev_block_builder ctx in
+        call_send new_val "repair phi" partition id op_builder ctx |> ignore;
+        let receive = call_receive "repair phi" receive_name (type_of new_val) op_partition id prev_block_builder ctx in
         (receive, op_block)
       end
       else
@@ -291,7 +301,7 @@ let replace_fun replace_md old_fun (_, ctx, new_fun_set) =
     build_ret_void end_builder |> ignore
   end
   else begin
-    let return = call_receive "return" return_t host_id (const_i32 host_id) end_builder ctx in
+    let return = call_receive "return" "return" return_t host_id (const_i32 host_id) end_builder ctx in
     call_join ();
     build_ret return end_builder |> ignore
   end
@@ -322,6 +332,7 @@ let add_branch_instructions v block find_partition partitions mappings replace_m
       (p, br)
     in
     let branches = List.map per_partition partitions in
+    if (List.length branches > 1) then
     broadcast_value !v0' p0 branches block mappings p0_builder ctx;
 
     (* Set branching destinations to mapped blocks per paritition *)
@@ -346,7 +357,8 @@ let add_straightline_instructions v block placement find_partition partitions ma
     once, later. *)
     if (num_operands v) > 0 then begin
       let ret = operand v 0 in
-      let call = call_send ret host_id (const_i32 host_id) new_builder ctx in
+      let call = call_send ret "return" host_id (const_i32 host_id) new_builder ctx in
+      set_metadata_string "return" call;
       let before = builder_before context call in
       replace_operands call block p before find_partition mappings replace_md;
     end;
@@ -354,12 +366,12 @@ let add_straightline_instructions v block placement find_partition partitions ma
     List.iter (insert_ret_void block mappings) partitions
   | PHI ->
     let clone = instr_clone v in
-    set_metadata clone placement;
+    set_metadata_placement clone placement;
     add_instr mappings v clone;
     insert_into_builder clone "" new_builder
   | _ ->
     let clone = instr_clone v in
-    set_metadata clone placement;
+    set_metadata_placement clone placement;
     add_instr mappings v clone;
     replace_operands clone block p new_builder find_partition mappings replace_md;
     insert_into_builder clone "" new_builder
