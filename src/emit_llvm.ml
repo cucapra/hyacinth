@@ -204,7 +204,7 @@ let repair_phi_node find_partition mappings phi =
     match (get_instr_opt mappings v) with
     | Some new_val ->
       let op_partition = find_partition v in
-      let op_block = get_block mappings op_partition block in
+      let op_block = instr_parent new_val in
       (* If the operand is on a different partition, insert send/receive
          on the SOURCE block, not the current block *)
       if partition != op_partition then begin
@@ -352,6 +352,11 @@ let add_straightline_instructions v block placement find_partition partitions ma
     end;
     (* Insert void return at this block for all partitions *)
     List.iter (insert_ret_void block mappings) partitions
+  | PHI ->
+    let clone = instr_clone v in
+    set_metadata clone placement;
+    add_instr mappings v clone;
+    insert_into_builder clone "" new_builder
   | _ ->
     let clone = instr_clone v in
     set_metadata clone placement;
