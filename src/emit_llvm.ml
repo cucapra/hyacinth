@@ -436,7 +436,7 @@ let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule
   in
   let per_function f =
     let blocks = fold_left_blocks (fun bs b -> b::bs) [] f in
-    let sorted = Sort_basic_blocks.sort_blocks blocks in
+    let sorted = Sort_basic_blocks.sort_blocks (List.rev blocks) in
     List.iter (iter_instrs add_instructions) sorted
   in
   iter_included_functions per_function replace_md;
