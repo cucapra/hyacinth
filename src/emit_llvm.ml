@@ -317,7 +317,11 @@ let set_branch_destination br destinations p block mappings =
 
 let add_branch_instructions v block find_partition partitions mappings replace_md =
   match get_branch v with
-  | Some (`Conditional (v0, b1, b2)) ->
+  | Some (`Conditional (v0, _, _)) ->
+    (* Note: cannot get these from the pattern match above, because the order
+    may not match the operand indexing *)
+    let b1 = operand v 1 |> block_of_value in
+    let b2 = operand v 2 |> block_of_value in
     let p0 = find_partition v0 in
     let p0_builder, p0_f = builder_and_fun p0 block mappings in
     let ctx = param p0_f 0 in
