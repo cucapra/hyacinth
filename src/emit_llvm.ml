@@ -170,7 +170,7 @@ let builders_from_block block p mappings replace_md =
 let builder_before_last_instr block =
   let before_last = match instr_end block with
   | After v -> Before v
-  | At_start _ -> failwith "builder should be before last instruction"
+  | At_start b -> instr_begin b
   in
   builder_at context before_last
 
@@ -196,11 +196,13 @@ let replace_operand idx inst block partition builder find_partition mappings rep
       begin match (get_arg_opt mappings partition op) with
       | Some new_arg -> set_operand inst idx new_arg
       | None ->
-        let new_builder, new_fun, replace_builder, r_ctx = builders_from_block block partition mappings replace_md in
+        let _, new_fun, replace_builder, r_ctx = builders_from_block block partition mappings replace_md in
+        let entry = entry_block new_fun in
+        let entry_builder = builder_at context (instr_begin entry) in
         let ctx = param new_fun 0 in
         if (op != ctx) then (
           let id = new_comms_id () in
-          let call = call_receive_arg "argument" "replace argument" (type_of op) host_id id new_builder ctx in
+          let call = call_receive_arg "argument" "replace argument" (type_of op) host_id id entry_builder ctx in
           call_send op "replace argument" partition id replace_builder r_ctx |> ignore;
           add_arg mappings partition op call;
           set_operand inst idx call)
@@ -216,38 +218,36 @@ let replace_operands inst block partition builder find_partition mappings replac
   let arity_range = Core.List.range 0 arity in
   List.iter replace_op arity_range
 
-let repair_phi_node find_partition mappings phi =
+let repair_phi_node find_partition mappings phi : unit =
   let partition = find_partition phi in
   let map_incoming (v, block) =
     let prev_block = get_block mappings partition block in
     match (get_instr_opt mappings v) with
     | Some new_val ->
       let op_partition = find_partition v in
-      let op_block = instr_parent new_val in
       (* If the operand is on a different partition, insert send/receive
          on the SOURCE block, not the current block *)
       if partition != op_partition then begin
+        let op_block = get_block mappings op_partition block in
         let op_builder = builder_before_last_instr op_block in
         let prev_block_builder = builder_before_last_instr prev_block in
         let id = new_comms_id () in
         let ctx = param (block_parent op_block) 0 in
         call_send new_val "repair phi" partition id op_builder ctx |> ignore;
         let receive = call_receive "repair phi" receive_name (type_of new_val) op_partition id prev_block_builder ctx in
-        (receive, op_block)
+        (receive, prev_block)
       end
       else
         (new_val, prev_block)
-    | None -> (v, prev_block)
+    | None ->
+      (v, prev_block)
   in
   let opcode = instr_opcode phi in
   match (opcode : Opcode.t) with
   | PHI ->
-    let phi' = get_instr mappings phi in
-    let new_incoming = List.map map_incoming (incoming phi') in
-    let builder = builder_at context (instr_begin (instr_parent phi')) in
-    let new_phi = build_phi new_incoming "new_phi" builder in
-    replace_all_uses_with phi' new_phi;
-    delete_instruction phi'
+    let new_incoming = List.map map_incoming (incoming phi) in
+    let new_phi = get_instr mappings phi in
+    List.iter (fun inc -> add_incoming inc new_phi) new_incoming
   | _ -> ()
 
 let clone_blocks_per_partition replace_md partitions mappings =
@@ -378,10 +378,9 @@ let add_straightline_instructions v block placement find_partition partitions ma
     (* Insert void return at this block for all partitions *)
     List.iter (insert_ret_void block mappings) partitions
   | PHI ->
-    let clone = instr_clone v in
+    let clone = build_empty_phi (type_of v) "new_phi" new_builder in
     set_metadata_placement clone placement;
-    add_instr mappings v clone;
-    insert_into_builder clone "" new_builder
+    add_instr mappings v clone
   | _ ->
     let clone = instr_clone v in
     set_metadata_placement clone placement;
@@ -416,6 +415,7 @@ let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule
   clone_blocks_per_partition replace_md partitions mappings;
 
   let add_instructions (v : llvalue) =
+    (* print_endline ("Emitting LLVM for instruction: " ^ (string_of_llvalue v)); *)
     let com_opt = List.find_opt (fun (x, _) -> x == v) llvm_to_ast in
     let com = match com_opt with
     | Some (_, com) -> com
@@ -434,14 +434,14 @@ let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule
       add_straightline_instructions v block placement find_partition_default partitions mappings replace_md
     end
   in
-  let per_function f =
-    let blocks = fold_left_blocks (fun bs b -> b::bs) [] f in
+  let per_function f fn =
+    let blocks = fold_left_blocks (fun bs b -> b::bs) [] fn in
     let sorted = Sort_basic_blocks.sort_blocks (List.rev blocks) in
-    List.iter (iter_instrs add_instructions) sorted
+    List.iter (iter_instrs f) sorted
   in
-  iter_included_functions per_function replace_md;
+  iter_included_functions (per_function add_instructions) replace_md;
   let repair_phi = repair_phi_node find_partition mappings in
-  iter_included_functions (iter_blocks (iter_instrs repair_phi)) replace_md;
+  iter_included_functions (per_function repair_phi) replace_md;
 
   iter_funs mappings (replace_fun replace_md);
   print_module "llvm_out.ll" llvm_module;
