@@ -13,21 +13,9 @@ install:
 	dune build && dune install
 
 clean:
-	rm -f *.ll
-	rm -f *.bc
-	rm -f *.png
-	rm -f *.out
-	rm -f *.dot
-	rm -f examples/*/*.ll
-	rm -f examples/*/*.bc
-	rm -f examples/*/*.png
-	rm -f examples/*/*.out
-	rm -f examples/*/*.dot
-	rm -f src/*.ll
-	rm -f src/*.bc
-	# rm -f {., src, examples/*}/*.{ll, bc, out, dot, png}
+	rm -f {.,src,examples/*}/*.{ll,bc,out,dot,png}
 
-%_cores.ll %_host.ll: %.bc
+%_cores.ll %_host.ll %.dot: %.bc
 	cat $< | $(SSAC) -l -t 1 -o $*
 
 %_partitioned.ll: %_cores.ll %_host.ll src/communication.ll
@@ -41,9 +29,6 @@ clean:
 
 %.bc: %.c
 	clang -emit-llvm -O1 -c $< -o $*.bc
-
-%.dot: %.bc
-	cat $*.bc | $(SSAC) -l -t 1 -o $*.dot
 
 %.png : %.dot
 	dot -Tpng $*.dot > $*.png
