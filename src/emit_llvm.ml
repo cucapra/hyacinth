@@ -388,7 +388,7 @@ let add_straightline_instructions v block placement find_partition partitions ma
     replace_operands clone block p new_builder find_partition mappings replace_md;
     insert_into_builder clone "" new_builder
 
-let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule * (llvalue * com) list)) (node_map : node ComMap.t) =
+let emit_llvm filename (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule * (llvalue * com) list)) (node_map : node ComMap.t) =
   print_endline "\nStarting to emit LLVM";
   set_data_layout "e-m:o-i64:64-f80:128-n8:16:32:64-S128" llvm_module;
   declare_external_functions replace_md;
@@ -444,5 +444,6 @@ let emit_llvm (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule
   iter_included_functions (per_function repair_phi) replace_md;
 
   iter_funs mappings (replace_fun replace_md);
-  print_module "llvm_out.ll" llvm_module;
-  print_module "llvm_replace.ll" replace_md
+  print_endline (filename ^ "_cores.ll");
+  print_module (filename ^ "_cores.ll") llvm_module;
+  print_module (filename ^ "_host.ll") replace_md

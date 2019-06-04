@@ -14,7 +14,7 @@ let direct_man_distance : bool ref = ref false
 let rows : int ref = ref 2
 let columns : int ref = ref 2
 let timeout : int ref = ref 100000
-let out_filename : string ref = ref "ssac-output.dot"
+let out_filename : string ref = ref "ssac-output"
 
 let usage = "SSA-Spatial Compiler\n"
 let spec_list : (Arg.key * Arg.spec * Arg.doc) list =
@@ -28,7 +28,7 @@ let spec_list : (Arg.key * Arg.spec * Arg.doc) list =
     ("-r", Arg.Set_int rows, "Number of rows in the spatial configuration");
     ("-c", Arg.Set_int columns, "Number of columns in the spatial configuration");
     ("-t", Arg.Set_int timeout, "Timeout for z3, in seconds");
-    ("-o", Arg.Set_string out_filename, "Filename for the dot output file");
+    ("-o", Arg.Set_string out_filename, "(Partial) filename for output files");
   ]
 
 let flatten_maps maps =
@@ -84,7 +84,7 @@ let _ =
     ^ (string_of_int !timeout) ^"s timeout");
   let partitions = List.map (fun dfg -> Partition.solve_dfg dfg config) dfgs in
   let dfg_assignments = flatten_maps partitions in
-  Visualize.visualize_dfg dfg_assignments !out_filename;
+  Visualize.visualize_dfg dfg_assignments (!out_filename ^ ".dot");
   match llvm_ast_map_opt with
-  | Some llvm_ast_map -> Emit_llvm.emit_llvm dfg_assignments llvm_ast_map com_map
+  | Some llvm_ast_map -> Emit_llvm.emit_llvm !out_filename dfg_assignments llvm_ast_map com_map
   | None -> print_endline "None"
