@@ -444,6 +444,5 @@ let emit_llvm filename (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : 
   iter_included_functions (per_function repair_phi) replace_md;
 
   iter_funs mappings (replace_fun replace_md);
-  print_endline (filename ^ "_cores.ll");
   print_module (filename ^ "_cores.ll") llvm_module;
   print_module (filename ^ "_host.ll") replace_md
