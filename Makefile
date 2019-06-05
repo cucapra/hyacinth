@@ -17,6 +17,7 @@ install:
 
 clean:
 	rm -f {.,src,examples/*}/*.{ll,bc,out,dot,png}
+	rm -f tests/*{.ll,.bc,_partitioned.out}
 	dune clean
 
 %_cores.ll %_host.ll %.dot: %.bc

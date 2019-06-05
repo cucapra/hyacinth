@@ -1,0 +1,1 @@
+command = "cd ..; make tests/{base}_partitioned.out > /dev/null; tests/{base}_partitioned.out"
