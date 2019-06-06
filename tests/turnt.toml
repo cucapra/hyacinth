@@ -1,1 +1,4 @@
-command = "cd ..; make tests/{base}_partitioned.out > /dev/null; tests/{base}_partitioned.out"
+command = "cd ..; make tests/{base}_partitioned.out; tests/{base}_partitioned.out {args} > tests/output"
+
+output.ll = "{base}_partitioned.ll"
+output.output = "output"
