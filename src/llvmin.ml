@@ -77,12 +77,17 @@ let instr_to_com (rs : result) (instr : llvalue) : result =
 
   {!result with coms = block_coms; to_ast = (instr, com)::rs.to_ast}
 
+let per_instr (rs : result) (instr : llvalue) : result =
+  match (instr_opcode instr) with
+  | Br -> rs
+  | _ -> instr_to_com rs instr
+
 (* Each block should be partitioned seperately *)
 let fold_functions (md : llmodule) : result =
 
   let f_block (acc_b : result) (block : llbasicblock) : result =
     let new_result = {acc_b with coms = []::acc_b.coms} in
-    fold_left_instrs instr_to_com new_result block in
+    fold_left_instrs per_instr new_result block in
 
   let f_function (acc_f : result) (fn : llvalue) : result =
     if include_function fn then
@@ -96,7 +101,9 @@ let fold_functions (md : llmodule) : result =
 
 let llvm_to_ast (md : llmodule) : (com list * (llvalue * com) list) =
   let result = fold_functions md in
-  let coms_to_seq acc coms = (CSeq (List.rev coms))::acc in
+  let coms_to_seq acc coms =
+    if (List.length coms > 0) then (CSeq (List.rev coms))::acc else acc
+  in
   let seq_per_block = List.fold_left coms_to_seq [] result.coms in
   (seq_per_block, List.rev result.to_ast)
 

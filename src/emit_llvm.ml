@@ -219,8 +219,7 @@ let replace_operands inst block partition builder find_partition mappings replac
   List.iter replace_op arity_range
 
 let repair_phi_node find_partition mappings phi : unit =
-  let partition = find_partition phi in
-  let map_incoming (v, block) =
+  let map_incoming partition (v, block) =
     let prev_block = get_block mappings partition block in
     match (get_instr_opt mappings v) with
     | Some new_val ->
@@ -242,10 +241,10 @@ let repair_phi_node find_partition mappings phi : unit =
     | None ->
       (v, prev_block)
   in
-  let opcode = instr_opcode phi in
-  match (opcode : Opcode.t) with
+  match (instr_opcode phi) with
   | PHI ->
-    let new_incoming = List.map map_incoming (incoming phi) in
+    let partition = find_partition phi in
+    let new_incoming = List.map (map_incoming partition) (incoming phi) in
     let new_phi = get_instr mappings phi in
     List.iter (fun inc -> add_incoming inc new_phi) new_incoming
   | _ -> ()
@@ -416,13 +415,13 @@ let emit_llvm filename (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : 
 
   let add_instructions (v : llvalue) =
     (* print_endline ("Emitting LLVM for instruction: " ^ (string_of_llvalue v)); *)
-    let _, com = List.find (fun (x, _) -> x == v) llvm_to_ast in
     let op = instr_opcode v in
     let block = instr_parent v in
     begin match (op : Opcode.t) with
     | Br ->
       add_branch_instructions v block find_partition partitions mappings replace_md
     | _ ->
+      let _, com = List.find (fun (x, _) -> x == v) llvm_to_ast in
       let placement = placement_for_com com in
       let find_partition_default v' = match find_partition_opt v' with
       | Some p' -> p'

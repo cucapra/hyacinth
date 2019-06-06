@@ -46,7 +46,7 @@ l1:                                               ; preds = %entry
 
 l2:                                               ; preds = %l1, %l
   %new_phi = phi i32 [ 0, %l ], [ 1, %l1 ], !time !4
-  %4 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.4, i64 0, i64 0), i32 %new_phi), !time !7
+  %4 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.4, i64 0, i64 0), i32 %new_phi), !time !6
   ret void
 }
 
@@ -56,17 +56,17 @@ declare i32 @printf(i8*, ...)
 
 define void @if_f_1(i8*) {
 entry:
-  %broadcast = call i8* bitcast (i8* (i32, i32, i32, i8*)* @receive to i8* (i64, i32, i32, i8*)*)(i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 0, i32 1, i8* %0), !reason !8
-  %bitcast = bitcast i8* %broadcast to i1*, !reason !8
-  %receive_load = load i1, i1* %bitcast, !reason !8
+  %broadcast = call i8* bitcast (i8* (i32, i32, i32, i8*)* @receive to i8* (i64, i32, i32, i8*)*)(i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 0, i32 1, i8* %0), !reason !7
+  %bitcast = bitcast i8* %broadcast to i1*, !reason !7
+  %receive_load = load i1, i1* %bitcast, !reason !7
   br i1 %receive_load, label %l, label %l1
 
 l:                                                ; preds = %entry
-  %1 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i64 0, i64 0)), !time !7
+  %1 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i64 0, i64 0)), !time !6
   br label %l2
 
 l1:                                               ; preds = %entry
-  %2 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i64 0, i64 0)), !time !7
+  %2 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i64 0, i64 0)), !time !6
   br label %l2
 
 l2:                                               ; preds = %l1, %l
@@ -97,7 +97,7 @@ define void @if_f(i32) local_unnamed_addr #0 {
 ; Function Attrs: nounwind ssp uwtable
 define i32 @main(i32, i8** nocapture readonly) local_unnamed_addr #0 {
   %3 = getelementptr inbounds i8*, i8** %1, i64 1
-  %4 = load i8*, i8** %3, align 8, !tbaa !9
+  %4 = load i8*, i8** %3, align 8, !tbaa !8
   %5 = tail call i32 @atoi(i8* %4)
   tail call void @replace_if_f(i32 %5)
   ret i32 0
@@ -122,7 +122,7 @@ entry:
 define i8* @init() #0 {
   %1 = tail call i8* @malloc(i64 208) #7
   %2 = bitcast i8* %1 to %struct.Comm**
-  store %struct.Comm* null, %struct.Comm** %2, align 8, !tbaa !13
+  store %struct.Comm* null, %struct.Comm** %2, align 8, !tbaa !12
   %3 = getelementptr inbounds i8, i8* %1, i64 8
   %4 = bitcast i8* %3 to %struct._opaque_pthread_rwlock_t*
   %5 = tail call i32 @"\01_pthread_rwlock_init"(%struct._opaque_pthread_rwlock_t* nonnull %4, %struct._opaque_pthread_rwlockattr_t* null) #8
@@ -137,10 +137,10 @@ declare i32 @"\01_pthread_rwlock_init"(%struct._opaque_pthread_rwlock_t*, %struc
 ; Function Attrs: nounwind ssp uwtable
 define noalias i8* @_call_function(i8* nocapture readonly) #0 {
   %2 = bitcast i8* %0 to void (%struct.Context*)**
-  %3 = load void (%struct.Context*)*, void (%struct.Context*)** %2, align 8, !tbaa !17
+  %3 = load void (%struct.Context*)*, void (%struct.Context*)** %2, align 8, !tbaa !16
   %4 = getelementptr inbounds i8, i8* %0, i64 8
   %5 = bitcast i8* %4 to %struct.Context**
-  %6 = load %struct.Context*, %struct.Context** %5, align 8, !tbaa !19
+  %6 = load %struct.Context*, %struct.Context** %5, align 8, !tbaa !18
   tail call void %3(%struct.Context* %6) #8
   ret i8* null
 }
@@ -166,12 +166,12 @@ define i8* @call_partitioned_functions(i32, void (i8*)** nocapture readonly, i8*
   %14 = tail call i8* @malloc(i64 16) #7
   %15 = getelementptr inbounds void (i8*)*, void (i8*)** %1, i64 %13
   %16 = bitcast void (i8*)** %15 to i64*
-  %17 = load i64, i64* %16, align 8, !tbaa !9
+  %17 = load i64, i64* %16, align 8, !tbaa !8
   %18 = bitcast i8* %14 to i64*
-  store i64 %17, i64* %18, align 8, !tbaa !17
+  store i64 %17, i64* %18, align 8, !tbaa !16
   %19 = getelementptr inbounds i8, i8* %14, i64 8
   %20 = bitcast i8* %19 to i8**
-  store i8* %2, i8** %20, align 8, !tbaa !19
+  store i8* %2, i8** %20, align 8, !tbaa !18
   %21 = getelementptr inbounds %struct._opaque_pthread_t*, %struct._opaque_pthread_t** %7, i64 %13
   %22 = tail call i32 @pthread_create(%struct._opaque_pthread_t** %21, %struct._opaque_pthread_attr_t* null, i8* (i8*)* nonnull @_call_function, i8* %14) #8
   %23 = add nuw nsw i64 %13, 1
@@ -197,7 +197,7 @@ define void @join_partitioned_functions(i32, i8* nocapture readonly) #0 {
 ; <label>:8:                                      ; preds = %8, %5
   %9 = phi i64 [ 0, %5 ], [ %13, %8 ]
   %10 = getelementptr inbounds %struct._opaque_pthread_t*, %struct._opaque_pthread_t** %3, i64 %9
-  %11 = load %struct._opaque_pthread_t*, %struct._opaque_pthread_t** %10, align 8, !tbaa !9
+  %11 = load %struct._opaque_pthread_t*, %struct._opaque_pthread_t** %10, align 8, !tbaa !8
   %12 = tail call i32 @"\01_pthread_join"(%struct._opaque_pthread_t* %11, i8** null) #8
   %13 = add nuw nsw i64 %9, 1
   %14 = icmp eq i64 %13, %6
@@ -210,22 +210,22 @@ declare i32 @"\01_pthread_join"(%struct._opaque_pthread_t*, i8**) local_unnamed_
 define void @_add_channel(i8*, i32, i32, %struct.Context* nocapture) local_unnamed_addr #0 {
   %5 = tail call i8* @malloc(i64 24) #7
   %6 = bitcast i8* %5 to i32*
-  store i32 %2, i32* %6, align 8, !tbaa !20
+  store i32 %2, i32* %6, align 8, !tbaa !19
   %7 = getelementptr inbounds i8, i8* %5, i64 4
   %8 = bitcast i8* %7 to i32*
-  store i32 %1, i32* %8, align 4, !tbaa !23
+  store i32 %1, i32* %8, align 4, !tbaa !22
   %9 = sext i32 %1 to i64
   %10 = tail call i8* @malloc(i64 %9) #7
   %11 = getelementptr inbounds i8, i8* %5, i64 8
   %12 = bitcast i8* %11 to i8**
-  store i8* %10, i8** %12, align 8, !tbaa !24
+  store i8* %10, i8** %12, align 8, !tbaa !23
   %13 = tail call i64 @llvm.objectsize.i64.p0i8(i8* %10, i1 false, i1 true)
   %14 = tail call i8* @__memcpy_chk(i8* %10, i8* %0, i64 %9, i64 %13) #8
   %15 = getelementptr inbounds i8, i8* %5, i64 16
   %16 = bitcast i8* %15 to %struct.Comm**
-  store %struct.Comm* null, %struct.Comm** %16, align 8, !tbaa !25
+  store %struct.Comm* null, %struct.Comm** %16, align 8, !tbaa !24
   %17 = getelementptr inbounds %struct.Context, %struct.Context* %3, i64 0, i32 0
-  %18 = load %struct.Comm*, %struct.Comm** %17, align 8, !tbaa !13
+  %18 = load %struct.Comm*, %struct.Comm** %17, align 8, !tbaa !12
   %19 = icmp eq %struct.Comm* %18, null
   br i1 %19, label %20, label %22
 
@@ -236,7 +236,7 @@ define void @_add_channel(i8*, i32, i32, %struct.Context* nocapture) local_unnam
 ; <label>:22:                                     ; preds = %22, %4
   %23 = phi %struct.Comm* [ %25, %22 ], [ %18, %4 ]
   %24 = getelementptr inbounds %struct.Comm, %struct.Comm* %23, i64 0, i32 3
-  %25 = load %struct.Comm*, %struct.Comm** %24, align 8, !tbaa !25
+  %25 = load %struct.Comm*, %struct.Comm** %24, align 8, !tbaa !24
   %26 = icmp eq %struct.Comm* %25, null
   br i1 %26, label %27, label %22
 
@@ -247,7 +247,7 @@ define void @_add_channel(i8*, i32, i32, %struct.Context* nocapture) local_unnam
 
 ; <label>:30:                                     ; preds = %27, %20
   %31 = phi i8** [ %29, %27 ], [ %21, %20 ]
-  store i8* %5, i8** %31, align 8, !tbaa !9
+  store i8* %5, i8** %31, align 8, !tbaa !8
   ret void
 }
 
@@ -260,19 +260,19 @@ declare i8* @__memcpy_chk(i8*, i8*, i64, i64) local_unnamed_addr #5
 ; Function Attrs: norecurse nounwind ssp uwtable
 define %struct.Comm* @_find_channel(i1 zeroext, i32, %struct.Context* nocapture) local_unnamed_addr #6 {
   %4 = getelementptr inbounds %struct.Context, %struct.Context* %2, i64 0, i32 0
-  %5 = load %struct.Comm*, %struct.Comm** %4, align 8, !tbaa !9
+  %5 = load %struct.Comm*, %struct.Comm** %4, align 8, !tbaa !8
   %6 = icmp eq %struct.Comm* %5, null
   br i1 %6, label %33, label %7
 
 ; <label>:7:                                      ; preds = %3
   %8 = getelementptr inbounds %struct.Comm, %struct.Comm* %5, i64 0, i32 0
-  %9 = load i32, i32* %8, align 8, !tbaa !20
+  %9 = load i32, i32* %8, align 8, !tbaa !19
   %10 = icmp eq i32 %9, %1
   br i1 %10, label %15, label %28
 
 ; <label>:11:                                     ; preds = %28
   %12 = getelementptr inbounds %struct.Comm, %struct.Comm* %31, i64 0, i32 0
-  %13 = load i32, i32* %12, align 8, !tbaa !20
+  %13 = load i32, i32* %12, align 8, !tbaa !19
   %14 = icmp eq i32 %13, %1
   br i1 %14, label %15, label %28
 
@@ -285,24 +285,24 @@ define %struct.Comm* @_find_channel(i1 zeroext, i32, %struct.Context* nocapture)
   %19 = icmp eq %struct.Comm* %17, null
   %20 = getelementptr inbounds %struct.Comm, %struct.Comm* %16, i64 0, i32 3
   %21 = bitcast %struct.Comm** %20 to i64*
-  %22 = load i64, i64* %21, align 8, !tbaa !25
+  %22 = load i64, i64* %21, align 8, !tbaa !24
   br i1 %19, label %26, label %23
 
 ; <label>:23:                                     ; preds = %18
   %24 = getelementptr inbounds %struct.Comm, %struct.Comm* %17, i64 0, i32 3
   %25 = bitcast %struct.Comm** %24 to i64*
-  store i64 %22, i64* %25, align 8, !tbaa !25
+  store i64 %22, i64* %25, align 8, !tbaa !24
   br label %33
 
 ; <label>:26:                                     ; preds = %18
   %27 = bitcast %struct.Context* %2 to i64*
-  store i64 %22, i64* %27, align 8, !tbaa !13
+  store i64 %22, i64* %27, align 8, !tbaa !12
   br label %33
 
 ; <label>:28:                                     ; preds = %11, %7
   %29 = phi %struct.Comm* [ %31, %11 ], [ %5, %7 ]
   %30 = getelementptr inbounds %struct.Comm, %struct.Comm* %29, i64 0, i32 3
-  %31 = load %struct.Comm*, %struct.Comm** %30, align 8, !tbaa !9
+  %31 = load %struct.Comm*, %struct.Comm** %30, align 8, !tbaa !8
   %32 = icmp eq %struct.Comm* %31, null
   br i1 %32, label %33, label %11
 
@@ -352,7 +352,7 @@ define i8* @_receive(i1 zeroext, i32, i32, i32, i8*) local_unnamed_addr #0 {
 
 ; <label>:18:                                     ; preds = %14
   %19 = getelementptr inbounds %struct.Comm, %struct.Comm* %15, i64 0, i32 1
-  %20 = load i32, i32* %19, align 4, !tbaa !23
+  %20 = load i32, i32* %19, align 4, !tbaa !22
   %21 = icmp eq i32 %20, %1
   br i1 %21, label %24, label %22
 
@@ -362,7 +362,7 @@ define i8* @_receive(i1 zeroext, i32, i32, i32, i8*) local_unnamed_addr #0 {
 
 ; <label>:24:                                     ; preds = %22, %18
   %25 = getelementptr inbounds %struct.Comm, %struct.Comm* %15, i64 0, i32 2
-  %26 = load i8*, i8** %25, align 8, !tbaa !24
+  %26 = load i8*, i8** %25, align 8, !tbaa !23
   ret i8* %26
 }
 
@@ -399,23 +399,22 @@ attributes #8 = { nounwind }
 !3 = !{!"replace argument"}
 !4 = !{!"0", !"0"}
 !5 = !{!"broadcast"}
-!6 = !{!"1", !"16"}
-!7 = !{!"0", !"15"}
-!8 = !{!"receive"}
-!9 = !{!10, !10, i64 0}
-!10 = !{!"any pointer", !11, i64 0}
-!11 = !{!"omnipotent char", !12, i64 0}
-!12 = !{!"Simple C/C++ TBAA"}
-!13 = !{!14, !10, i64 0}
-!14 = !{!"Context", !10, i64 0, !15, i64 8}
-!15 = !{!"_opaque_pthread_rwlock_t", !16, i64 0, !11, i64 8}
-!16 = !{!"long", !11, i64 0}
-!17 = !{!18, !10, i64 0}
-!18 = !{!"Closure", !10, i64 0, !10, i64 8}
-!19 = !{!18, !10, i64 8}
-!20 = !{!21, !22, i64 0}
-!21 = !{!"Comm", !22, i64 0, !22, i64 4, !10, i64 8, !10, i64 16}
-!22 = !{!"int", !11, i64 0}
-!23 = !{!21, !22, i64 4}
-!24 = !{!21, !10, i64 8}
-!25 = !{!21, !10, i64 16}
+!6 = !{!"0", !"15"}
+!7 = !{!"receive"}
+!8 = !{!9, !9, i64 0}
+!9 = !{!"any pointer", !10, i64 0}
+!10 = !{!"omnipotent char", !11, i64 0}
+!11 = !{!"Simple C/C++ TBAA"}
+!12 = !{!13, !9, i64 0}
+!13 = !{!"Context", !9, i64 0, !14, i64 8}
+!14 = !{!"_opaque_pthread_rwlock_t", !15, i64 0, !10, i64 8}
+!15 = !{!"long", !10, i64 0}
+!16 = !{!17, !9, i64 0}
+!17 = !{!"Closure", !9, i64 0, !9, i64 8}
+!18 = !{!17, !9, i64 8}
+!19 = !{!20, !21, i64 0}
+!20 = !{!"Comm", !21, i64 0, !21, i64 4, !9, i64 8, !9, i64 16}
+!21 = !{!"int", !10, i64 0}
+!22 = !{!20, !21, i64 4}
+!23 = !{!20, !9, i64 8}
+!24 = !{!20, !9, i64 16}
