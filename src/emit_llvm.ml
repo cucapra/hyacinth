@@ -24,17 +24,17 @@ let comms_id = ref 0
 let host_id = -1
 
 let set_metadata_placement inst placement  =
-  let s_id = mdkind_id context "start" in
-  let e_id = mdkind_id context "end" in
+  let id = mdkind_id context "time" in
   let s = mdstring context (string_of_int placement.start_time) in
   let e = mdstring context (string_of_int placement.end_time) in
-  set_metadata inst s_id s;
-  set_metadata inst e_id e
+  let m = mdnode context [| s; e|] in
+  set_metadata inst id m
 
 let set_metadata_string (s : string) inst =
   let s_id = mdkind_id context "reason" in
   let v = mdstring context s in
-  set_metadata inst s_id v
+  let m = mdnode context [| v |] in
+  set_metadata inst s_id m
 
 let lookup_function_in name md =
   let callee = match lookup_function name md with
@@ -137,7 +137,7 @@ let declare_external_functions replace_md =
 
   let declare_function (f : llvalue) =
     if (is_declaration f) then
-      declare_function (value_name f) (return_type (type_of f)) llvm_module |> ignore
+      declare_function (value_name f) (element_type (type_of f)) llvm_module |> ignore
   in
   iter_functions declare_function replace_md;
 
@@ -155,7 +155,7 @@ let builders_from_block block p mappings replace_md =
     add_value vs new_fun;
     (b, c)
   | None ->
-    let fun_type = return_type (type_of parent) in
+    let fun_type = element_type (type_of parent) in
     let replace_name = "replace_" ^ (value_name parent) in
     let part_fun = define_function replace_name fun_type replace_md in
     let fun_begin = instr_begin (entry_block part_fun) in
@@ -281,7 +281,7 @@ let insert_ret_void block block_map partition =
 let replace_fun replace_md old_fun (_, ctx, new_fun_set) =
   let old_name = value_name old_fun in
   let new_fun = lookup_function_in ("replace_" ^ old_name) replace_md in
-  let return_t = return_type (return_type (type_of old_fun)) in
+  let return_t = return_type (element_type (type_of old_fun)) in
   replace_all_uses_with old_fun new_fun;
   let after_init = match instr_begin (entry_block new_fun) with
   | Before v -> instr_succ v
@@ -416,10 +416,7 @@ let emit_llvm filename (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : 
 
   let add_instructions (v : llvalue) =
     (* print_endline ("Emitting LLVM for instruction: " ^ (string_of_llvalue v)); *)
-    let com_opt = List.find_opt (fun (x, _) -> x == v) llvm_to_ast in
-    let com = match com_opt with
-    | Some (_, com) -> com
-    | None -> failwith ("failed to find com for: " ^ (string_of_llvalue v)) in
+    let _, com = List.find (fun (x, _) -> x == v) llvm_to_ast in
     let op = instr_opcode v in
     let block = instr_parent v in
     begin match (op : Opcode.t) with
