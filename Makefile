@@ -22,11 +22,11 @@ clean:
 	dune clean
 
 test:
-	turnt tests/*.c
+	-turnt tests/*.c
 	make clean
 
 test_save:
-	turnt --save tests/*.c
+	-turnt --save tests/*.c
 	make clean
 
 %_cores.ll %_host.ll %.dot: %.bc
