@@ -112,6 +112,6 @@ To run all tests and save the resulting files as the source of truth:
 
     $ make test_save
 
-[Turnt] https://github.com/cucapra/turnt
+[Turnt]: https://github.com/cucapra/turnt
 
 
