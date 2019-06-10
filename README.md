@@ -1,11 +1,11 @@
-SSA-Spatial Compiler
+SSAC Compiler
 =====
 
 Note: this project is under active development, and this documentation may not be fully up-to-date.
 
 -----
 
-This is a compiler that partitions programs in a simple Static-Single Assignment (SSA) form across a spatial architecture of cores, minimizing the estimated idealized cycle count. It is currently under development to take in a small subset of LLVM. 
+This is a compiler that partitions programs in a simple Static-Single Assignment (SSA) form across a spatial architecture of cores, minimizing the estimated idealized cycle count. It is currently under development to take in a and emit a subset of LLVM. 
 
 Installing Dependencies
 ------
@@ -69,11 +69,15 @@ Building & Running
 Run the following from the top-level directory to install the compiler's `ssac` executable onto your path:
 
     $ eval $(opam env)
-    $ dune build && dune install
+    $ make install
 
 Program are read from standard input:
 
     $ cat examples/simple_phi | ssac
+    
+Assuming you have a file `hello.c`, to simulate partitioning the file:
+
+    $ make hello_partitioned.out
 
 The `ssac` executable supports the following arguments:
 
@@ -91,6 +95,23 @@ The `ssac` executable supports the following arguments:
     $   -help  Display this list of options
     $   --help  Display this list of options
 
-SSA-Spatial produces a dot final for visualizing the final partitioning. To view the result as a png:
+SSAC also produces a dot final for visualizing the final partitioning. To view the result as a png:
 
-    $ dot -Tpng ssac-output.dot > ssac-output.png
+    $ make hello.png
+    
+Testing
+-----
+
+SSAC uses [Turnt][] for testing, which compares both the emitted LLVM IR files and the results of executing the emitted partitioning. 
+
+To run all tests:
+
+    $ make test
+    
+To run all tests and save the resulting files as the source of truth:
+
+    $ make test_save
+
+[Turnt] https://github.com/cucapra/turnt
+
+
