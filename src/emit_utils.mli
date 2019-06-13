@@ -3,6 +3,12 @@ open Llvm
 type mappings
 type valueset
 
+type target =
+  | PThreads
+  | BSGManycore
+
+val target_of_string : string -> target
+
 (* Make a new empty state. *)
 val init_mappings : unit -> mappings
 

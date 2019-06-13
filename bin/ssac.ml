@@ -15,6 +15,7 @@ let rows : int ref = ref 2
 let columns : int ref = ref 2
 let timeout : int ref = ref 100000
 let out_filename : string ref = ref "ssac-output"
+let target_string : string ref = ref "pthread"
 
 let usage = "SSA-Spatial Compiler\n"
 let spec_list : (Arg.key * Arg.spec * Arg.doc) list =
@@ -29,6 +30,7 @@ let spec_list : (Arg.key * Arg.spec * Arg.doc) list =
     ("-c", Arg.Set_int columns, "Number of columns in the spatial configuration");
     ("-t", Arg.Set_int timeout, "Timeout for z3, in seconds");
     ("-o", Arg.Set_string out_filename, "(Partial) filename for output files");
+    ("-target", Arg.Set_string target_string, "Target: 'pthread' (default), 'bsg_manycore'");
   ]
 
 let flatten_maps maps =
@@ -86,5 +88,7 @@ let _ =
   let dfg_assignments = flatten_maps partitions in
   Visualize.visualize_dfg dfg_assignments (!out_filename ^ ".dot");
   match llvm_ast_map_opt with
-  | Some llvm_ast_map -> Emit_llvm.emit_llvm !out_filename dfg_assignments llvm_ast_map com_map
-  | None -> print_endline "None"
+  | Some llvm_ast_map ->
+    let target = Emit_utils.target_of_string !target_string in
+    Emit_llvm.emit_llvm target !out_filename dfg_assignments llvm_ast_map com_map
+  | None -> ()

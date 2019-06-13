@@ -1,5 +1,15 @@
 open Llvm
 
+type target =
+  | PThreads
+  | BSGManycore
+
+let target_of_string (s : string) : target =
+  match s with
+  | "pthreads" -> PThreads
+  | "bsg_manycore" -> BSGManycore
+  | _ -> failwith ("unknown target: " ^ s)
+
 module ValueSet =
   Set.Make(struct type t = llvalue;; let compare = compare end)
 

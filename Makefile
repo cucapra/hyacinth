@@ -3,7 +3,7 @@ TIMEOUT := 1
 ROWS := 1
 COLS := 2
 
-.PHONY: build install clean test test_save
+.PHONY: build install clean test test_save bsg_communication
 
 .PRECIOUS: %_partitioned.ll
 
@@ -47,3 +47,5 @@ test_save:
 %.png : %.dot
 	dot -Tpng $< > $@
 
+bsg_communication:
+	make src/bsg_manycore/bsg_communication.o
