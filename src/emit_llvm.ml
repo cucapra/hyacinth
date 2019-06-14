@@ -129,37 +129,37 @@ let broadcast_value value from_partition branches block block_map builder ctx =
   in
   List.iter insert_comms branches
 
-let declare_external_functions replace_md =
+let declare_external_functions host_md =
   (* declare init, send, receive, replace, join *)
   let send_t = function_type void_type [| void_pt_type; int64_type; int_type; int_type; void_pt_type |] in
   declare_function send_name send_t llvm_module |> ignore;
-  declare_function send_name send_t replace_md |> ignore;
+  declare_function send_name send_t host_md |> ignore;
   let receive_t = function_type void_pt_type [| int64_type; int_type; int_type; void_pt_type |] in
   declare_function receive_name receive_t llvm_module |> ignore;
-  declare_function receive_name receive_t replace_md |> ignore;
+  declare_function receive_name receive_t host_md |> ignore;
   declare_function receive_arg_name receive_t llvm_module |> ignore;
-  declare_function receive_arg_name receive_t replace_md |> ignore;
+  declare_function receive_arg_name receive_t host_md |> ignore;
   let init_t = function_type void_pt_type [||] in
-  declare_function init_name init_t replace_md |> ignore;
+  declare_function init_name init_t host_md |> ignore;
   let call_partitioned_funs_t = pointer_type (pointer_type (function_type void_type [| void_pt_type |])) in
   let call_partitioned_t = function_type void_pt_type [| int_type; call_partitioned_funs_t; void_pt_type |] in
   declare_function call_partitioned_name call_partitioned_t llvm_module |> ignore;
-  declare_function call_partitioned_name call_partitioned_t replace_md |> ignore;
+  declare_function call_partitioned_name call_partitioned_t host_md |> ignore;
   let join_t = function_type void_type [| int_type; void_pt_type |] in
-  declare_function join_name join_t replace_md |> ignore;
+  declare_function join_name join_t host_md |> ignore;
 
   let declare_function (f : llvalue) =
     if (is_declaration f) then
       declare_function (value_name f) (element_type (type_of f)) llvm_module |> ignore
   in
-  iter_functions declare_function replace_md;
+  iter_functions declare_function host_md;
 
   let define_global (g : llvalue) =
     define_global (value_name g) (global_initializer g) llvm_module |> ignore
   in
-  iter_globals define_global replace_md
+  iter_globals define_global host_md
 
-let builders_from_block block p mappings replace_md =
+let builders_from_block block p mappings host_md =
   let new_builder, new_fun = builder_and_fun p block mappings in
   let parent = block_parent block in
   let replace_opt = get_fun_opt mappings parent in
@@ -170,10 +170,10 @@ let builders_from_block block p mappings replace_md =
   | None ->
     let fun_type = element_type (type_of parent) in
     let replace_name = "replace_" ^ (value_name parent) in
-    let part_fun = define_function replace_name fun_type replace_md in
+    let part_fun = define_function replace_name fun_type host_md in
     let fun_begin = instr_begin (entry_block part_fun) in
     let builder = builder_at context fun_begin in
-    let ctx = call_init builder replace_md in
+    let ctx = call_init builder host_md in
     add_fun mappings parent builder ctx new_fun;
     (builder, ctx)
   in
@@ -187,7 +187,7 @@ let builder_before_last_instr block =
   in
   builder_at context before_last
 
-let replace_operand idx inst block partition builder find_partition mappings replace_md =
+let replace_operand idx inst block partition builder find_partition mappings host_md =
   let op = operand inst idx in
   match (get_instr_opt mappings op) with
   | Some new_op ->
@@ -209,7 +209,7 @@ let replace_operand idx inst block partition builder find_partition mappings rep
       begin match (get_arg_opt mappings partition op) with
       | Some new_arg -> set_operand inst idx new_arg
       | None ->
-        let _, new_fun, replace_builder, r_ctx = builders_from_block block partition mappings replace_md in
+        let _, new_fun, replace_builder, r_ctx = builders_from_block block partition mappings host_md in
         let entry = entry_block new_fun in
         let entry_builder = builder_at context (instr_begin entry) in
         let ctx = param new_fun 0 in
@@ -223,9 +223,9 @@ let replace_operand idx inst block partition builder find_partition mappings rep
     | _ -> ()
     end
 
-let replace_operands inst block partition builder find_partition mappings replace_md =
+let replace_operands inst block partition builder find_partition mappings host_md =
   let replace_op idx =
-     replace_operand idx inst block partition builder find_partition mappings replace_md
+     replace_operand idx inst block partition builder find_partition mappings host_md
   in
   let arity = num_operands inst in
   let arity_range = Core.List.range 0 arity in
@@ -262,7 +262,7 @@ let repair_phi_node find_partition mappings phi : unit =
     List.iter (fun inc -> add_incoming inc new_phi) new_incoming
   | _ -> ()
 
-let clone_blocks_per_partition replace_md partitions mappings =
+let clone_blocks_per_partition host_md partitions mappings =
   (* Get all the basic blocks, and map them to new blocks per partition *)
   let per_block partition old_fun new_fun old_block =
     let new_block = if old_block == entry_block old_fun
@@ -276,12 +276,12 @@ let clone_blocks_per_partition replace_md partitions mappings =
     let fun_type = function_type void_type [| void_pt_type |] in
     let new_name = (value_name fn) ^ "_" ^ (string_of_int partition) in
     let new_fun = define_function new_name fun_type llvm_module in
-    declare_function new_name fun_type replace_md |> ignore;
+    declare_function new_name fun_type host_md |> ignore;
 
     iter_blocks (per_block partition fn new_fun) fn
   in
   let per_function fn = List.iter (per_partition fn) partitions in
-  iter_included_functions per_function replace_md
+  iter_included_functions per_function host_md
 
 let get_nonempty_partitions (dfg : placement NodeMap.t) : int list =
   NodeMap.bindings dfg |> List.map (fun (_, p) -> p.partition) |> List.sort_uniq compare
@@ -299,7 +299,7 @@ let set_branch_destination br destinations p block mappings =
   let builder, _ = builder_and_fun p block mappings in
   insert_into_builder br "" builder
 
-let add_branch_instructions v block find_partition partitions mappings replace_md =
+let add_branch_instructions v block find_partition partitions mappings host_md =
   match get_branch v with
   | Some (`Conditional (v0, _, _)) ->
     (* Note: cannot get these from the pattern match above, because the order
@@ -314,7 +314,7 @@ let add_branch_instructions v block find_partition partitions mappings replace_m
       let br = instr_clone v in
       (* Send v0 to every core but the one it's already on *)
       if (p == p0) then begin
-        replace_operand 0 br block p p0_builder find_partition mappings replace_md;
+        replace_operand 0 br block p p0_builder find_partition mappings host_md;
         v0' := operand br 0
       end;
       (p, br)
@@ -334,9 +334,9 @@ let add_branch_instructions v block find_partition partitions mappings replace_m
     List.iter per_partition partitions
   | None -> failwith "Instruction must be branch"
 
-let add_straightline_instructions v block placement find_partition partitions mappings replace_md =
+let add_straightline_instructions v block placement find_partition partitions mappings host_md =
   let p = placement.partition in
-  let new_builder, new_fun, _, _ = builders_from_block block p mappings replace_md in
+  let new_builder, new_fun, _, _ = builders_from_block block p mappings host_md in
   let ctx = param new_fun 0 in
   match (instr_opcode v) with
   | Ret ->
@@ -348,7 +348,7 @@ let add_straightline_instructions v block placement find_partition partitions ma
       let call = call_send ret "return" host_id (const_i32 host_id) new_builder ctx in
       set_metadata_string "return" call;
       let before = builder_before context call in
-      replace_operands call block p before find_partition mappings replace_md;
+      replace_operands call block p before find_partition mappings host_md;
     end;
     (* Insert void return at this block for all partitions *)
     List.iter (insert_ret_void block mappings) partitions
@@ -360,12 +360,12 @@ let add_straightline_instructions v block placement find_partition partitions ma
     let clone = instr_clone v in
     set_metadata_placement clone placement;
     add_instr mappings v clone;
-    replace_operands clone block p new_builder find_partition mappings replace_md;
+    replace_operands clone block p new_builder find_partition mappings host_md;
     insert_into_builder clone "" new_builder
 
-let replace_fun replace_md old_fun (_, ctx, new_fun_set) =
+let pthread_replace_fun host_md old_fun (_, ctx, new_fun_set) =
   let old_name = value_name old_fun in
-  let new_fun = lookup_function_in ("replace_" ^ old_name) replace_md in
+  let new_fun = lookup_function_in ("replace_" ^ old_name) host_md in
   let return_t = return_type (element_type (type_of old_fun)) in
   replace_all_uses_with old_fun new_fun;
   let after_init = match instr_begin (entry_block new_fun) with
@@ -373,11 +373,11 @@ let replace_fun replace_md old_fun (_, ctx, new_fun_set) =
   | At_end _ -> failwith "builder should be after init"
   in
   let builder = builder_at context after_init in
-  let threads = call_partitioned_funs builder replace_md ctx new_fun_set in
+  let threads = call_partitioned_funs builder host_md ctx new_fun_set in
 
   let end_builder = builder_at_end context (entry_block new_fun) in
   let call_join _ =
-    let join = lookup_function_in join_name replace_md in
+    let join = lookup_function_in join_name host_md in
     let funs_len = size new_fun_set in
     build_call join [| const_i32 funs_len; threads |] "" end_builder |> ignore
   in
@@ -392,7 +392,7 @@ let replace_fun replace_md old_fun (_, ctx, new_fun_set) =
     build_ret return end_builder |> ignore
   end
 
-let construct_main mappings =
+let manycore_construct_main mappings =
   (* The same program gets run on every tile. The main function calls the
   C-defined call_partitioned_functions, which uses the tile_id to call the
   correct version of the function per tile. *)
@@ -400,15 +400,17 @@ let construct_main mappings =
   let main_fun = define_function "main" main_t llvm_module in
   let builder = builder_at context (instr_begin (entry_block main_fun)) in
 
-  let call_partitioned_per_fun _ (_, ctx, new_fun_set) =
-    call_partitioned_funs builder llvm_module ctx new_fun_set |> ignore
+  let call_partitioned_per_fun _ (_, _, new_fun_set) =
+    let null = const_null void_pt_type in
+    call_partitioned_funs builder llvm_module null new_fun_set |> ignore
   in
-  iter_funs mappings call_partitioned_per_fun
+  iter_funs mappings call_partitioned_per_fun;
+  build_ret (const_i32 0) builder |> ignore
 
-let emit_llvm target filename (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule * (llvalue * com) list)) (node_map : node ComMap.t) =
+let emit_llvm target filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : (llmodule * (llvalue * com) list)) (node_map : node ComMap.t) =
   print_endline "\nStarting to emit LLVM";
   set_data_layout "e-m:o-i64:64-f80:128-n8:16:32:64-S128" llvm_module;
-  declare_external_functions replace_md;
+  declare_external_functions host_md;
 
   let placement_for_com c =
     let n = ComMap.find c node_map in
@@ -429,7 +431,7 @@ let emit_llvm target filename (dfg : placement NodeMap.t) ((replace_md, llvm_to_
   | Some p' -> p'
   | None -> failwith "No partition"
   in
-  clone_blocks_per_partition replace_md partitions mappings;
+  clone_blocks_per_partition host_md partitions mappings;
 
   let add_instructions (v : llvalue) =
     (* print_endline ("Emitting LLVM for instruction: " ^ (string_of_llvalue v)); *)
@@ -437,7 +439,7 @@ let emit_llvm target filename (dfg : placement NodeMap.t) ((replace_md, llvm_to_
     let block = instr_parent v in
     begin match (op : Opcode.t) with
     | Br ->
-      add_branch_instructions v block find_partition partitions mappings replace_md
+      add_branch_instructions v block find_partition partitions mappings host_md
     | _ ->
       let _, com = List.find (fun (x, _) -> x == v) llvm_to_ast in
       let placement = placement_for_com com in
@@ -445,7 +447,7 @@ let emit_llvm target filename (dfg : placement NodeMap.t) ((replace_md, llvm_to_
       | Some p' -> p'
       | None -> placement.partition
       in
-      add_straightline_instructions v block placement find_partition_default partitions mappings replace_md
+      add_straightline_instructions v block placement find_partition_default partitions mappings host_md
     end
   in
   let per_function f fn =
@@ -453,16 +455,14 @@ let emit_llvm target filename (dfg : placement NodeMap.t) ((replace_md, llvm_to_
     let sorted = Sort_basic_blocks.sort_blocks (List.rev blocks) in
     List.iter (iter_instrs f) sorted
   in
-  iter_included_functions (per_function add_instructions) replace_md;
+  iter_included_functions (per_function add_instructions) host_md;
   let repair_phi = repair_phi_node find_partition mappings in
-  iter_included_functions (per_function repair_phi) replace_md;
-
-  iter_funs mappings (replace_fun replace_md);
+  iter_included_functions (per_function repair_phi) host_md;
 
   begin match target with
-  | PThreads -> ()
-  | BSGManycore -> construct_main mappings
+  | PThreads -> iter_funs mappings (pthread_replace_fun host_md)
+  | BSGManycore -> manycore_construct_main mappings
   end;
 
   print_module (filename ^ "_cores.ll") llvm_module;
-  print_module (filename ^ "_host.ll") replace_md
+  print_module (filename ^ "_host.ll") host_md

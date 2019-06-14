@@ -2,6 +2,7 @@ SSAC := dune exec ssac --
 TIMEOUT := 1
 ROWS := 1
 COLS := 2
+TARGET := pthreads
 
 .PHONY: build install clean test test_save bsg_communication
 
@@ -17,7 +18,7 @@ install:
 
 clean:
 	rm -f {.,src,examples/*}/*.{ll,bc,out,dot,png}
-	rm -f tests/*{.bc,.out,.dot,_partitioned.ll,_host.ll}
+	rm -f tests/*{.bc,.out,.dot,_partitioned.ll,_host.ll,_cores.ll}
 	rm -f tests/output
 	dune clean
 
@@ -30,7 +31,7 @@ test_save:
 	make clean
 
 %_cores.ll %_host.ll %.dot: %.bc
-	cat $< | $(SSAC) -l -t $(TIMEOUT) -r $(ROWS) -c $(COLS) -o $*
+	cat $< | $(SSAC) -l -t $(TIMEOUT) -r $(ROWS) -c $(COLS) -target $(TARGET) -o $*
 
 %_partitioned.ll: %_cores.ll %_host.ll src/communication.ll
 	llvm-link -S $^ -o $@

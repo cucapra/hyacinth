@@ -11,7 +11,14 @@ extern int __bsg_y;
 #define bsg_tiles_X 2
 #define bsg_tiles_Y 2
 
+#define bsg_id_to_x(id) ((id) % bsg_tiles_X)
+#define bsg_id_to_y(id) ((id) / bsg_tiles_X)
 #define bsg_x_y_to_id(x,y) (bsg_tiles_X*(y) + (x))
 #define bsg_num_tiles (bsg_tiles_X*bsg_tiles_Y)
 
+// BSG might redefine later to do something more energy efficient
+#define bsg_wait_while(cond) do {} while ((cond))
+
 int bsg_set_tile_x_y();
+
+void *bsg_remote_ptr(int x, int y, void *local_addr);
