@@ -18,7 +18,7 @@ let init_name = "init"
 let send_name = "send"
 let receive_name = "receive"
 let receive_arg_name = "receive_argument"
-let replace_name = "call_partitioned_functions"
+let call_partitioned_name = "call_partitioned_functions"
 let join_name = "join_partitioned_functions"
 let comms_id = ref 0
 let host_id = -1
@@ -57,6 +57,18 @@ let new_comms_id () : llvalue =
 let call_init builder md =
   let init = lookup_function_in init_name md in
   build_call init [||] "" builder
+
+let call_partitioned_funs builder md ctx new_fun_set =
+  let funs = Array.of_list (to_list new_fun_set) in
+  let replace_funs_t = pointer_type (function_type void_type [| void_pt_type |]) in
+  let funs_arg = const_array replace_funs_t funs in
+  let funs_global = define_global "funs" funs_arg md in
+  let funs_len = Array.length funs in
+  let indices = [| const_i32 0; const_i32 0|] in
+  let gep = build_in_bounds_gep funs_global indices "funs" builder in
+  let call_partitioned = lookup_function_in call_partitioned_name md in
+  let args = [| const_i32 funs_len; gep; ctx |] in
+  build_call call_partitioned args call_partitioned_name builder
 
 let value_to_value_ptr value reason builder =
   let ty = (type_of value) in
@@ -129,9 +141,10 @@ let declare_external_functions replace_md =
   declare_function receive_arg_name receive_t replace_md |> ignore;
   let init_t = function_type void_pt_type [||] in
   declare_function init_name init_t replace_md |> ignore;
-  let replace_funs_t = pointer_type (pointer_type (function_type void_type [| void_pt_type |])) in
-  let replace_t = function_type void_pt_type [| int_type; replace_funs_t; void_pt_type |] in
-  declare_function replace_name replace_t replace_md |> ignore;
+  let call_partitioned_funs_t = pointer_type (pointer_type (function_type void_type [| void_pt_type |])) in
+  let call_partitioned_t = function_type void_pt_type [| int_type; call_partitioned_funs_t; void_pt_type |] in
+  declare_function call_partitioned_name call_partitioned_t llvm_module |> ignore;
+  declare_function call_partitioned_name call_partitioned_t replace_md |> ignore;
   let join_t = function_type void_type [| int_type; void_pt_type |] in
   declare_function join_name join_t replace_md |> ignore;
 
@@ -277,43 +290,6 @@ let insert_ret_void block block_map partition =
   let builder, _ = builder_and_fun partition block block_map in
   build_ret_void builder |> ignore
 
-let replace_fun replace_md old_fun (_, ctx, new_fun_set) =
-  let old_name = value_name old_fun in
-  let new_fun = lookup_function_in ("replace_" ^ old_name) replace_md in
-  let return_t = return_type (element_type (type_of old_fun)) in
-  replace_all_uses_with old_fun new_fun;
-  let after_init = match instr_begin (entry_block new_fun) with
-  | Before v -> instr_succ v
-  | At_end _ -> failwith "builder should be after init"
-  in
-  let builder = builder_at context after_init in
-  let funs = Array.of_list (to_list new_fun_set) in
-  let replace_funs_t = pointer_type (function_type void_type [| void_pt_type |]) in
-  let funs_arg = const_array replace_funs_t funs in
-  let funs_global = define_global "funs" funs_arg replace_md in
-  let funs_len = Array.length funs in
-  let indices = [| const_i32 0; const_i32 0|] in
-  let gep = build_in_bounds_gep funs_global indices "funs" builder in
-  let replace = lookup_function_in replace_name replace_md in
-  let args = [| const_i32 funs_len; gep; ctx |] in
-  let threads = build_call replace args "threads" builder in
-
-  let end_builder = builder_at_end context (entry_block new_fun) in
-  let call_join _ =
-    let join = lookup_function_in join_name replace_md in
-    build_call join [| const_i32 funs_len; threads |] "" end_builder |> ignore
-  in
-
-  if return_t == void_type then begin
-    call_join ();
-    build_ret_void end_builder |> ignore
-  end
-  else begin
-    let return = call_receive "return" "return" return_t host_id (const_i32 host_id) end_builder ctx in
-    call_join ();
-    build_ret return end_builder |> ignore
-  end
-
 let set_branch_destination br destinations p block mappings =
   let per_destination (idx, dest) =
     let new_dest = get_block mappings p dest in
@@ -387,11 +363,47 @@ let add_straightline_instructions v block placement find_partition partitions ma
     replace_operands clone block p new_builder find_partition mappings replace_md;
     insert_into_builder clone "" new_builder
 
-let construct_main _mappings =
-  (* the same program gets run on every core. The main function should use the
-  tile ID (defined in the C communication code) to call each of its "own"
-  partitioned functions *)
-  ()
+let replace_fun replace_md old_fun (_, ctx, new_fun_set) =
+  let old_name = value_name old_fun in
+  let new_fun = lookup_function_in ("replace_" ^ old_name) replace_md in
+  let return_t = return_type (element_type (type_of old_fun)) in
+  replace_all_uses_with old_fun new_fun;
+  let after_init = match instr_begin (entry_block new_fun) with
+  | Before v -> instr_succ v
+  | At_end _ -> failwith "builder should be after init"
+  in
+  let builder = builder_at context after_init in
+  let threads = call_partitioned_funs builder replace_md ctx new_fun_set in
+
+  let end_builder = builder_at_end context (entry_block new_fun) in
+  let call_join _ =
+    let join = lookup_function_in join_name replace_md in
+    let funs_len = size new_fun_set in
+    build_call join [| const_i32 funs_len; threads |] "" end_builder |> ignore
+  in
+
+  if return_t == void_type then begin
+    call_join ();
+    build_ret_void end_builder |> ignore
+  end
+  else begin
+    let return = call_receive "return" "return" return_t host_id (const_i32 host_id) end_builder ctx in
+    call_join ();
+    build_ret return end_builder |> ignore
+  end
+
+let construct_main mappings =
+  (* The same program gets run on every tile. The main function calls the
+  C-defined call_partitioned_functions, which uses the tile_id to call the
+  correct version of the function per tile. *)
+  let main_t = function_type int_type [||] in
+  let main_fun = define_function "main" main_t llvm_module in
+  let builder = builder_at context (instr_begin (entry_block main_fun)) in
+
+  let call_partitioned_per_fun _ (_, ctx, new_fun_set) =
+    call_partitioned_funs builder llvm_module ctx new_fun_set |> ignore
+  in
+  iter_funs mappings call_partitioned_per_fun
 
 let emit_llvm target filename (dfg : placement NodeMap.t) ((replace_md, llvm_to_ast) : (llmodule * (llvalue * com) list)) (node_map : node ComMap.t) =
   print_endline "\nStarting to emit LLVM";
@@ -446,9 +458,10 @@ let emit_llvm target filename (dfg : placement NodeMap.t) ((replace_md, llvm_to_
   iter_included_functions (per_function repair_phi) replace_md;
 
   iter_funs mappings (replace_fun replace_md);
+
   begin match target with
-  | PThreads -> construct_main mappings
-  | BSGManycore -> ()
+  | PThreads -> ()
+  | BSGManycore -> construct_main mappings
   end;
 
   print_module (filename ^ "_cores.ll") llvm_module;

@@ -30,3 +30,4 @@ val iter_funs : mappings -> (llvalue -> (llbuilder * llvalue * valueset) -> unit
 
 val add_value : valueset -> llvalue -> unit
 val to_list : valueset -> llvalue list
+val size : valueset -> int

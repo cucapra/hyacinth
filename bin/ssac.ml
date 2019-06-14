@@ -15,7 +15,7 @@ let rows : int ref = ref 2
 let columns : int ref = ref 2
 let timeout : int ref = ref 100000
 let out_filename : string ref = ref "ssac-output"
-let target_string : string ref = ref "pthread"
+let target_string : string ref = ref "pthreads"
 
 let usage = "SSA-Spatial Compiler\n"
 let spec_list : (Arg.key * Arg.spec * Arg.doc) list =

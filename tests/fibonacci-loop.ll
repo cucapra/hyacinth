@@ -180,7 +180,7 @@ declare i32 @atoi(i8* nocapture) local_unnamed_addr #2
 define i32 @replace_fib(i32) {
 entry:
   %1 = call i8* @init()
-  %threads = call i8* @call_partitioned_functions(i32 2, void (i8*)** getelementptr inbounds ([2 x void (i8*)*], [2 x void (i8*)*]* @funs, i32 0, i32 0), i8* %1)
+  %call_partitioned_functions = call i8* @call_partitioned_functions(i32 2, void (i8*)** getelementptr inbounds ([2 x void (i8*)*], [2 x void (i8*)*]* @funs, i32 0, i32 0), i8* %1)
   %send_alloca = alloca i32, !reason !3
   store i32 %0, i32* %send_alloca, !reason !3
   %send_cast = bitcast i32* %send_alloca to i8*, !reason !3
@@ -192,7 +192,7 @@ entry:
   %return = call i8* bitcast (i8* (i32, i32, i32, i8*)* @receive to i8* (i64, i32, i32, i8*)*)(i64 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i64), i32 -1, i32 -1, i8* %1), !reason !15
   %bitcast = bitcast i8* %return to i32*, !reason !15
   %receive_load = load i32, i32* %bitcast, !reason !15
-  call void @join_partitioned_functions(i32 2, i8* %threads)
+  call void @join_partitioned_functions(i32 2, i8* %call_partitioned_functions)
   ret i32 %receive_load
 }
 

@@ -13,7 +13,7 @@ target triple = "x86_64-apple-macosx10.14.0"
 
 @.str.1 = global [22 x i8] c"quadratic result: %f\0A\00"
 @str = global [14 x i8] c"starting main\00"
-@funs = global [2 x void (i8*)*] [void (i8*)* @quadratic_0, void (i8*)* @quadratic_1]
+@funs = global [2 x void (i8*)*] [void (i8*)* @quadratic_1, void (i8*)* @quadratic_0]
 @str.1 = private unnamed_addr constant [14 x i8] c"starting main\00", align 1
 @.str.1.2 = private unnamed_addr constant [22 x i8] c"quadratic result: %f\0A\00", align 1
 @.str = private unnamed_addr constant [64 x i8] c"WARNING: receive with ID [%d] expected size %d but has size %d\0A\00", align 1
@@ -177,7 +177,7 @@ declare i32 @atoi(i8* nocapture) local_unnamed_addr #3
 define double @replace_quadratic(double, double, double) {
 entry:
   %3 = call i8* @init()
-  %threads = call i8* @call_partitioned_functions(i32 2, void (i8*)** getelementptr inbounds ([2 x void (i8*)*], [2 x void (i8*)*]* @funs, i32 0, i32 0), i8* %3)
+  %call_partitioned_functions = call i8* @call_partitioned_functions(i32 2, void (i8*)** getelementptr inbounds ([2 x void (i8*)*], [2 x void (i8*)*]* @funs, i32 0, i32 0), i8* %3)
   %send_alloca = alloca double, !reason !3
   store double %1, double* %send_alloca, !reason !3
   %send_cast = bitcast double* %send_alloca to i8*, !reason !3
@@ -201,7 +201,7 @@ entry:
   %return = call i8* bitcast (i8* (i32, i32, i32, i8*)* @receive to i8* (i64, i32, i32, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 -1, i32 -1, i8* %3), !reason !14
   %bitcast = bitcast i8* %return to double*, !reason !14
   %receive_load = load double, double* %bitcast, !reason !14
-  call void @join_partitioned_functions(i32 2, i8* %threads)
+  call void @join_partitioned_functions(i32 2, i8* %call_partitioned_functions)
   ret double %receive_load
 }
 

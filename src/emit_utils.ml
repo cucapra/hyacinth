@@ -84,3 +84,6 @@ let add_value (vs: valueset) (v : llvalue) : unit =
 
 let to_list (vs: valueset) : llvalue list =
   ValueSet.elements !vs
+
+let size (vs: valueset) : int =
+  ValueSet.cardinal !vs
