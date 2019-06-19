@@ -13,17 +13,17 @@ target triple = "x86_64-apple-macosx10.14.0"
 
 @.str.1 = global [22 x i8] c"quadratic result: %f\0A\00"
 @str = global [14 x i8] c"starting main\00"
-@funs = global [2 x void (i8*)*] [void (i8*)* @quadratic_1, void (i8*)* @quadratic_0]
+@funs = global [2 x void (i8*)*] [void (i8*)* @quadratic_0, void (i8*)* @quadratic_1]
 @str.1 = private unnamed_addr constant [14 x i8] c"starting main\00", align 1
 @.str.1.2 = private unnamed_addr constant [22 x i8] c"quadratic result: %f\0A\00", align 1
 @.str = private unnamed_addr constant [64 x i8] c"WARNING: receive with ID [%d] expected size %d but has size %d\0A\00", align 1
 
 define void @quadratic_0(i8*) {
 entry:
-  %argument1 = call i8* bitcast (i8* (i32, i32, i32, i8*)* @receive_argument to i8* (i64, i32, i32, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 -1, i32 4, i8* %0), !reason !3
+  %argument1 = call i8* bitcast (i8* (i32, i32, i8*)* @receive_argument to i8* (i64, i32, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 4, i8* %0), !reason !3
   %bitcast2 = bitcast i8* %argument1 to double*, !reason !3
   %receive_load3 = load double, double* %bitcast2, !reason !3
-  %argument = call i8* bitcast (i8* (i32, i32, i32, i8*)* @receive_argument to i8* (i64, i32, i32, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 -1, i32 0, i8* %0), !reason !3
+  %argument = call i8* bitcast (i8* (i32, i32, i8*)* @receive_argument to i8* (i64, i32, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 0, i8* %0), !reason !3
   %bitcast = bitcast i8* %argument to double*, !reason !3
   %receive_load = load double, double* %bitcast, !reason !3
   %1 = fmul double %receive_load, %receive_load, !time !4
@@ -71,13 +71,13 @@ declare i32 @"\01_sleep"(i32)
 
 define void @quadratic_1(i8*) {
 entry:
-  %argument6 = call i8* bitcast (i8* (i32, i32, i32, i8*)* @receive_argument to i8* (i64, i32, i32, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 -1, i32 5, i8* %0), !reason !3
+  %argument6 = call i8* bitcast (i8* (i32, i32, i8*)* @receive_argument to i8* (i64, i32, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 5, i8* %0), !reason !3
   %bitcast7 = bitcast i8* %argument6 to double*, !reason !3
   %receive_load8 = load double, double* %bitcast7, !reason !3
-  %argument1 = call i8* bitcast (i8* (i32, i32, i32, i8*)* @receive_argument to i8* (i64, i32, i32, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 -1, i32 2, i8* %0), !reason !3
+  %argument1 = call i8* bitcast (i8* (i32, i32, i8*)* @receive_argument to i8* (i64, i32, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 2, i8* %0), !reason !3
   %bitcast2 = bitcast i8* %argument1 to double*, !reason !3
   %receive_load3 = load double, double* %bitcast2, !reason !3
-  %argument = call i8* bitcast (i8* (i32, i32, i32, i8*)* @receive_argument to i8* (i64, i32, i32, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 -1, i32 1, i8* %0), !reason !3
+  %argument = call i8* bitcast (i8* (i32, i32, i8*)* @receive_argument to i8* (i64, i32, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 1, i8* %0), !reason !3
   %bitcast = bitcast i8* %argument to double*, !reason !3
   %receive_load = load double, double* %bitcast, !reason !3
   %1 = fmul double %receive_load, 4.000000e+00, !time !15
@@ -417,57 +417,57 @@ declare i32 @"\01_pthread_rwlock_wrlock"(%struct._opaque_pthread_rwlock_t*) loca
 declare i32 @"\01_pthread_rwlock_unlock"(%struct._opaque_pthread_rwlock_t*) local_unnamed_addr #6
 
 ; Function Attrs: nounwind ssp uwtable
-define i8* @_receive(i1 zeroext, i32, i32, i32, i8*) local_unnamed_addr #1 {
-  %6 = bitcast i8* %4 to %struct.Context*
-  %7 = getelementptr inbounds i8, i8* %4, i64 8
-  %8 = bitcast i8* %7 to %struct._opaque_pthread_rwlock_t*
-  br label %9
+define i8* @_receive(i1 zeroext, i32, i32, i8*) local_unnamed_addr #1 {
+  %5 = bitcast i8* %3 to %struct.Context*
+  %6 = getelementptr inbounds i8, i8* %3, i64 8
+  %7 = bitcast i8* %6 to %struct._opaque_pthread_rwlock_t*
+  br label %8
 
-; <label>:9:                                      ; preds = %14, %5
-  br i1 %0, label %10, label %12
+; <label>:8:                                      ; preds = %13, %4
+  br i1 %0, label %9, label %11
 
-; <label>:10:                                     ; preds = %9
-  %11 = tail call i32 @"\01_pthread_rwlock_wrlock"(%struct._opaque_pthread_rwlock_t* nonnull %8) #2
-  br label %14
+; <label>:9:                                      ; preds = %8
+  %10 = tail call i32 @"\01_pthread_rwlock_wrlock"(%struct._opaque_pthread_rwlock_t* nonnull %7) #2
+  br label %13
 
-; <label>:12:                                     ; preds = %9
-  %13 = tail call i32 @"\01_pthread_rwlock_rdlock"(%struct._opaque_pthread_rwlock_t* nonnull %8) #2
-  br label %14
+; <label>:11:                                     ; preds = %8
+  %12 = tail call i32 @"\01_pthread_rwlock_rdlock"(%struct._opaque_pthread_rwlock_t* nonnull %7) #2
+  br label %13
 
-; <label>:14:                                     ; preds = %12, %10
-  %15 = tail call %struct.Comm* @_find_channel(i1 zeroext %0, i32 %3, %struct.Context* %6)
-  %16 = tail call i32 @"\01_pthread_rwlock_unlock"(%struct._opaque_pthread_rwlock_t* nonnull %8) #2
-  %17 = icmp eq %struct.Comm* %15, null
-  br i1 %17, label %9, label %18
+; <label>:13:                                     ; preds = %11, %9
+  %14 = tail call %struct.Comm* @_find_channel(i1 zeroext %0, i32 %2, %struct.Context* %5)
+  %15 = tail call i32 @"\01_pthread_rwlock_unlock"(%struct._opaque_pthread_rwlock_t* nonnull %7) #2
+  %16 = icmp eq %struct.Comm* %14, null
+  br i1 %16, label %8, label %17
 
-; <label>:18:                                     ; preds = %14
-  %19 = getelementptr inbounds %struct.Comm, %struct.Comm* %15, i64 0, i32 1
-  %20 = load i32, i32* %19, align 4, !tbaa !41
-  %21 = icmp eq i32 %20, %1
-  br i1 %21, label %24, label %22
+; <label>:17:                                     ; preds = %13
+  %18 = getelementptr inbounds %struct.Comm, %struct.Comm* %14, i64 0, i32 1
+  %19 = load i32, i32* %18, align 4, !tbaa !41
+  %20 = icmp eq i32 %19, %1
+  br i1 %20, label %23, label %21
 
-; <label>:22:                                     ; preds = %18
-  %23 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([64 x i8], [64 x i8]* @.str, i64 0, i64 0), i32 %3, i32 %1, i32 %20)
-  br label %24
+; <label>:21:                                     ; preds = %17
+  %22 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([64 x i8], [64 x i8]* @.str, i64 0, i64 0), i32 %2, i32 %1, i32 %19)
+  br label %23
 
-; <label>:24:                                     ; preds = %22, %18
-  %25 = getelementptr inbounds %struct.Comm, %struct.Comm* %15, i64 0, i32 2
-  %26 = load i8*, i8** %25, align 8, !tbaa !42
-  ret i8* %26
+; <label>:23:                                     ; preds = %21, %17
+  %24 = getelementptr inbounds %struct.Comm, %struct.Comm* %14, i64 0, i32 2
+  %25 = load i8*, i8** %24, align 8, !tbaa !42
+  ret i8* %25
 }
 
 declare i32 @"\01_pthread_rwlock_rdlock"(%struct._opaque_pthread_rwlock_t*) local_unnamed_addr #6
 
 ; Function Attrs: nounwind ssp uwtable
 define i8* @receive(i32, i32, i32, i8*) #1 {
-  %5 = tail call i8* @_receive(i1 zeroext true, i32 %0, i32 undef, i32 %2, i8* %3)
+  %5 = tail call i8* @_receive(i1 zeroext true, i32 %0, i32 %2, i8* %3)
   ret i8* %5
 }
 
 ; Function Attrs: nounwind ssp uwtable
-define i8* @receive_argument(i32, i32, i32, i8*) #1 {
-  %5 = tail call i8* @_receive(i1 zeroext false, i32 %0, i32 undef, i32 %2, i8* %3)
-  ret i8* %5
+define i8* @receive_argument(i32, i32, i8*) #1 {
+  %4 = tail call i8* @_receive(i1 zeroext false, i32 %0, i32 %1, i8* %2)
+  ret i8* %4
 }
 
 attributes #0 = { nounwind readnone speculatable }

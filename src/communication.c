@@ -133,7 +133,7 @@ void send(void *value, int size, int to_core, int id, void *context) {
     pthread_rwlock_unlock(&c->lock);
 }
 
-void *_receive(bool destructive, int size, int from_core, int id, void *context) {
+void *_receive(bool destructive, int size, int id, void *context) {
     #if DEBUGGING
     printf("ID [%d] Receive size: %d\n", id, size);
     #endif // DEBUGGING
@@ -174,10 +174,10 @@ void *_receive(bool destructive, int size, int from_core, int id, void *context)
 }
 
 void *receive(int size, int from_core, int id, void *context) {
-    return _receive(true, size, from_core, id, context);
+    return _receive(true, size, id, context);
 }
 
-void *receive_argument(int size, int from_core, int id, void *context) {
-    return _receive(false, size, from_core, id, context);
+void *receive_argument(int size, int id, void *context) {
+    return _receive(false, size, id, context);
 }
 

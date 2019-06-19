@@ -95,10 +95,13 @@ let call_send value reason (to_partition : int) id builder ctx =
   set_metadata_string reason send;
   to_replace
 
-let call_receive_variant variant name reason (ty : lltype) (from_partition : int) id builder ctx =
+let call_receive_variant variant name reason (ty : lltype) (from_partition : int option) id builder ctx =
   let receive = lookup_function_in variant llvm_module in
   let size = size_of ty in
-  let args = [| size; (const_i32 from_partition); id; ctx |] in
+  let args = match from_partition with
+  | Some i -> [| size; (const_i32 i); id; ctx |]
+  | None -> [| size; id; ctx |]
+  in
   let value = build_call receive args name builder in
   let bitcast = build_bitcast value (pointer_type ty) "bitcast" builder in
   let load = build_load bitcast "receive_load" builder in
@@ -106,10 +109,10 @@ let call_receive_variant variant name reason (ty : lltype) (from_partition : int
   load
 
 let call_receive name reason (ty : lltype) (from_partition : int) id builder ctx =
-  call_receive_variant receive_name name reason ty from_partition id builder ctx
+  call_receive_variant receive_name name reason ty (Some from_partition) id builder ctx
 
-let call_receive_arg name reason (ty : lltype) (from_partition : int) id builder ctx =
-  call_receive_variant receive_arg_name name reason ty from_partition id builder ctx
+let call_receive_arg name reason (ty : lltype) id builder ctx =
+  call_receive_variant receive_arg_name name reason ty None id builder ctx
 
 let broadcast_value value from_partition branches block block_map builder ctx =
   let value_ptr, size, _ = value_to_value_ptr value "broadcast" builder in
@@ -137,8 +140,9 @@ let declare_external_functions host_md =
   let receive_t = function_type void_pt_type [| int64_type; int_type; int_type; void_pt_type |] in
   declare_function receive_name receive_t llvm_module |> ignore;
   declare_function receive_name receive_t host_md |> ignore;
-  declare_function receive_arg_name receive_t llvm_module |> ignore;
-  declare_function receive_arg_name receive_t host_md |> ignore;
+  let receive_arg_t = function_type void_pt_type [| int64_type; int_type; void_pt_type |] in
+  declare_function receive_arg_name receive_arg_t llvm_module |> ignore;
+  declare_function receive_arg_name receive_arg_t host_md |> ignore;
   let init_t = function_type void_pt_type [||] in
   declare_function init_name init_t host_md |> ignore;
   let call_partitioned_funs_t = pointer_type (pointer_type (function_type void_type [| void_pt_type |])) in
@@ -215,7 +219,7 @@ let replace_operand idx inst block partition builder find_partition mappings hos
         let ctx = param new_fun 0 in
         if (op != ctx) then (
           let id = new_comms_id () in
-          let call = call_receive_arg "argument" "replace argument" (type_of op) host_id id entry_builder ctx in
+          let call = call_receive_arg "argument" "replace argument" (type_of op) id entry_builder ctx in
           call_send op "replace argument" partition id replace_builder r_ctx |> ignore;
           add_arg mappings partition op call;
           set_operand inst idx call)
