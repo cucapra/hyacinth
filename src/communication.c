@@ -177,7 +177,19 @@ void *receive(int size, int from_core, int id, void *context) {
     return _receive(true, size, id, context);
 }
 
+void send_argument(void *value, int size, int to_core, int id, void *context) {
+    send(value, size, to_core, id, context);
+}
+
 void *receive_argument(int size, int id, void *context) {
     return _receive(false, size, id, context);
+}
+
+void send_return(void *value, int size, void *context) {
+    send(value, size, -1, -1, context);
+}
+
+void *receive_return(int size, void *context) {
+    return _receive(true, size, -1, context);
 }
 

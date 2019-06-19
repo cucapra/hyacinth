@@ -17,7 +17,10 @@ let llvm_module = create_module context "new_module"
 let init_name = "init"
 let send_name = "send"
 let receive_name = "receive"
+let send_arg_name = "send_argument"
 let receive_arg_name = "receive_argument"
+let send_return_name = "send_return"
+let receive_return_name = "receive_return"
 let call_partitioned_name = "call_partitioned_functions"
 let join_name = "join_partitioned_functions"
 let comms_id = ref 0
@@ -86,21 +89,30 @@ let value_to_value_ptr value reason builder =
   let size = size_of ty in
   (value_ptr, size, to_replace)
 
-let call_send value reason (to_partition : int) id builder ctx =
+let call_send_variant variant value reason (to_partition : int) id builder ctx =
   let value_ptr, size, to_replace = value_to_value_ptr value reason builder in
-  let send = lookup_function_in send_name llvm_module in
+  let send = lookup_function_in variant llvm_module in
   let destination = const_i32 to_partition in
-  let args = [| value_ptr; size;  destination; id; ctx |] in
+  let args = [| value_ptr; size; destination; id; ctx |] in
   let send = build_call send args "" builder in
   set_metadata_string reason send;
   to_replace
 
-let call_receive_variant variant name reason (ty : lltype) (from_partition : int option) id builder ctx =
+let call_send_return value reason builder ctx =
+  let value_ptr, size, to_replace = value_to_value_ptr value reason builder in
+  let send = lookup_function_in send_return_name llvm_module in
+  let args = [| value_ptr; size; ctx |] in
+  let send = build_call send args "" builder in
+  set_metadata_string reason send;
+  to_replace
+
+let call_receive_variant variant name reason (ty : lltype) from_partition id builder ctx =
   let receive = lookup_function_in variant llvm_module in
   let size = size_of ty in
-  let args = match from_partition with
-  | Some i -> [| size; (const_i32 i); id; ctx |]
-  | None -> [| size; id; ctx |]
+  let args = match (from_partition, id) with
+  | Some p, Some i -> [| size; (const_i32 p); i; ctx |]
+  | None, Some i -> [| size; i; ctx |]
+  | _ -> [| size; ctx |]
   in
   let value = build_call receive args name builder in
   let bitcast = build_bitcast value (pointer_type ty) "bitcast" builder in
@@ -109,10 +121,13 @@ let call_receive_variant variant name reason (ty : lltype) (from_partition : int
   load
 
 let call_receive name reason (ty : lltype) (from_partition : int) id builder ctx =
-  call_receive_variant receive_name name reason ty (Some from_partition) id builder ctx
+  call_receive_variant receive_name name reason ty (Some from_partition) (Some id) builder ctx
 
 let call_receive_arg name reason (ty : lltype) id builder ctx =
-  call_receive_variant receive_arg_name name reason ty None id builder ctx
+  call_receive_variant receive_arg_name name reason ty None (Some id) builder ctx
+
+let call_receive_return name reason (ty : lltype) builder ctx =
+  call_receive_variant receive_return_name name reason ty None None builder ctx
 
 let broadcast_value value from_partition branches block block_map builder ctx =
   let value_ptr, size, _ = value_to_value_ptr value "broadcast" builder in
@@ -140,9 +155,18 @@ let declare_external_functions host_md =
   let receive_t = function_type void_pt_type [| int64_type; int_type; int_type; void_pt_type |] in
   declare_function receive_name receive_t llvm_module |> ignore;
   declare_function receive_name receive_t host_md |> ignore;
+  let send_arg_t = function_type void_type [| void_pt_type; int64_type; int_type; int_type; void_pt_type |] in
+  declare_function send_arg_name send_arg_t llvm_module |> ignore;
+  declare_function send_arg_name send_arg_t host_md |> ignore;
   let receive_arg_t = function_type void_pt_type [| int64_type; int_type; void_pt_type |] in
   declare_function receive_arg_name receive_arg_t llvm_module |> ignore;
   declare_function receive_arg_name receive_arg_t host_md |> ignore;
+  let send_return_t = function_type void_type [| void_pt_type; int64_type; void_pt_type |] in
+  declare_function send_return_name send_return_t llvm_module |> ignore;
+  declare_function send_return_name send_return_t host_md |> ignore;
+  let receive_return_t = function_type void_pt_type [| int64_type; void_pt_type |] in
+  declare_function receive_return_name receive_return_t llvm_module |> ignore;
+  declare_function receive_return_name receive_return_t host_md |> ignore;
   let init_t = function_type void_pt_type [||] in
   declare_function init_name init_t host_md |> ignore;
   let call_partitioned_funs_t = pointer_type (pointer_type (function_type void_type [| void_pt_type |])) in
@@ -202,7 +226,7 @@ let replace_operand idx inst block partition builder find_partition mappings hos
       let id = new_comms_id () in
       let ctx = param op_fun 0 in
       let receive = call_receive receive_name "replace mapped op" (type_of new_op) op_partition id builder ctx in
-      call_send new_op "replace mapped op" partition id op_builder ctx |> ignore;
+      call_send_variant send_name new_op "replace mapped op" partition id op_builder ctx |> ignore;
       set_operand inst idx receive
     else
       set_operand inst idx new_op
@@ -220,7 +244,7 @@ let replace_operand idx inst block partition builder find_partition mappings hos
         if (op != ctx) then (
           let id = new_comms_id () in
           let call = call_receive_arg "argument" "replace argument" (type_of op) id entry_builder ctx in
-          call_send op "replace argument" partition id replace_builder r_ctx |> ignore;
+          call_send_variant send_arg_name op "replace argument" partition id replace_builder r_ctx |> ignore;
           add_arg mappings partition op call;
           set_operand inst idx call)
       end
@@ -249,7 +273,7 @@ let repair_phi_node find_partition mappings phi : unit =
         let prev_block_builder = builder_before_last_instr prev_block in
         let id = new_comms_id () in
         let ctx = param (block_parent op_block) 0 in
-        call_send new_val "repair phi" partition id op_builder ctx |> ignore;
+        call_send_variant send_name new_val "repair phi" partition id op_builder ctx |> ignore;
         let receive = call_receive "repair phi" receive_name (type_of new_val) op_partition id prev_block_builder ctx in
         (receive, prev_block)
       end
@@ -349,7 +373,7 @@ let add_straightline_instructions v block placement find_partition partitions ma
     once, later. *)
     if (num_operands v) > 0 then begin
       let ret = operand v 0 in
-      let call = call_send ret "return" host_id (const_i32 host_id) new_builder ctx in
+      let call = call_send_return ret "return" new_builder ctx in
       set_metadata_string "return" call;
       let before = builder_before context call in
       replace_operands call block p before find_partition mappings host_md;
@@ -391,7 +415,7 @@ let pthread_replace_fun host_md old_fun (_, ctx, new_fun_set) =
     build_ret_void end_builder |> ignore
   end
   else begin
-    let return = call_receive "return" "return" return_t host_id (const_i32 host_id) end_builder ctx in
+    let return = call_receive_return "return" "return" return_t end_builder ctx in
     call_join ();
     build_ret return end_builder |> ignore
   end

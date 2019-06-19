@@ -63,7 +63,7 @@ entry:
   %send_alloca18 = alloca double, !reason !14
   store double %9, double* %send_alloca18, !reason !14
   %send_cast19 = bitcast double* %send_alloca18 to i8*, !reason !14
-  call void bitcast (void (i8*, i32, i32, i32, i8*)* @send to void (i8*, i64, i32, i32, i8*)*)(i8* %send_cast19, i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 -1, i32 -1, i8* %0), !reason !14
+  call void bitcast (void (i8*, i32, i8*)* @send_return to void (i8*, i64, i8*)*)(i8* %send_cast19, i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i8* %0), !reason !14
   ret void
 }
 
@@ -181,24 +181,24 @@ entry:
   %send_alloca = alloca double, !reason !3
   store double %1, double* %send_alloca, !reason !3
   %send_cast = bitcast double* %send_alloca to i8*, !reason !3
-  call void bitcast (void (i8*, i32, i32, i32, i8*)* @send to void (i8*, i64, i32, i32, i8*)*)(i8* %send_cast, i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 0, i32 0, i8* %3), !reason !3
+  call void bitcast (void (i8*, i32, i32, i32, i8*)* @send_argument to void (i8*, i64, i32, i32, i8*)*)(i8* %send_cast, i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 0, i32 0, i8* %3), !reason !3
   %send_alloca1 = alloca double, !reason !3
   store double %0, double* %send_alloca1, !reason !3
   %send_cast2 = bitcast double* %send_alloca1 to i8*, !reason !3
-  call void bitcast (void (i8*, i32, i32, i32, i8*)* @send to void (i8*, i64, i32, i32, i8*)*)(i8* %send_cast2, i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 1, i32 1, i8* %3), !reason !3
+  call void bitcast (void (i8*, i32, i32, i32, i8*)* @send_argument to void (i8*, i64, i32, i32, i8*)*)(i8* %send_cast2, i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 1, i32 1, i8* %3), !reason !3
   %send_alloca3 = alloca double, !reason !3
   store double %2, double* %send_alloca3, !reason !3
   %send_cast4 = bitcast double* %send_alloca3 to i8*, !reason !3
-  call void bitcast (void (i8*, i32, i32, i32, i8*)* @send to void (i8*, i64, i32, i32, i8*)*)(i8* %send_cast4, i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 1, i32 2, i8* %3), !reason !3
+  call void bitcast (void (i8*, i32, i32, i32, i8*)* @send_argument to void (i8*, i64, i32, i32, i8*)*)(i8* %send_cast4, i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 1, i32 2, i8* %3), !reason !3
   %send_alloca5 = alloca double, !reason !3
   store double %0, double* %send_alloca5, !reason !3
   %send_cast6 = bitcast double* %send_alloca5 to i8*, !reason !3
-  call void bitcast (void (i8*, i32, i32, i32, i8*)* @send to void (i8*, i64, i32, i32, i8*)*)(i8* %send_cast6, i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 0, i32 4, i8* %3), !reason !3
+  call void bitcast (void (i8*, i32, i32, i32, i8*)* @send_argument to void (i8*, i64, i32, i32, i8*)*)(i8* %send_cast6, i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 0, i32 4, i8* %3), !reason !3
   %send_alloca7 = alloca double, !reason !3
   store double %1, double* %send_alloca7, !reason !3
   %send_cast8 = bitcast double* %send_alloca7 to i8*, !reason !3
-  call void bitcast (void (i8*, i32, i32, i32, i8*)* @send to void (i8*, i64, i32, i32, i8*)*)(i8* %send_cast8, i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 1, i32 5, i8* %3), !reason !3
-  %return = call i8* bitcast (i8* (i32, i32, i32, i8*)* @receive to i8* (i64, i32, i32, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 -1, i32 -1, i8* %3), !reason !14
+  call void bitcast (void (i8*, i32, i32, i32, i8*)* @send_argument to void (i8*, i64, i32, i32, i8*)*)(i8* %send_cast8, i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 1, i32 5, i8* %3), !reason !3
+  %return = call i8* bitcast (i8* (i32, i8*)* @receive_return to i8* (i64, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i8* %3), !reason !14
   %bitcast = bitcast i8* %return to double*, !reason !14
   %receive_load = load double, double* %bitcast, !reason !14
   call void @join_partitioned_functions(i32 2, i8* %call_partitioned_functions)
@@ -465,9 +465,27 @@ define i8* @receive(i32, i32, i32, i8*) #1 {
 }
 
 ; Function Attrs: nounwind ssp uwtable
+define void @send_argument(i8*, i32, i32, i32, i8*) #1 {
+  tail call void @send(i8* %0, i32 %1, i32 undef, i32 %3, i8* %4)
+  ret void
+}
+
+; Function Attrs: nounwind ssp uwtable
 define i8* @receive_argument(i32, i32, i8*) #1 {
   %4 = tail call i8* @_receive(i1 zeroext false, i32 %0, i32 %1, i8* %2)
   ret i8* %4
+}
+
+; Function Attrs: nounwind ssp uwtable
+define void @send_return(i8*, i32, i8*) #1 {
+  tail call void @send(i8* %0, i32 %1, i32 undef, i32 -1, i8* %2)
+  ret void
+}
+
+; Function Attrs: nounwind ssp uwtable
+define i8* @receive_return(i32, i8*) #1 {
+  %3 = tail call i8* @_receive(i1 zeroext true, i32 %0, i32 -1, i8* %1)
+  ret i8* %3
 }
 
 attributes #0 = { nounwind readnone speculatable }
