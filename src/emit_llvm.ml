@@ -148,7 +148,7 @@ let broadcast_value value from_partition branches block block_map builder ctx =
   List.iter insert_comms branches
 
 let declare_external_functions host_md =
-  (* declare init, send, receive, replace, join *)
+  (* declare init, send*, receive*, replace, join *)
   let send_t = function_type void_type [| void_pt_type; int64_type; int_type; int_type; void_pt_type |] in
   declare_function send_name send_t llvm_module |> ignore;
   declare_function send_name send_t host_md |> ignore;
@@ -489,7 +489,7 @@ let emit_llvm target filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast
 
   begin match target with
   | PThreads -> iter_funs mappings (pthread_replace_fun host_md)
-  | BSGManycore -> manycore_construct_main mappings
+  | BSGManycore -> iter_funs mappings (pthread_replace_fun host_md)
   end;
 
   print_module (filename ^ "_cores.ll") llvm_module;

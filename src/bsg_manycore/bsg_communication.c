@@ -33,27 +33,8 @@ int tile_id() {
     return tile_id;
 }
 
-void *init() {
-    return NULL;
-}
-
-// Context is NULL and ignored for now 
-void *call_partitioned_functions(int num_functions, void (**function_pts)(void *), void *context) {
-    for (int i = 0; i < num_functions; i++) {
-        if (i == tile_id()) {
-            void (*fun)(void *) = function_pts[i];
-            (*fun)(context);
-        }        
-    }
-    return NULL;
-}
-
-void join_partitioned_functions(int num_functions, void *threads_arg) {
-
-}
-
 void send(void *value, int size, int to_core, int id, void *context) {
-    // Concert coordinates
+    // Construct coordinates
     int to_x = bsg_id_to_x(to_core);
     int to_y = bsg_id_to_y(to_core);
 
@@ -78,7 +59,7 @@ void send(void *value, int size, int to_core, int id, void *context) {
 
 void *_receive_shared(int size, int from_core, int id, void *context) {
     // Wait patiently until the value is ready
-    bsg_wait_while(comms_ready[id]);
+    bsg_wait_while(!comms_ready[id]);
 
     // Metdata should already be written by sender
     int start_idx = comms_start_idx[id];
@@ -105,5 +86,13 @@ void *receive(int size, int from_core, int id, void *context) {
 
 void *receive_argument(int size, int from_core, int id, void *context) {
     // Argument reads should not be destructive
-    return _receive_shared(size, from_core, id, context);;   
+    return _receive_shared(size, from_core, id, context); 
+}
+
+// This program neeeds to be a complete executable, so it needs a main. Our main
+// just needs to call this function to wait for instructions (i.e., to call the
+// function above).
+int main() {
+   __wait_until_valid_func();
+   return 0;
 }
