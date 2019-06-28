@@ -9,7 +9,6 @@ let context = global_context ()
 let void_type = void_type context
 let void_pt_type = pointer_type (i8_type context)
 let int_type = i32_type context
-let int64_type = i64_type context
 let float_type = float_type context
 let double_type = double_type context
 let const_i32 = const_int int_type
@@ -24,7 +23,14 @@ let receive_return_name = "receive_return"
 let call_partitioned_name = "call_partitioned_functions"
 let join_name = "join_partitioned_functions"
 let comms_id = ref 0
+let target = ref PThreads
 let host_id = -1
+
+let target_ptr_type () =
+  begin match !target with
+  | PThreads -> i64_type context
+  | BSGManycore -> i32_type context
+  end
 
 let set_metadata_placement inst placement  =
   let id = mdkind_id context "time" in
@@ -149,22 +155,22 @@ let broadcast_value value from_partition branches block block_map builder ctx =
 
 let declare_external_functions host_md =
   (* declare init, send*, receive*, replace, join *)
-  let send_t = function_type void_type [| void_pt_type; int64_type; int_type; int_type; void_pt_type |] in
+  let send_t = function_type void_type [| void_pt_type; target_ptr_type (); int_type; int_type; void_pt_type |] in
   declare_function send_name send_t llvm_module |> ignore;
   declare_function send_name send_t host_md |> ignore;
-  let receive_t = function_type void_pt_type [| int64_type; int_type; int_type; void_pt_type |] in
+  let receive_t = function_type void_pt_type [| target_ptr_type (); int_type; int_type; void_pt_type |] in
   declare_function receive_name receive_t llvm_module |> ignore;
   declare_function receive_name receive_t host_md |> ignore;
-  let send_arg_t = function_type void_type [| void_pt_type; int64_type; int_type; int_type; void_pt_type |] in
+  let send_arg_t = function_type void_type [| void_pt_type; target_ptr_type (); int_type; int_type; void_pt_type |] in
   declare_function send_arg_name send_arg_t llvm_module |> ignore;
   declare_function send_arg_name send_arg_t host_md |> ignore;
-  let receive_arg_t = function_type void_pt_type [| int64_type; int_type; void_pt_type |] in
+  let receive_arg_t = function_type void_pt_type [| target_ptr_type (); int_type; void_pt_type |] in
   declare_function receive_arg_name receive_arg_t llvm_module |> ignore;
   declare_function receive_arg_name receive_arg_t host_md |> ignore;
-  let send_return_t = function_type void_type [| void_pt_type; int64_type; void_pt_type |] in
+  let send_return_t = function_type void_type [| void_pt_type; target_ptr_type (); void_pt_type |] in
   declare_function send_return_name send_return_t llvm_module |> ignore;
   declare_function send_return_name send_return_t host_md |> ignore;
-  let receive_return_t = function_type void_pt_type [| int64_type; void_pt_type |] in
+  let receive_return_t = function_type void_pt_type [| target_ptr_type (); void_pt_type |] in
   declare_function receive_return_name receive_return_t llvm_module |> ignore;
   declare_function receive_return_name receive_return_t host_md |> ignore;
   let init_t = function_type void_pt_type [||] in
@@ -273,8 +279,8 @@ let repair_phi_node find_partition mappings phi : unit =
         let prev_block_builder = builder_before_last_instr prev_block in
         let id = new_comms_id () in
         let ctx = param (block_parent op_block) 0 in
-        call_send_variant send_name new_val "repair phi" partition id op_builder ctx |> ignore;
-        let receive = call_receive "repair phi" receive_name (type_of new_val) op_partition id prev_block_builder ctx in
+        call_send_variant send_name new_val "repair_phi" partition id op_builder ctx |> ignore;
+        let receive = call_receive "repair_phi" receive_name (type_of new_val) op_partition id prev_block_builder ctx in
         (receive, prev_block)
       end
       else
@@ -435,9 +441,21 @@ let manycore_construct_main mappings =
   iter_funs mappings call_partitioned_per_fun;
   build_ret (const_i32 0) builder |> ignore
 
-let emit_llvm target filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : (llmodule * (llvalue * com) list)) (node_map : node ComMap.t) =
+let map_globals_to_dram () =
+  iter_globals (set_section ".dram") llvm_module
+
+let emit_llvm tg filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : (llmodule * (llvalue * com) list)) (node_map : node ComMap.t) =
   print_endline "\nStarting to emit LLVM";
-  set_data_layout "e-m:o-i64:64-f80:128-n8:16:32:64-S128" llvm_module;
+  target := tg;
+  begin match !target with
+  | PThreads ->
+    set_data_layout "e-m:o-i64:64-f80:128-n8:16:32:64-S128" llvm_module
+  | BSGManycore ->
+    set_target_triple "riscv32-unknown-elf" host_md;
+    set_target_triple "riscv32-unknown-elf" llvm_module;
+    set_data_layout "e-m:e-p:32:32-i64:64-n32-S128" host_md;
+    set_data_layout "e-m:e-p:32:32-i64:64-n32-S128" llvm_module
+  end;
   declare_external_functions host_md;
 
   let placement_for_com c =
@@ -487,9 +505,12 @@ let emit_llvm target filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast
   let repair_phi = repair_phi_node find_partition mappings in
   iter_included_functions (per_function repair_phi) host_md;
 
-  begin match target with
-  | PThreads -> iter_funs mappings (pthread_replace_fun host_md)
-  | BSGManycore -> iter_funs mappings (pthread_replace_fun host_md)
+  iter_funs mappings (pthread_replace_fun host_md);
+
+
+  begin match !target with
+  | PThreads -> ()
+  | BSGManycore -> map_globals_to_dram ()
   end;
 
   print_module (filename ^ "_cores.ll") llvm_module;
