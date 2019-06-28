@@ -63,6 +63,9 @@ let new_comms_id () : llvalue =
   comms_id := !comms_id + 1;
   id
 
+let size_of_ty ty =
+  const_trunc (size_of ty) (target_ptr_type ())
+
 let call_init builder md =
   let init = lookup_function_in init_name md in
   build_call init [||] "" builder
@@ -92,7 +95,7 @@ let value_to_value_ptr value reason builder =
     print_endline ("should bitcast send for: " ^ (print_type ty) ^ ", " ^  string_of_llvalue value);
     value, value
   in
-  let size = size_of ty in
+  let size = size_of_ty ty in
   (value_ptr, size, to_replace)
 
 let call_send_variant variant value reason (to_partition : int) id builder ctx =
@@ -114,7 +117,7 @@ let call_send_return value reason builder ctx =
 
 let call_receive_variant variant name reason (ty : lltype) from_partition id builder ctx =
   let receive = lookup_function_in variant llvm_module in
-  let size = size_of ty in
+  let size = size_of_ty ty in
   let args = match (from_partition, id) with
   | Some p, Some i -> [| size; (const_i32 p); i; ctx |]
   | None, Some i -> [| size; i; ctx |]
