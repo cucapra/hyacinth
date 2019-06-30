@@ -37,7 +37,7 @@ test_save:
 %_cores.ll %_host.ll %.dot: %.bc
 	cat $< | $(SSAC) -l -t $(TIMEOUT) -r $(ROWS) -c $(COLS) -target $(TARGET) -o $*
 
-%_partitioned.ll: %_cores.ll %_host.ll src/communication.ll
+%_partitioned.ll: %_cores.ll %_host.ll src/pthreads/communication.ll
 	llvm-link -S $^ -o $@
 
 %.out: %.ll
