@@ -224,13 +224,18 @@ let builder_before_last_instr block =
   in
   builder_at context before_last
 
+let is_alloca v =
+  match instr_opcode v with
+  | Alloca -> true
+  | _ -> false
+
 let replace_operand idx inst block partition builder find_partition mappings host_md =
   let op = operand inst idx in
   match (get_instr_opt mappings op) with
   | Some new_op ->
     (* If the operand is on a different partition, insert send/receive *)
     let op_partition = find_partition op in
-    if partition != op_partition then
+    if (partition != op_partition) && not (is_alloca op) then
       let op_builder, op_fun = builder_and_fun op_partition block mappings in
       let id = new_comms_id () in
       let ctx = param op_fun 0 in
@@ -335,6 +340,13 @@ let set_branch_destination br destinations p block mappings =
   List.iter per_destination destinations;
   let builder, _ = builder_and_fun p block mappings in
   insert_into_builder br "" builder
+
+let add_alloca_instructions v _block _placement mappings _host_md =
+  let ty = type_of v in
+  let global = define_global "a" (const_null (element_type ty)) llvm_module in
+  if (!target = BSGManycore) then set_section ".dram" global;
+  set_volatile true global;
+  add_instr mappings v global
 
 let add_branch_instructions v block find_partition partitions mappings host_md =
   match get_branch v with
@@ -444,21 +456,21 @@ let manycore_construct_main mappings =
   iter_funs mappings call_partitioned_per_fun;
   build_ret (const_i32 0) builder |> ignore
 
-let map_globals_to_dram () =
-  iter_globals (set_section ".dram") llvm_module
-
-let emit_llvm tg filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : (llmodule * (llvalue * com) list)) (node_map : node ComMap.t) =
-  print_endline "\nStarting to emit LLVM";
-  target := tg;
-  begin match !target with
+let set_target_specific_data_layout host_md =
+  match !target with
   | PThreads ->
     set_data_layout "e-m:o-i64:64-f80:128-n8:16:32:64-S128" llvm_module
   | BSGManycore ->
     set_target_triple "riscv32-unknown-elf" host_md;
     set_target_triple "riscv32-unknown-elf" llvm_module;
     set_data_layout "e-m:e-p:32:32-i64:64-n32-S128" host_md;
-    set_data_layout "e-m:e-p:32:32-i64:64-n32-S128" llvm_module
-  end;
+    set_data_layout "e-m:e-p:32:32-i64:64-n32-S128" llvm_module;
+    (* Map globals to DRAM *)
+    iter_globals (set_section ".dram") llvm_module
+
+let emit_llvm tg filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : (llmodule * (llvalue * com) list)) (node_map : node ComMap.t) =
+  print_endline "\nStarting to emit LLVM";
+  target := tg;
   declare_external_functions host_md;
 
   let placement_for_com c =
@@ -487,6 +499,10 @@ let emit_llvm tg filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : 
     let op = instr_opcode v in
     let block = instr_parent v in
     begin match (op : Opcode.t) with
+    | Alloca ->
+      let _, com = List.find (fun (x, _) -> x == v) llvm_to_ast in
+      let placement = placement_for_com com in
+      add_alloca_instructions v block placement mappings host_md
     | Br ->
       add_branch_instructions v block find_partition partitions mappings host_md
     | _ ->
@@ -509,12 +525,7 @@ let emit_llvm tg filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : 
   iter_included_functions (per_function repair_phi) host_md;
 
   iter_funs mappings (pthread_replace_fun host_md);
-
-
-  begin match !target with
-  | PThreads -> ()
-  | BSGManycore -> map_globals_to_dram ()
-  end;
+  set_target_specific_data_layout host_md;
 
   print_module (filename ^ "_cores.ll") llvm_module;
   print_module (filename ^ "_host.ll") host_md
