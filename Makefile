@@ -44,10 +44,10 @@ test_save:
 	clang -O1 $^ -o $@
 
 %.ll: %.c
-	clang -emit-llvm $(TARGET_FLAGS) -O1 -S $< -o $@
+	clang -emit-llvm -Xclang -disable-lifetime-markers  $(TARGET_FLAGS) -O1 -S $< -o $@
 
 %.bc: %.c
-	clang -emit-llvm $(TARGET_FLAGS) -O1 -c $< -o $@
+	clang -emit-llvm -Xclang -disable-lifetime-markers  $(TARGET_FLAGS) -O1 -c $< -o $@
 
 %.png : %.dot
 	dot -Tpng $< > $@

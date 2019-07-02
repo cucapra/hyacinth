@@ -193,3 +193,11 @@ void *receive_return(int size, void *context) {
     return _receive(true, size, -1, context);
 }
 
+void send_token(int to_core, int id, void *context) {
+     send(NULL, 0, to_core, id, context); 
+}
+
+void receive_token(int id, void *context) {
+    _receive(true, 0, id, context);
+}
+

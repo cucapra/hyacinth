@@ -242,31 +242,31 @@ define i8* @call_partitioned_functions(i32, void (i8*)** nocapture readonly, i8*
   %6 = tail call i8* @malloc(i64 %5) #8
   %7 = bitcast i8* %6 to %struct._opaque_pthread_t**
   %8 = icmp sgt i32 %0, 0
-  br i1 %8, label %9, label %11
+  br i1 %8, label %9, label %24
 
 ; <label>:9:                                      ; preds = %3
   %10 = zext i32 %0 to i64
-  br label %12
+  br label %11
 
-; <label>:11:                                     ; preds = %12, %3
+; <label>:11:                                     ; preds = %11, %9
+  %12 = phi i64 [ 0, %9 ], [ %22, %11 ]
+  %13 = tail call i8* @malloc(i64 16) #8
+  %14 = getelementptr inbounds void (i8*)*, void (i8*)** %1, i64 %12
+  %15 = bitcast void (i8*)** %14 to i64*
+  %16 = load i64, i64* %15, align 8, !tbaa !27
+  %17 = bitcast i8* %13 to i64*
+  store i64 %16, i64* %17, align 8, !tbaa !35
+  %18 = getelementptr inbounds i8, i8* %13, i64 8
+  %19 = bitcast i8* %18 to i8**
+  store i8* %2, i8** %19, align 8, !tbaa !37
+  %20 = getelementptr inbounds %struct._opaque_pthread_t*, %struct._opaque_pthread_t** %7, i64 %12
+  %21 = tail call i32 @pthread_create(%struct._opaque_pthread_t** %20, %struct._opaque_pthread_attr_t* null, i8* (i8*)* nonnull @_call_function, i8* %13) #2
+  %22 = add nuw nsw i64 %12, 1
+  %23 = icmp eq i64 %22, %10
+  br i1 %23, label %24, label %11
+
+; <label>:24:                                     ; preds = %11, %3
   ret i8* %6
-
-; <label>:12:                                     ; preds = %12, %9
-  %13 = phi i64 [ 0, %9 ], [ %23, %12 ]
-  %14 = tail call i8* @malloc(i64 16) #8
-  %15 = getelementptr inbounds void (i8*)*, void (i8*)** %1, i64 %13
-  %16 = bitcast void (i8*)** %15 to i64*
-  %17 = load i64, i64* %16, align 8, !tbaa !27
-  %18 = bitcast i8* %14 to i64*
-  store i64 %17, i64* %18, align 8, !tbaa !35
-  %19 = getelementptr inbounds i8, i8* %14, i64 8
-  %20 = bitcast i8* %19 to i8**
-  store i8* %2, i8** %20, align 8, !tbaa !37
-  %21 = getelementptr inbounds %struct._opaque_pthread_t*, %struct._opaque_pthread_t** %7, i64 %13
-  %22 = tail call i32 @pthread_create(%struct._opaque_pthread_t** %21, %struct._opaque_pthread_attr_t* null, i8* (i8*)* nonnull @_call_function, i8* %14) #2
-  %23 = add nuw nsw i64 %13, 1
-  %24 = icmp eq i64 %23, %10
-  br i1 %24, label %11, label %12
 }
 
 declare i32 @pthread_create(%struct._opaque_pthread_t**, %struct._opaque_pthread_attr_t*, i8* (i8*)*, i8*) local_unnamed_addr #6
@@ -275,23 +275,23 @@ declare i32 @pthread_create(%struct._opaque_pthread_t**, %struct._opaque_pthread
 define void @join_partitioned_functions(i32, i8* nocapture readonly) #1 {
   %3 = bitcast i8* %1 to %struct._opaque_pthread_t**
   %4 = icmp sgt i32 %0, 0
-  br i1 %4, label %5, label %7
+  br i1 %4, label %5, label %14
 
 ; <label>:5:                                      ; preds = %2
   %6 = zext i32 %0 to i64
-  br label %8
+  br label %7
 
-; <label>:7:                                      ; preds = %8, %2
+; <label>:7:                                      ; preds = %7, %5
+  %8 = phi i64 [ 0, %5 ], [ %12, %7 ]
+  %9 = getelementptr inbounds %struct._opaque_pthread_t*, %struct._opaque_pthread_t** %3, i64 %8
+  %10 = load %struct._opaque_pthread_t*, %struct._opaque_pthread_t** %9, align 8, !tbaa !27
+  %11 = tail call i32 @"\01_pthread_join"(%struct._opaque_pthread_t* %10, i8** null) #2
+  %12 = add nuw nsw i64 %8, 1
+  %13 = icmp eq i64 %12, %6
+  br i1 %13, label %14, label %7
+
+; <label>:14:                                     ; preds = %7, %2
   ret void
-
-; <label>:8:                                      ; preds = %8, %5
-  %9 = phi i64 [ 0, %5 ], [ %13, %8 ]
-  %10 = getelementptr inbounds %struct._opaque_pthread_t*, %struct._opaque_pthread_t** %3, i64 %9
-  %11 = load %struct._opaque_pthread_t*, %struct._opaque_pthread_t** %10, align 8, !tbaa !27
-  %12 = tail call i32 @"\01_pthread_join"(%struct._opaque_pthread_t* %11, i8** null) #2
-  %13 = add nuw nsw i64 %9, 1
-  %14 = icmp eq i64 %13, %6
-  br i1 %14, label %7, label %8
 }
 
 declare i32 @"\01_pthread_join"(%struct._opaque_pthread_t*, i8**) local_unnamed_addr #6
@@ -486,6 +486,18 @@ define void @send_return(i8*, i32, i8*) #1 {
 define i8* @receive_return(i32, i8*) #1 {
   %3 = tail call i8* @_receive(i1 zeroext true, i32 %0, i32 -1, i8* %1)
   ret i8* %3
+}
+
+; Function Attrs: nounwind ssp uwtable
+define void @send_token(i32, i32, i8*) local_unnamed_addr #1 {
+  tail call void @send(i8* null, i32 0, i32 undef, i32 %1, i8* %2)
+  ret void
+}
+
+; Function Attrs: nounwind ssp uwtable
+define void @receive_token(i32, i8*) local_unnamed_addr #1 {
+  %3 = tail call i8* @_receive(i1 zeroext true, i32 0, i32 %0, i8* %1)
+  ret void
 }
 
 attributes #0 = { nounwind readnone speculatable }

@@ -32,6 +32,7 @@ type maps = {
   instruction_map : llvalue ValueMap.t ref;
   arg_map : llvalue PartitionValueMap.t ref;
   block_map : llbasicblock PartitionBlockMap.t ref;
+  global_map : int ValueMap.t ref;
   fun_map : (llbuilder * llvalue * valueset) ValueMap.t ref;
 }
 
@@ -42,6 +43,7 @@ let init_mappings (_ : unit) : mappings =
     instruction_map = ref ValueMap.empty;
     arg_map = ref PartitionValueMap.empty;
     block_map = ref PartitionBlockMap.empty;
+    global_map = ref ValueMap.empty;
     fun_map = ref ValueMap.empty;
   }
 
@@ -65,6 +67,15 @@ let add_block (m : mappings) (p : int) (k : llbasicblock) (v : llbasicblock) : u
 
 let get_block (m : mappings) (p : int) (k : llbasicblock) : llbasicblock =
   PartitionBlockMap.find (p, k) !(!m.block_map)
+
+let set_global_last_access (m : mappings) (g : llvalue) (p : int) : unit =
+  !m.global_map := ValueMap.add g p !(!m.global_map)
+
+let get_global_last_access_opt (m : mappings) (g : llvalue) : int option =
+  ValueMap.find_opt g !(!m.global_map)
+
+let clear_global_last_access (m : mappings) : unit =
+  !m.global_map := ValueMap.empty
 
 let add_fun (m : mappings) (k : llvalue) (b : llbuilder) (ctx: llvalue) (new_fun : llvalue) : unit =
   let vs = ref (ValueSet.singleton new_fun) in

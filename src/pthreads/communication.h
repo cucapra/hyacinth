@@ -12,3 +12,6 @@ void *receive_argument(int size, int id, void *context);
 
 void send_return(void *value, int size, void *context);
 void *receive_return(int size, void *context);
+
+void send_token(int to_core, int id, void *context);
+void receive_token(int id, void *context);

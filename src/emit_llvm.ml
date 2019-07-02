@@ -18,6 +18,8 @@ let send_name = "send"
 let receive_name = "receive"
 let send_arg_name = "send_argument"
 let receive_arg_name = "receive_argument"
+let send_token_name = "send_token"
+let receive_token_name = "receive_token"
 let send_return_name = "send_return"
 let receive_return_name = "receive_return"
 let call_partitioned_name = "call_partitioned_functions"
@@ -170,11 +172,13 @@ let declare_external_functions host_md =
   let receive_arg_t = function_type void_pt_type [| target_ptr_type (); int_type; void_pt_type |] in
   declare_function receive_arg_name receive_arg_t llvm_module |> ignore;
   declare_function receive_arg_name receive_arg_t host_md |> ignore;
+  let send_token_t = function_type void_type [| int_type; int_type; void_pt_type |] in
+  declare_function send_token_name send_token_t llvm_module |> ignore;
+  let receive_token_t = function_type void_pt_type [| int_type; void_pt_type |] in
+  declare_function receive_token_name receive_token_t llvm_module |> ignore;
   let send_return_t = function_type void_type [| void_pt_type; target_ptr_type (); void_pt_type |] in
   declare_function send_return_name send_return_t llvm_module |> ignore;
-  declare_function send_return_name send_return_t host_md |> ignore;
   let receive_return_t = function_type void_pt_type [| target_ptr_type (); void_pt_type |] in
-  declare_function receive_return_name receive_return_t llvm_module |> ignore;
   declare_function receive_return_name receive_return_t host_md |> ignore;
   let init_t = function_type void_pt_type [||] in
   declare_function init_name init_t host_md |> ignore;
@@ -341,12 +345,39 @@ let set_branch_destination br destinations p block mappings =
   let builder, _ = builder_and_fun p block mappings in
   insert_into_builder br "" builder
 
-let add_alloca_instructions v _block _placement mappings _host_md =
+let add_alloca_instructions v mappings =
   let ty = type_of v in
   let global = define_global "a" (const_null (element_type ty)) llvm_module in
   if (!target = BSGManycore) then set_section ".dram" global;
   set_volatile true global;
   add_instr mappings v global
+
+let add_load_store_synchronization v p block mappings =
+  let global = match (instr_opcode v) with
+  | Load -> operand v 0
+  | Store -> operand v 1
+  | _ -> failwith "Expected load or store"
+  in
+  print_endline ("global: " ^ (string_of_llvalue global));
+  begin match (get_global_last_access_opt mappings global) with
+  | Some p' ->
+    (* Last access is on a different partition, insert synchronization *)
+    if p != p' then begin
+      let builder, cfun = builder_and_fun p block mappings in
+      let builder', cfun' = builder_and_fun p' block mappings in
+      let id = new_comms_id () in
+      let ctx' = param cfun' 0 in
+      let send_token = lookup_function_in send_token_name llvm_module in
+      let send_token_args = [| (const_i32 p); id; ctx' |] in
+      build_call send_token send_token_args "" builder' |> ignore;
+      let ctx = param cfun 0 in
+      let receive_token = lookup_function_in receive_token_name llvm_module in
+      let receive_token_args = [| id; ctx |] in
+      build_call receive_token receive_token_args "" builder |> ignore
+    end
+  | None -> ()
+  end;
+  set_global_last_access mappings global p
 
 let add_branch_instructions v block find_partition partitions mappings host_md =
   match get_branch v with
@@ -498,14 +529,7 @@ let emit_llvm tg filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : 
     (* print_endline ("Emitting LLVM for instruction: " ^ (string_of_llvalue v)); *)
     let op = instr_opcode v in
     let block = instr_parent v in
-    begin match (op : Opcode.t) with
-    | Alloca ->
-      let _, com = List.find (fun (x, _) -> x == v) llvm_to_ast in
-      let placement = placement_for_com com in
-      add_alloca_instructions v block placement mappings host_md
-    | Br ->
-      add_branch_instructions v block find_partition partitions mappings host_md
-    | _ ->
+    let add_straightline () =
       let _, com = List.find (fun (x, _) -> x == v) llvm_to_ast in
       let placement = placement_for_com com in
       let find_partition_default v' = match find_partition_opt v' with
@@ -513,14 +537,30 @@ let emit_llvm tg filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : 
       | None -> placement.partition
       in
       add_straightline_instructions v block placement find_partition_default partitions mappings host_md
+    in
+    begin match (op : Opcode.t) with
+    | Alloca -> add_alloca_instructions v mappings
+    | Load | Store ->
+      let _, com = List.find (fun (x, _) -> x == v) llvm_to_ast in
+      let placement = placement_for_com com in
+      add_load_store_synchronization v placement.partition block mappings;
+      add_straightline ()
+    | Br ->
+      add_branch_instructions v block find_partition partitions mappings host_md
+    | _ -> add_straightline ()
     end
+  in
+  let per_block f b =
+    iter_instrs f b;
+(*     clear_global_last_access mappings;
+    print_endline ("cleared") *)
   in
   let per_function f fn =
     let blocks = fold_left_blocks (fun bs b -> b::bs) [] fn in
     let sorted = Sort_basic_blocks.sort_blocks (List.rev blocks) in
-    List.iter (iter_instrs f) sorted
+    List.iter (per_block f) sorted
   in
-  iter_included_functions (per_function add_instructions) host_md;
+  iter_included_functions (per_function add_instructions; ) host_md;
   let repair_phi = repair_phi_node find_partition mappings in
   iter_included_functions (per_function repair_phi) host_md;
 
