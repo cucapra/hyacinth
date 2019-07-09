@@ -221,13 +221,6 @@ let builders_from_block block p mappings host_md =
 
   (new_builder, new_fun, replace_builder, ctx)
 
-let builder_before_last_instr block =
-  let before_last = match instr_end block with
-  | After v -> Before v
-  | At_start b -> instr_begin b
-  in
-  builder_at context before_last
-
 let is_alloca v =
   match instr_opcode v with
   | Alloca -> true
@@ -287,8 +280,8 @@ let repair_phi_node find_partition mappings phi : unit =
          on the SOURCE block, not the current block *)
       if partition != op_partition then begin
         let op_block = get_block mappings op_partition block in
-        let op_builder = builder_before_last_instr op_block in
-        let prev_block_builder = builder_before_last_instr prev_block in
+        let op_builder = builder_at_end context op_block in
+        let prev_block_builder = builder_at_end context prev_block in
         let id = new_comms_id () in
         let ctx = param (block_parent op_block) 0 in
         call_send_variant send_name new_val "repair_phi" partition id op_builder ctx |> ignore;
@@ -308,34 +301,6 @@ let repair_phi_node find_partition mappings phi : unit =
     List.iter (fun inc -> add_incoming inc new_phi) new_incoming
   | _ -> ()
 
-let clone_blocks_per_partition host_md partitions mappings =
-  (* Get all the basic blocks, and map them to new blocks per partition *)
-  let per_block partition old_fun new_fun old_block =
-    let new_block = if old_block == entry_block old_fun
-      then entry_block new_fun
-      else append_block context "l" new_fun
-    in
-    add_block mappings partition old_block new_block
-  in
-
-  let per_partition fn partition =
-    let fun_type = function_type void_type [| void_pt_type |] in
-    let new_name = (value_name fn) ^ "_" ^ (string_of_int partition) in
-    let new_fun = define_function new_name fun_type llvm_module in
-    declare_function new_name fun_type host_md |> ignore;
-
-    iter_blocks (per_block partition fn new_fun) fn
-  in
-  let per_function fn = List.iter (per_partition fn) partitions in
-  iter_included_functions per_function host_md
-
-let get_nonempty_partitions (dfg : placement NodeMap.t) : int list =
-  NodeMap.bindings dfg |> List.map (fun (_, p) -> p.partition) |> List.sort_uniq compare
-
-let insert_ret_void block block_map partition =
-  let builder, _ = builder_and_fun partition block block_map in
-  build_ret_void builder |> ignore
-
 let set_branch_destination br destinations p block mappings =
   let per_destination (idx, dest) =
     let new_dest = get_block mappings p dest in
@@ -344,40 +309,6 @@ let set_branch_destination br destinations p block mappings =
   List.iter per_destination destinations;
   let builder, _ = builder_and_fun p block mappings in
   insert_into_builder br "" builder
-
-let add_alloca_instructions v mappings =
-  let ty = type_of v in
-  let global = define_global "a" (const_null (element_type ty)) llvm_module in
-  if (!target = BSGManycore) then set_section ".dram" global;
-  set_volatile true global;
-  add_instr mappings v global
-
-let add_load_store_synchronization v p block mappings =
-  let global = match (instr_opcode v) with
-  | Load -> operand v 0
-  | Store -> operand v 1
-  | _ -> failwith "Expected load or store"
-  in
-  print_endline ("global: " ^ (string_of_llvalue global));
-  begin match (get_global_last_access_opt mappings global) with
-  | Some p' ->
-    (* Last access is on a different partition, insert synchronization *)
-    if p != p' then begin
-      let builder, cfun = builder_and_fun p block mappings in
-      let builder', cfun' = builder_and_fun p' block mappings in
-      let id = new_comms_id () in
-      let ctx' = param cfun' 0 in
-      let send_token = lookup_function_in send_token_name llvm_module in
-      let send_token_args = [| (const_i32 p); id; ctx' |] in
-      build_call send_token send_token_args "" builder' |> ignore;
-      let ctx = param cfun 0 in
-      let receive_token = lookup_function_in receive_token_name llvm_module in
-      let receive_token_args = [| id; ctx |] in
-      build_call receive_token receive_token_args "" builder |> ignore
-    end
-  | None -> ()
-  end;
-  set_global_last_access mappings global p
 
 let add_branch_instructions v block find_partition partitions mappings host_md =
   match get_branch v with
@@ -413,6 +344,74 @@ let add_branch_instructions v block find_partition partitions mappings host_md =
     in
     List.iter per_partition partitions
   | None -> failwith "Instruction must be branch"
+
+let repair_branch find_partition mappings partitions host_md br =
+  match (instr_opcode br) with
+  | Br ->
+    let block = instr_parent br in
+    add_branch_instructions br block find_partition partitions mappings host_md
+  | _ -> ()
+
+let clone_blocks_per_partition host_md partitions mappings =
+  (* Get all the basic blocks, and map them to new blocks per partition *)
+  let per_block partition old_fun new_fun old_block =
+    let new_block = if old_block == entry_block old_fun
+      then entry_block new_fun
+      else append_block context "l" new_fun
+    in
+    add_block mappings partition old_block new_block
+  in
+
+  let per_partition fn partition =
+    let fun_type = function_type void_type [| void_pt_type |] in
+    let new_name = (value_name fn) ^ "_" ^ (string_of_int partition) in
+    let new_fun = define_function new_name fun_type llvm_module in
+    declare_function new_name fun_type host_md |> ignore;
+
+    iter_blocks (per_block partition fn new_fun) fn
+  in
+  let per_function fn = List.iter (per_partition fn) partitions in
+  iter_included_functions per_function host_md
+
+let get_nonempty_partitions (dfg : placement NodeMap.t) : int list =
+  NodeMap.bindings dfg |> List.map (fun (_, p) -> p.partition) |> List.sort_uniq compare
+
+let insert_ret_void block block_map partition =
+  let builder, _ = builder_and_fun partition block block_map in
+  build_ret_void builder |> ignore
+
+let add_alloca_instructions v mappings =
+  let ty = type_of v in
+  let global = define_global "a" (const_null (element_type ty)) llvm_module in
+  if (!target = BSGManycore) then set_section ".dram" global;
+  set_volatile true global;
+  add_instr mappings v global
+
+let add_load_store_synchronization v p block mappings =
+  let global = match (instr_opcode v) with
+  | Load -> operand v 0
+  | Store -> operand v 1
+  | _ -> failwith "Expected load or store"
+  in
+  begin match (get_global_last_access_opt mappings global) with
+  | Some p' ->
+    (* Last access is on a different partition, insert synchronization *)
+    if p != p' then begin
+      let builder, cfun = builder_and_fun p block mappings in
+      let builder', cfun' = builder_and_fun p' block mappings in
+      let id = new_comms_id () in
+      let ctx' = param cfun' 0 in
+      let send_token = lookup_function_in send_token_name llvm_module in
+      let send_token_args = [| (const_i32 p); id; ctx' |] in
+      build_call send_token send_token_args "" builder' |> ignore;
+      let ctx = param cfun 0 in
+      let receive_token = lookup_function_in receive_token_name llvm_module in
+      let receive_token_args = [| id; ctx |] in
+      build_call receive_token receive_token_args "" builder |> ignore
+    end
+  | None -> ()
+  end;
+  set_global_last_access mappings global p
 
 let add_straightline_instructions v block placement find_partition partitions mappings host_md =
   let p = placement.partition in
@@ -545,8 +544,7 @@ let emit_llvm tg filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : 
       let placement = placement_for_com com in
       add_load_store_synchronization v placement.partition block mappings;
       add_straightline ()
-    | Br ->
-      add_branch_instructions v block find_partition partitions mappings host_md
+    | Br -> () (* To be repaired later *)
     | _ -> add_straightline ()
     end
   in
@@ -560,9 +558,12 @@ let emit_llvm tg filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : 
     let sorted = Sort_basic_blocks.sort_blocks (List.rev blocks) in
     List.iter (per_block f) sorted
   in
-  iter_included_functions (per_function add_instructions; ) host_md;
+  iter_included_functions (per_function add_instructions) host_md;
   let repair_phi = repair_phi_node find_partition mappings in
   iter_included_functions (per_function repair_phi) host_md;
+
+  let repair_branch = repair_branch find_partition mappings partitions host_md in
+  iter_included_functions (per_function repair_branch) host_md;
 
   iter_funs mappings (pthread_replace_fun host_md);
   set_target_specific_data_layout host_md;
