@@ -550,8 +550,7 @@ let emit_llvm tg filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : 
   in
   let per_block f b =
     iter_instrs f b;
-(*     clear_global_last_access mappings;
-    print_endline ("cleared") *)
+    clear_global_last_access mappings
   in
   let per_function f fn =
     let blocks = fold_left_blocks (fun bs b -> b::bs) [] fn in

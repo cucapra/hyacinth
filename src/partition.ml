@@ -169,6 +169,17 @@ let constrain_per_node (s : solver) (a : assignments) p : unit =
     (* The ending time must be after the starting time plus the op time *)
     let op_cost_term = int_to_term (time_per_op op.op) in
     assert_ s (equals (add t1 op_cost_term) t2);
+    (* For now, map memory instructions to core 0*)
+    begin match op.op with
+    | OOp(OExternal(name, _)) ->
+      begin match name with
+      | "alloca" | "load" | "store" | "getelementptr" ->
+        assert_ s (equals pt term_0)
+      | _ -> ()
+      end;
+    | _ -> ()
+    end;
+
     (* The starting time must be after the ending time of each incoming node *)
     let f (n : node) = constrain_per_incoming s a n pt t1 in
     List.iter f op.incoming

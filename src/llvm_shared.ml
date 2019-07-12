@@ -40,10 +40,10 @@ let opcode_cost (opcode : Opcode.t) : int =
   | FCmp -> 1
   | PHI -> 0
   | Ret -> 1
-  | Call -> 15
+  | Call -> 7
   | Br -> 1
   | Select -> 1
-  | _ -> 7
+  | _ -> 3
 
 let pretty_opcode (opcode : Opcode.t) : string =
   match opcode with
