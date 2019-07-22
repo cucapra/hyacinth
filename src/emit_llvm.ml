@@ -12,7 +12,8 @@ let int_type = i32_type context
 let float_type = float_type context
 let double_type = double_type context
 let const_i32 = const_int int_type
-let llvm_module = create_module context "new_module"
+let const_i64 = const_int (i64_type context)
+let cores_module = create_module context "new_module"
 let init_name = "init"
 let send_name = "send"
 let receive_name = "receive"
@@ -61,7 +62,7 @@ let builder_and_fun partition block mappings =
   (new_builder, new_fun)
 
 let new_comms_id () : llvalue =
-  let id = const_i32 (!comms_id) in
+  let id = const_i64 (!comms_id) in
   comms_id := !comms_id + 1;
   id
 
@@ -102,7 +103,7 @@ let value_to_value_ptr value reason builder =
 
 let call_send_variant variant value reason (to_partition : int) id builder ctx =
   let value_ptr, size, to_replace = value_to_value_ptr value reason builder in
-  let send = lookup_function_in variant llvm_module in
+  let send = lookup_function_in variant cores_module in
   let destination = const_i32 to_partition in
   let args = [| value_ptr; size; destination; id; ctx |] in
   let send = build_call send args "" builder in
@@ -111,14 +112,14 @@ let call_send_variant variant value reason (to_partition : int) id builder ctx =
 
 let call_send_return value reason builder ctx =
   let value_ptr, size, to_replace = value_to_value_ptr value reason builder in
-  let send = lookup_function_in send_return_name llvm_module in
+  let send = lookup_function_in send_return_name cores_module in
   let args = [| value_ptr; size; ctx |] in
   let send = build_call send args "" builder in
   set_metadata_string reason send;
   to_replace
 
 let call_receive_variant variant name reason (ty : lltype) from_partition id builder ctx =
-  let receive = lookup_function_in variant llvm_module in
+  let receive = lookup_function_in variant cores_module in
   let size = size_of_ty ty in
   let args = match (from_partition, id) with
   | Some p, Some i -> [| size; (const_i32 p); i; ctx |]
@@ -142,7 +143,7 @@ let call_receive_return name reason (ty : lltype) builder ctx =
 
 let broadcast_value value from_partition branches block block_map builder ctx =
   let value_ptr, size, _ = value_to_value_ptr value "broadcast" builder in
-  let send_fun = lookup_function_in send_name llvm_module in
+  let send_fun = lookup_function_in send_name cores_module in
   let insert_comms (p, br) =
     if (p != from_partition) then begin
       let id = new_comms_id () in
@@ -160,45 +161,46 @@ let broadcast_value value from_partition branches block block_map builder ctx =
 
 let declare_external_functions host_md =
   (* declare init, send*, receive*, replace, join *)
-  let send_t = function_type void_type [| void_pt_type; target_ptr_type (); int_type; int_type; void_pt_type |] in
-  declare_function send_name send_t llvm_module |> ignore;
+  let ptr_ty = target_ptr_type () in
+  let send_t = function_type void_type [| void_pt_type; ptr_ty; int_type; ptr_ty; void_pt_type |] in
+  declare_function send_name send_t cores_module |> ignore;
   declare_function send_name send_t host_md |> ignore;
-  let receive_t = function_type void_pt_type [| target_ptr_type (); int_type; int_type; void_pt_type |] in
-  declare_function receive_name receive_t llvm_module |> ignore;
+  let receive_t = function_type void_pt_type [| ptr_ty; int_type; ptr_ty; void_pt_type |] in
+  declare_function receive_name receive_t cores_module |> ignore;
   declare_function receive_name receive_t host_md |> ignore;
-  let send_arg_t = function_type void_type [| void_pt_type; target_ptr_type (); int_type; int_type; void_pt_type |] in
-  declare_function send_arg_name send_arg_t llvm_module |> ignore;
+  let send_arg_t = function_type void_type [| void_pt_type; ptr_ty; int_type; ptr_ty; void_pt_type |] in
+  declare_function send_arg_name send_arg_t cores_module |> ignore;
   declare_function send_arg_name send_arg_t host_md |> ignore;
-  let receive_arg_t = function_type void_pt_type [| target_ptr_type (); int_type; void_pt_type |] in
-  declare_function receive_arg_name receive_arg_t llvm_module |> ignore;
+  let receive_arg_t = function_type void_pt_type [| ptr_ty; ptr_ty; void_pt_type |] in
+  declare_function receive_arg_name receive_arg_t cores_module |> ignore;
   declare_function receive_arg_name receive_arg_t host_md |> ignore;
-  let send_token_t = function_type void_type [| int_type; int_type; void_pt_type |] in
-  declare_function send_token_name send_token_t llvm_module |> ignore;
-  let receive_token_t = function_type void_pt_type [| int_type; void_pt_type |] in
-  declare_function receive_token_name receive_token_t llvm_module |> ignore;
-  let send_return_t = function_type void_type [| void_pt_type; target_ptr_type (); void_pt_type |] in
-  declare_function send_return_name send_return_t llvm_module |> ignore;
-  let receive_return_t = function_type void_pt_type [| target_ptr_type (); void_pt_type |] in
+  let send_token_t = function_type void_type [| int_type; ptr_ty; void_pt_type |] in
+  declare_function send_token_name send_token_t cores_module |> ignore;
+  let receive_token_t = function_type void_pt_type [| ptr_ty; void_pt_type |] in
+  declare_function receive_token_name receive_token_t cores_module |> ignore;
+  let send_return_t = function_type void_type [| void_pt_type; ptr_ty; void_pt_type |] in
+  declare_function send_return_name send_return_t cores_module |> ignore;
+  let receive_return_t = function_type void_pt_type [| ptr_ty; void_pt_type |] in
   declare_function receive_return_name receive_return_t host_md |> ignore;
   let init_t = function_type void_pt_type [||] in
   declare_function init_name init_t host_md |> ignore;
   let call_partitioned_funs_t = pointer_type (pointer_type (function_type void_type [| void_pt_type |])) in
   let call_partitioned_t = function_type void_pt_type [| int_type; call_partitioned_funs_t; void_pt_type |] in
-  declare_function call_partitioned_name call_partitioned_t llvm_module |> ignore;
+  declare_function call_partitioned_name call_partitioned_t cores_module |> ignore;
   declare_function call_partitioned_name call_partitioned_t host_md |> ignore;
   let join_t = function_type void_type [| int_type; void_pt_type |] in
   declare_function join_name join_t host_md |> ignore;
 
   let declare_function (f : llvalue) =
     if (is_declaration f) then
-      declare_function (value_name f) (element_type (type_of f)) llvm_module |> ignore
+      declare_function (value_name f) (element_type (type_of f)) cores_module |> ignore
   in
   iter_functions declare_function host_md;
 
-  let define_global (g : llvalue) =
-    define_global (value_name g) (global_initializer g) llvm_module |> ignore
+  let declare_global (g : llvalue) =
+    declare_global (element_type (type_of g)) (value_name g) cores_module |> ignore
   in
-  iter_globals define_global host_md
+  iter_globals declare_global host_md
 
 let builders_from_block block p mappings host_md =
   let new_builder, new_fun = builder_and_fun p block mappings in
@@ -365,7 +367,7 @@ let clone_blocks_per_partition host_md partitions mappings =
   let per_partition fn partition =
     let fun_type = function_type void_type [| void_pt_type |] in
     let new_name = (value_name fn) ^ "_" ^ (string_of_int partition) in
-    let new_fun = define_function new_name fun_type llvm_module in
+    let new_fun = define_function new_name fun_type cores_module in
     declare_function new_name fun_type host_md |> ignore;
 
     iter_blocks (per_block partition fn new_fun) fn
@@ -382,7 +384,7 @@ let insert_ret_void block block_map partition =
 
 let add_alloca_instructions v mappings =
   let ty = type_of v in
-  let global = define_global "a" (const_null (element_type ty)) llvm_module in
+  let global = define_global "a" (const_null (element_type ty)) cores_module in
   if (!target = BSGManycore) then set_section ".dram" global;
   set_volatile true global;
   add_instr mappings v global
@@ -401,11 +403,11 @@ let add_load_store_synchronization v p block mappings =
       let builder', cfun' = builder_and_fun p' block mappings in
       let id = new_comms_id () in
       let ctx' = param cfun' 0 in
-      let send_token = lookup_function_in send_token_name llvm_module in
+      let send_token = lookup_function_in send_token_name cores_module in
       let send_token_args = [| (const_i32 p); id; ctx' |] in
       build_call send_token send_token_args "" builder' |> ignore;
       let ctx = param cfun 0 in
-      let receive_token = lookup_function_in receive_token_name llvm_module in
+      let receive_token = lookup_function_in receive_token_name cores_module in
       let receive_token_args = [| id; ctx |] in
       build_call receive_token receive_token_args "" builder |> ignore
     end
@@ -476,12 +478,12 @@ let manycore_construct_main mappings =
   C-defined call_partitioned_functions, which uses the tile_id to call the
   correct version of the function per tile. *)
   let main_t = function_type int_type [||] in
-  let main_fun = define_function "main" main_t llvm_module in
+  let main_fun = define_function "main" main_t cores_module in
   let builder = builder_at context (instr_begin (entry_block main_fun)) in
 
   let call_partitioned_per_fun _ (_, _, new_fun_set) =
     let null = const_null void_pt_type in
-    call_partitioned_funs builder llvm_module null new_fun_set |> ignore
+    call_partitioned_funs builder cores_module null new_fun_set |> ignore
   in
   iter_funs mappings call_partitioned_per_fun;
   build_ret (const_i32 0) builder |> ignore
@@ -489,14 +491,14 @@ let manycore_construct_main mappings =
 let set_target_specific_data_layout host_md =
   match !target with
   | PThreads ->
-    set_data_layout "e-m:o-i64:64-f80:128-n8:16:32:64-S128" llvm_module
+    set_data_layout "e-m:o-i64:64-f80:128-n8:16:32:64-S128" cores_module
   | BSGManycore ->
     set_target_triple "riscv32-unknown-elf" host_md;
-    set_target_triple "riscv32-unknown-elf" llvm_module;
+    set_target_triple "riscv32-unknown-elf" cores_module;
     set_data_layout "e-m:e-p:32:32-i64:64-n32-S128" host_md;
-    set_data_layout "e-m:e-p:32:32-i64:64-n32-S128" llvm_module;
+    set_data_layout "e-m:e-p:32:32-i64:64-n32-S128" cores_module;
     (* Map globals to DRAM *)
-    iter_globals (set_section ".dram") llvm_module
+    iter_globals (set_section ".dram") cores_module
 
 let emit_llvm tg filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : (llmodule * (llvalue * com) list)) (node_map : node ComMap.t) =
   print_endline "\nStarting to emit LLVM";
@@ -567,5 +569,5 @@ let emit_llvm tg filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : 
   iter_funs mappings (pthread_replace_fun host_md);
   set_target_specific_data_layout host_md;
 
-  print_module (filename ^ "_cores.ll") llvm_module;
+  print_module (filename ^ "_cores.ll") cores_module;
   print_module (filename ^ "_host.ll") host_md
