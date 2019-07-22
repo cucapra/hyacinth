@@ -8,12 +8,13 @@ open Emit_utils
 let context = global_context ()
 let void_type = void_type context
 let void_pt_type = pointer_type (i8_type context)
+let bool_type = i1_type context
 let int_type = i32_type context
 let float_type = float_type context
 let double_type = double_type context
 let const_i32 = const_int int_type
-let const_i64 = const_int (i64_type context)
-let cores_module = create_module context "new_module"
+let cores_module = create_module context "cores_module"
+let comms_module = create_module context "comms_module"
 let init_name = "init"
 let send_name = "send"
 let receive_name = "receive"
@@ -26,6 +27,7 @@ let receive_return_name = "receive_return"
 let call_partitioned_name = "call_partitioned_functions"
 let join_name = "join_partitioned_functions"
 let comms_id = ref 0
+let comms_locations : (int list ref) = ref [] (* ID -> address string *)
 let target = ref PThreads
 let host_id = -1
 
@@ -61,10 +63,28 @@ let builder_and_fun partition block mappings =
   let new_fun = block_parent new_block in
   (new_builder, new_fun)
 
-let new_comms_id () : llvalue =
-  let id = const_i64 (!comms_id) in
+
+(*
+val const_struct : llcontext -> llvalue array -> llvalue
+const_struct context elts returns the structured constant of type struct_type (Array.map type_of elts) and containing the values elts in the context context. This value can in turn be used as the initializer for a global variable. See the method llvm::ConstantStruct::getAnon.
+
+
+*)
+let new_comms_addr ty : llvalue =
+  let id = !comms_id in
   comms_id := !comms_id + 1;
-  id
+
+  (* Allocate memory for this communication based on type *)
+  let name = "comms_" ^ (string_of_int id) in
+  let value = const_null ty in
+  let ready_flag = const_null bool_type in
+  let comms_struct = const_struct context [| value; ready_flag |] in
+  let global = define_global name comms_struct comms_module in
+
+  (* Return the pointer to this global *)
+  let indices = [| const_i32 0 |] in
+  let gep = const_gep global indices in
+  const_ptrtoint gep (target_ptr_type ())
 
 let size_of_ty ty =
   const_trunc (size_of ty) (target_ptr_type ())
@@ -79,7 +99,7 @@ let call_partitioned_funs builder md ctx new_fun_set =
   let funs_arg = const_array replace_funs_t funs in
   let funs_global = define_global "funs" funs_arg md in
   let funs_len = Array.length funs in
-  let indices = [| const_i32 0; const_i32 0|] in
+  let indices = [| const_i32 0; const_i32 0 |] in
   let gep = build_in_bounds_gep funs_global indices "funs" builder in
   let call_partitioned = lookup_function_in call_partitioned_name md in
   let args = [| const_i32 funs_len; gep; ctx |] in
@@ -146,7 +166,7 @@ let broadcast_value value from_partition branches block block_map builder ctx =
   let send_fun = lookup_function_in send_name cores_module in
   let insert_comms (p, br) =
     if (p != from_partition) then begin
-      let id = new_comms_id () in
+      let id = new_comms_addr (type_of value) in
       let destination = const_i32 p in
       let args = [| value_ptr; size;  destination; id; ctx |] in
       let send = build_call send_fun args "" builder in
@@ -236,7 +256,7 @@ let replace_operand idx inst block partition builder find_partition mappings hos
     let op_partition = find_partition op in
     if (partition != op_partition) && not (is_alloca op) then
       let op_builder, op_fun = builder_and_fun op_partition block mappings in
-      let id = new_comms_id () in
+      let id = new_comms_addr (type_of new_op) in
       let ctx = param op_fun 0 in
       let receive = call_receive receive_name "replace mapped op" (type_of new_op) op_partition id builder ctx in
       call_send_variant send_name new_op "replace mapped op" partition id op_builder ctx |> ignore;
@@ -255,7 +275,7 @@ let replace_operand idx inst block partition builder find_partition mappings hos
         let entry_builder = builder_at context (instr_begin entry) in
         let ctx = param new_fun 0 in
         if (op != ctx) then (
-          let id = new_comms_id () in
+          let id = new_comms_addr (type_of op) in
           let call = call_receive_arg "argument" "replace argument" (type_of op) id entry_builder ctx in
           call_send_variant send_arg_name op "replace argument" partition id replace_builder r_ctx |> ignore;
           add_arg mappings partition op call;
@@ -284,7 +304,7 @@ let repair_phi_node find_partition mappings phi : unit =
         let op_block = get_block mappings op_partition block in
         let op_builder = builder_at_end context op_block in
         let prev_block_builder = builder_at_end context prev_block in
-        let id = new_comms_id () in
+        let id = new_comms_addr (type_of new_val) in
         let ctx = param (block_parent op_block) 0 in
         call_send_variant send_name new_val "repair_phi" partition id op_builder ctx |> ignore;
         let receive = call_receive "repair_phi" receive_name (type_of new_val) op_partition id prev_block_builder ctx in
@@ -384,7 +404,7 @@ let insert_ret_void block block_map partition =
 
 let add_alloca_instructions v mappings =
   let ty = type_of v in
-  let global = define_global "a" (const_null (element_type ty)) cores_module in
+  let global = define_global "alloca" (const_null (element_type ty)) cores_module in
   if (!target = BSGManycore) then set_section ".dram" global;
   set_volatile true global;
   add_instr mappings v global
@@ -401,7 +421,7 @@ let add_load_store_synchronization v p block mappings =
     if p != p' then begin
       let builder, cfun = builder_and_fun p block mappings in
       let builder', cfun' = builder_and_fun p' block mappings in
-      let id = new_comms_id () in
+      let id = new_comms_addr (int_type) in
       let ctx' = param cfun' 0 in
       let send_token = lookup_function_in send_token_name cores_module in
       let send_token_args = [| (const_i32 p); id; ctx' |] in
@@ -497,8 +517,12 @@ let set_target_specific_data_layout host_md =
     set_target_triple "riscv32-unknown-elf" cores_module;
     set_data_layout "e-m:e-p:32:32-i64:64-n32-S128" host_md;
     set_data_layout "e-m:e-p:32:32-i64:64-n32-S128" cores_module;
+    (* TODO: don't map if only used by one core *)
     (* Map globals to DRAM *)
-    iter_globals (set_section ".dram") cores_module
+    let set g = if (is_externally_initialized g)
+      then set_section ".dram" |> ignore
+    in
+    iter_globals set cores_module
 
 let emit_llvm tg filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : (llmodule * (llvalue * com) list)) (node_map : node ComMap.t) =
   print_endline "\nStarting to emit LLVM";
@@ -569,5 +593,13 @@ let emit_llvm tg filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : 
   iter_funs mappings (pthread_replace_fun host_md);
   set_target_specific_data_layout host_md;
 
+  let per_global g =
+    let ty = element_type (type_of g) in
+    declare_global ty (value_name g) cores_module |> ignore;
+    declare_global ty (value_name g) host_md |> ignore
+  in
+  iter_globals per_global comms_module;
+
   print_module (filename ^ "_cores.ll") cores_module;
-  print_module (filename ^ "_host.ll") host_md
+  print_module (filename ^ "_host.ll") host_md;
+  print_module (filename ^ "_comms.ll") comms_module;

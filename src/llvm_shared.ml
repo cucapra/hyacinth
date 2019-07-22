@@ -33,14 +33,14 @@ let opcode_cost (opcode : Opcode.t) : int =
   | Alloca -> 1
   | Load -> 1
   | Store -> 1
-  | FMul -> 5
-  | FSub -> 3
-  | FDiv -> 7
-  | FAdd -> 3
+  | FMul -> 2
+  | FSub -> 2
+  | FDiv -> 3
+  | FAdd -> 2
   | FCmp -> 1
   | PHI -> 0
   | Ret -> 1
-  | Call -> 7
+  | Call -> 3
   | Br -> 1
   | Select -> 1
   | _ -> 3

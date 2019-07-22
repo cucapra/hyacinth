@@ -22,7 +22,7 @@ install:
 
 clean:
 	rm -f {.,src,examples/*}/*.{ll,bc,out,dot,png}
-	rm -f tests/*{.bc,.out,.dot,_partitioned.ll,_host.ll,_cores.ll}
+	rm -f tests/*{.bc,.out,.dot,_partitioned.ll,_host.ll,_cores.ll,_comms.ll}
 	rm -f tests/output
 	dune clean
 
@@ -34,10 +34,10 @@ test_save:
 	-turnt --save tests/*.c
 	make clean
 
-%_cores.ll %_host.ll %.dot: %.bc
+%_comms.ll %_cores.ll %_host.ll %.dot: %.bc
 	cat $< | $(SSAC) -l -t $(TIMEOUT) -r $(ROWS) -c $(COLS) -target $(TARGET) -o $*
 
-%_partitioned.ll: %_cores.ll %_host.ll src/pthreads/communication.ll
+%_partitioned.ll: %_comms.ll %_cores.ll %_host.ll src/pthreads/communication.ll
 	llvm-link -S $^ -o $@
 
 %.out: %.ll

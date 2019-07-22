@@ -117,7 +117,7 @@ let components (p : int) : (int * int) =
   (x, y)
 
 let manhattan_dist (x, y) (x', y') =
-  (abs (x - x')) + (abs (y - y'))
+  ((abs (x - x')) + (abs (y - y'))) * 2
 
 let constrain_comms_times_lookup_table (s : solver) =
   declare_fun s dist_fun_id [int_sort; int_sort] int_sort;
@@ -170,7 +170,7 @@ let constrain_per_node (s : solver) (a : assignments) p : unit =
     let op_cost_term = int_to_term (time_per_op op.op) in
     assert_ s (equals (add t1 op_cost_term) t2);
     (* For now, map memory instructions to core 0*)
-    begin match op.op with
+(*     begin match op.op with
     | OOp(OExternal(name, _)) ->
       begin match name with
       | "alloca" | "load" | "store" | "getelementptr" ->
@@ -178,7 +178,7 @@ let constrain_per_node (s : solver) (a : assignments) p : unit =
       | _ -> ()
       end;
     | _ -> ()
-    end;
+    end; *)
 
     (* The starting time must be after the ending time of each incoming node *)
     let f (n : node) = constrain_per_incoming s a n pt t1 in
