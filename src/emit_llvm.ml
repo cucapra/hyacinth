@@ -63,22 +63,14 @@ let builder_and_fun partition block mappings =
   let new_fun = block_parent new_block in
   (new_builder, new_fun)
 
-
-(*
-val const_struct : llcontext -> llvalue array -> llvalue
-const_struct context elts returns the structured constant of type struct_type (Array.map type_of elts) and containing the values elts in the context context. This value can in turn be used as the initializer for a global variable. See the method llvm::ConstantStruct::getAnon.
-
-
-*)
 let new_comms_addr ty : llvalue =
-  let id = !comms_id in
-  comms_id := !comms_id + 1;
-
-  (* Allocate memory for this communication based on type *)
-  let name = "comms_" ^ (string_of_int id) in
+  (* Allocate memory for this communication and a ready flag based on type *)
+  let name = "comms" in
   let value = const_null ty in
   let ready_flag = const_null bool_type in
   let comms_struct = const_struct context [| value; ready_flag |] in
+
+  (* Define the struct of { value, ready_flag as a global } *)
   let global = define_global name comms_struct comms_module in
 
   (* Return the pointer to this global *)
@@ -187,6 +179,7 @@ let broadcast_value value from_partition branches block block_map builder ctx =
   List.iter insert_comms branches
 
 let declare_external_functions host_md =
+  (* TODO: we should be able to import external functions from a header *)
   (* declare init, send*, receive*, replace, join *)
   let ptr_ty = target_ptr_type () in
   let send_t = function_type void_type [| void_pt_type; ptr_ty; int_type; ptr_ty; void_pt_type |] in

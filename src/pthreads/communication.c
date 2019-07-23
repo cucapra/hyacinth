@@ -6,7 +6,7 @@
 #include  <stdbool.h>
 #include "communication.h"
 
-#define DEBUGGING 1
+#define DEBUGGING 0
 
 typedef struct Comm Comm;
 struct Comm {
@@ -28,23 +28,10 @@ struct Closure {
     Context *context;
 };
 
-typedef struct i64Comms i64Comms;
-struct i64Comms {
-    int64_t value;
-    char ready;
-};
-
-typedef struct i1Comms i1Comms;
-struct i1Comms {
-    char value;
-    char ready;
-};
-
-void *return_value_ptr;
+volatile void *return_value_ptr;
 volatile bool return_ready = false;
 
 void *init() {
-    printf("init\n");
     return NULL;
 }
 
@@ -61,7 +48,6 @@ void *_call_function(void *function) {
 }
 
 void *call_partitioned_functions(int num_functions, void (**function_pts)(void *), void *context) {
-    printf("call_partitioned_functions\n");
     pthread_t *threads = malloc(sizeof(pthread_t) * num_functions);
 
     for (int i = 0; i < num_functions; i++) {
@@ -91,8 +77,7 @@ void send(void *value, int size, int to_core, int64_t addr, void *context) {
     // Make sure we aren't overwriting the old value 
     int ready = 1;
     while (ready) {
-        printf("ID [%lld] not ready for send! \n", addr);
-        ready = *(char *)((void *)addr + size);
+        ready = *(volatile char *)((volatile void *)addr + size);
     }
 
     // Copy the new value to the struct
@@ -101,7 +86,6 @@ void send(void *value, int size, int to_core, int64_t addr, void *context) {
     // Finally, set the ready flag, which is right after the value data
     char *ready_ptr = (void *)addr + size;
     *ready_ptr = 1;
-    printf("ID [%lld] now ready! \n", addr);
 }
 
 void *_receive(int size, int64_t addr, void *context) {
@@ -110,14 +94,12 @@ void *_receive(int size, int64_t addr, void *context) {
     #endif // DEBUGGING
 
     while (1) {
-        char *ready_ptr = (void *)(addr + size);
+        volatile char *ready_ptr = (volatile void *)addr + size;
         if (*ready_ptr == 0) {
-            printf("ID [%lld] not ready for receive! \n", addr);
             continue;
         }
 
         return (void *)addr;
-
     }
     return NULL;
 }
@@ -127,23 +109,19 @@ void *receive(int size, int from_core, int64_t addr, void *context) {
 }
 
 void free_comms(int64_t addr, int size, void *context) {
-    printf("ID [%lld] Free size: %d\n", addr, size);
-    char *ready_ptr = (void *)addr + size;
-    memset(ready_ptr, 0, 1);
+    volatile char *ready_ptr = (volatile void *)addr + size;
+    memset((void *)ready_ptr, 0, 1);
 }
 
 void send_argument(void *value, int size, int to_core, int64_t addr, void *context) {
-    printf("send_argument\n");
     send(value, size, to_core, addr, context);
 }
 
 void *receive_argument(int size, int64_t addr, void *context) {
-    printf("receive_argument\n");
     return _receive(size, addr, context);
 }
 
 void send_return(void *value, int size, void *context) {
-    printf("send_return\n");
     // Allocate memory for the return value and set our global pointer/ready
     void *return_value = malloc(size);
     memcpy(return_value, value, size);
@@ -152,20 +130,16 @@ void send_return(void *value, int size, void *context) {
 }
 
 void *receive_return(int size, void *context) {
-    printf("receive_return\n");
     // Wait until the value is ready then return
     while (!return_ready) {}
-    printf("retury ready\n");
-    return return_value_ptr;
+    return (void *)return_value_ptr;
 }
 
 void send_token(int to_core, int64_t addr, void *context) {
-    printf("send_token\n");
-     send(NULL, 0, to_core, addr, context); 
+    send(NULL, 0, to_core, addr, context); 
 }
 
 void receive_token(int64_t addr, void *context) {
-    printf("receive_token\n");
     _receive(0, addr, context);
 }
 
