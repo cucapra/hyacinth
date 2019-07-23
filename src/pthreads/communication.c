@@ -88,70 +88,23 @@ void send(void *value, int size, int to_core, int64_t addr, void *context) {
     printf("ID [%lld] Send size: %d\n", addr, size);
     #endif // DEBUGGING
 
-
-    printf("sizeof(int64_t) %lu\n", sizeof(int64_t));
-    char *ready_addr;
-    if (size == 8) {    
-        i64Comms *comms_addr = (i64Comms *)addr;
-        int64_t *value_addr = &(comms_addr->value);
-
-        if (value_addr != (int64_t *)addr) {
-            printf("fuck 1!\n");
-        }
-
-        ready_addr = &(comms_addr->ready);
-        if ((void *)ready_addr != (void *)addr + size) {
-            printf("fuck 2!\n");
-        }
-
-        printf("i64 value [%lld]: %f, ready[%lld]: %d\n", addr, *((int64_t *)value), addr + size, *(char *)(addr + size));
-    } 
-    if (size == 1) {
-        i1Comms *comms_addr = (i1Comms *)addr;
-        char *value_addr = &(comms_addr->value);
-
-        if (value_addr != (char *)addr) {
-            printf("fuck 3!\n");
-        }
-
-        ready_addr = &(comms_addr->ready);
-        if ((void *)ready_addr != (void *)addr + size) {
-            printf("fuck 4!\n");
-        }
-
-        printf("bool value [%lld]: %c, ready[%lld]: %d\n", addr, *(char *)value, addr + size, *(char *)(addr + size));
-    }
-
     // Make sure we aren't overwriting the old value 
     int ready = 1;
     while (ready) {
-        ready = *(char *)(addr + size);
+        printf("ID [%lld] not ready for send! \n", addr);
+        ready = *(char *)((void *)addr + size);
     }
 
     // Copy the new value to the struct
     memcpy((void *)addr, value, size);
 
-    if (size == 8) {  
-        if (*(int64_t *)addr != *(int64_t *)value) {
-            printf("fuck 5!\n");
-        }
-    }
-    if (size == 1) {  
-        if (*(char *)addr != *(char *)value) {
-            printf("fuck 6!\n");
-        }
-    }
-
     // Finally, set the ready flag, which is right after the value data
-    char *ready_ptr = (void *)(addr + size);
+    char *ready_ptr = (void *)addr + size;
     *ready_ptr = 1;
-
-    if (!*ready_addr) {
-        printf("fuck 7!\n");
-    }
+    printf("ID [%lld] now ready! \n", addr);
 }
 
-void *_receive(bool destructive, int size, int64_t addr, void *context) {
+void *_receive(int size, int64_t addr, void *context) {
     #if DEBUGGING
     printf("ID [%lld] Receive size: %d\n", addr, size);
     #endif // DEBUGGING
@@ -159,22 +112,10 @@ void *_receive(bool destructive, int size, int64_t addr, void *context) {
     while (1) {
         char *ready_ptr = (void *)(addr + size);
         if (*ready_ptr == 0) {
-            printf("ID [%lld] not ready! \n", addr);
-            sleep(1);
+            printf("ID [%lld] not ready for receive! \n", addr);
             continue;
         }
-        printf("ID [%lld] now ready! \n", addr);
 
-        if (destructive) {
-            printf("ID [%lld] not ready again! \n", addr);
-            *ready_ptr = 0;
-        }
-        if (size == 8) {
-            printf("addr [%lld]: %lld, ready[%lld]: %d\n", addr, *(int64_t *)addr, addr + size, *(char *)(addr + size));
-        } 
-        if (size == 1) {
-            printf("addr [%lld]: %c, ready[%lld]: %d\n", addr, *(char *)addr, addr + size, *(char *)(addr + size));
-        }
         return (void *)addr;
 
     }
@@ -182,18 +123,27 @@ void *_receive(bool destructive, int size, int64_t addr, void *context) {
 }
 
 void *receive(int size, int from_core, int64_t addr, void *context) {
-    return _receive(true, size, addr, context);
+    return _receive(size, addr, context);
+}
+
+void free_comms(int64_t addr, int size, void *context) {
+    printf("ID [%lld] Free size: %d\n", addr, size);
+    char *ready_ptr = (void *)addr + size;
+    memset(ready_ptr, 0, 1);
 }
 
 void send_argument(void *value, int size, int to_core, int64_t addr, void *context) {
+    printf("send_argument\n");
     send(value, size, to_core, addr, context);
 }
 
 void *receive_argument(int size, int64_t addr, void *context) {
-    return _receive(false, size, addr, context);
+    printf("receive_argument\n");
+    return _receive(size, addr, context);
 }
 
 void send_return(void *value, int size, void *context) {
+    printf("send_return\n");
     // Allocate memory for the return value and set our global pointer/ready
     void *return_value = malloc(size);
     memcpy(return_value, value, size);
@@ -202,16 +152,20 @@ void send_return(void *value, int size, void *context) {
 }
 
 void *receive_return(int size, void *context) {
+    printf("receive_return\n");
     // Wait until the value is ready then return
     while (!return_ready) {}
+    printf("retury ready\n");
     return return_value_ptr;
 }
 
 void send_token(int to_core, int64_t addr, void *context) {
+    printf("send_token\n");
      send(NULL, 0, to_core, addr, context); 
 }
 
 void receive_token(int64_t addr, void *context) {
-    _receive(true, 0, addr, context);
+    printf("receive_token\n");
+    _receive(0, addr, context);
 }
 

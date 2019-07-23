@@ -18,6 +18,7 @@ let comms_module = create_module context "comms_module"
 let init_name = "init"
 let send_name = "send"
 let receive_name = "receive"
+let free_name = "free_comms"
 let send_arg_name = "send_argument"
 let receive_arg_name = "receive_argument"
 let send_token_name = "send_token"
@@ -29,7 +30,6 @@ let join_name = "join_partitioned_functions"
 let comms_id = ref 0
 let comms_locations : (int list ref) = ref [] (* ID -> address string *)
 let target = ref PThreads
-let host_id = -1
 
 let target_ptr_type () =
   begin match !target with
@@ -149,6 +149,13 @@ let call_receive_variant variant name reason (ty : lltype) from_partition id bui
   let value = build_call receive args name builder in
   let bitcast = build_bitcast value (pointer_type ty) "bitcast" builder in
   let load = build_load bitcast "receive_load" builder in
+  begin match id with
+  | Some i ->
+    let free = lookup_function_in free_name cores_module in
+    let call_free = build_call free [| i; size; ctx |] "" builder in
+    set_metadata_string reason call_free
+  | None -> ()
+  end;
   List.iter (set_metadata_string reason) [value; bitcast; load];
   load
 
@@ -184,13 +191,14 @@ let declare_external_functions host_md =
   let ptr_ty = target_ptr_type () in
   let send_t = function_type void_type [| void_pt_type; ptr_ty; int_type; ptr_ty; void_pt_type |] in
   declare_function send_name send_t cores_module |> ignore;
-  declare_function send_name send_t host_md |> ignore;
   let receive_t = function_type void_pt_type [| ptr_ty; int_type; ptr_ty; void_pt_type |] in
   declare_function receive_name receive_t cores_module |> ignore;
-  declare_function receive_name receive_t host_md |> ignore;
+  let send_arg_t = function_type void_type [| void_pt_type; ptr_ty; int_type; ptr_ty; void_pt_type |] in
+  declare_function send_arg_name send_arg_t host_md |> ignore;
+  let free_t = function_type void_type [| ptr_ty; ptr_ty; void_pt_type |] in
+  declare_function free_name free_t cores_module |> ignore;
   let send_arg_t = function_type void_type [| void_pt_type; ptr_ty; int_type; ptr_ty; void_pt_type |] in
   declare_function send_arg_name send_arg_t cores_module |> ignore;
-  declare_function send_arg_name send_arg_t host_md |> ignore;
   let receive_arg_t = function_type void_pt_type [| ptr_ty; ptr_ty; void_pt_type |] in
   declare_function receive_arg_name receive_arg_t cores_module |> ignore;
   declare_function receive_arg_name receive_arg_t host_md |> ignore;
