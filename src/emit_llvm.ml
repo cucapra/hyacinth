@@ -68,9 +68,10 @@ let new_comms_addr ty : llvalue =
   let name = "comms" in
   let value = const_null ty in
   let ready_flag = const_null bool_type in
-  let comms_struct = const_struct context [| value; ready_flag |] in
+  let padding = const_null int_type in
+  let comms_struct = const_struct context [| value; ready_flag; padding |] in
 
-  (* Define the struct of { value, ready_flag as a global } *)
+  (* Define the struct of { value, ready_flag, padding } as a global *)
   let global = define_global name comms_struct comms_module in
 
   (* Return the pointer to this global *)
@@ -218,10 +219,10 @@ let declare_external_functions host_md =
   in
   iter_functions declare_function host_md;
 
-  let declare_global (g : llvalue) =
-    declare_global (element_type (type_of g)) (value_name g) cores_module |> ignore
+  let define_global (g : llvalue) =
+    define_global (value_name g) (global_initializer g) cores_module |> ignore
   in
-  iter_globals declare_global host_md
+  iter_globals define_global host_md
 
 let builders_from_block block p mappings host_md =
   let new_builder, new_fun = builder_and_fun p block mappings in
@@ -410,7 +411,7 @@ let add_alloca_instructions v mappings =
   set_volatile true global;
   add_instr mappings v global
 
-let add_load_store_synchronization v p block mappings =
+let add_load_store_synchronization v p _block mappings =
   let global = match (instr_opcode v) with
   | Load -> operand v 0
   | Store -> operand v 1
@@ -420,6 +421,8 @@ let add_load_store_synchronization v p block mappings =
   | Some p' ->
     (* Last access is on a different partition, insert synchronization *)
     if p != p' then begin
+      (* TODO: rethink this! *)
+(*
       let builder, cfun = builder_and_fun p block mappings in
       let builder', cfun' = builder_and_fun p' block mappings in
       let id = new_comms_addr (int_type) in
@@ -430,7 +433,7 @@ let add_load_store_synchronization v p block mappings =
       let ctx = param cfun 0 in
       let receive_token = lookup_function_in receive_token_name cores_module in
       let receive_token_args = [| id; ctx |] in
-      build_call receive_token receive_token_args "" builder |> ignore
+      build_call receive_token receive_token_args "" builder |> ignore *)
     end
   | None -> ()
   end;

@@ -31,6 +31,15 @@ struct Closure {
 volatile void *return_value_ptr;
 volatile bool return_ready = false;
 
+void volatile_copy(volatile char *dest, volatile char *src, unsigned len) {
+    while (len) {
+        *dest = *src;
+        dest++;
+        src++;
+        len -= sizeof(char);
+    }
+}
+
 void *init() {
     return NULL;
 }
@@ -67,7 +76,6 @@ void join_partitioned_functions(int num_functions, void *threads_arg) {
     }
 }
 
-
 // Addr points to a struct of { value, ready_flag }
 void send(void *value, int size, int to_core, int64_t addr, void *context) {
     #if DEBUGGING
@@ -81,7 +89,7 @@ void send(void *value, int size, int to_core, int64_t addr, void *context) {
     }
 
     // Copy the new value to the struct
-    memcpy((void *)addr, value, size);
+    volatile_copy((volatile char *)addr, value, size);
 
     // Finally, set the ready flag, which is right after the value data
     char *ready_ptr = (void *)addr + size;
@@ -109,8 +117,12 @@ void *receive(int size, int from_core, int64_t addr, void *context) {
 }
 
 void free_comms(int64_t addr, int size, void *context) {
+    #if DEBUGGING
+    printf("ID [%lld] Free size: %d\n", addr, size);
+    #endif // DEBUGGING
+
     volatile char *ready_ptr = (volatile void *)addr + size;
-    memset((void *)ready_ptr, 0, 1);
+    *ready_ptr = '\0';
 }
 
 void send_argument(void *value, int size, int to_core, int64_t addr, void *context) {
@@ -124,7 +136,7 @@ void *receive_argument(int size, int64_t addr, void *context) {
 void send_return(void *value, int size, void *context) {
     // Allocate memory for the return value and set our global pointer/ready
     void *return_value = malloc(size);
-    memcpy(return_value, value, size);
+    volatile_copy(return_value, value, size);
     return_value_ptr = return_value;
     return_ready = true;
 }
