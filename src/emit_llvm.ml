@@ -63,9 +63,8 @@ let builder_and_fun partition block mappings =
   let new_fun = block_parent new_block in
   (new_builder, new_fun)
 
-let new_comms_addr ty : llvalue =
+let new_addr_with_name name ty : llvalue =
   (* Allocate memory for this communication and a ready flag based on type *)
-  let name = "comms" in
   let value = const_null ty in
   let ready_flag = const_null bool_type in
   let padding = const_null int_type in
@@ -78,6 +77,9 @@ let new_comms_addr ty : llvalue =
   let indices = [| const_i32 0 |] in
   let gep = const_gep global indices in
   const_ptrtoint gep (target_ptr_type ())
+
+let new_comms_addr ty : llvalue =
+  new_addr_with_name "comms" ty
 
 let size_of_ty ty =
   const_trunc (size_of ty) (target_ptr_type ())
@@ -124,6 +126,7 @@ let call_send_variant variant value reason (to_partition : int) id builder ctx =
   to_replace
 
 let call_send_return value reason builder ctx =
+
   let value_ptr, size, to_replace = value_to_value_ptr value reason builder in
   let send = lookup_function_in send_return_name cores_module in
   let args = [| value_ptr; size; ctx |] in
@@ -583,6 +586,8 @@ let emit_llvm tg filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : 
     clear_global_last_access mappings
   in
   let per_function f fn =
+    let fn_type = return_type (element_type (type_of fn)) in
+    new_addr_with_name "return_struct" fn_type |> ignore;
     let blocks = fold_left_blocks (fun bs b -> b::bs) [] fn in
     let sorted = Sort_basic_blocks.sort_blocks (List.rev blocks) in
     List.iter (per_block f) sorted

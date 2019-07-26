@@ -8,18 +8,8 @@
 
 #define DEBUGGING 0
 
-typedef struct Comm Comm;
-struct Comm {
-    int id;
-    int size;
-    void *value;
-    Comm *next;
-};
-
 typedef struct Context Context;
 struct Context {
-    Comm *channelList;
-    pthread_rwlock_t lock;
 };
 
 typedef struct Closure Closure;
@@ -28,8 +18,7 @@ struct Closure {
     Context *context;
 };
 
-volatile void *return_value_ptr;
-volatile bool return_ready = false;
+extern volatile void return_struct;
 
 void volatile_copy(volatile char *dest, volatile char *src, unsigned len) {
     while (len) {
@@ -134,17 +123,12 @@ void *receive_argument(int size, int64_t addr, void *context) {
 }
 
 void send_return(void *value, int size, void *context) {
-    // Allocate memory for the return value and set our global pointer/ready
-    void *return_value = malloc(size);
-    volatile_copy(return_value, value, size);
-    return_value_ptr = return_value;
-    return_ready = true;
+    send(value, size, -1, (int64_t)&return_struct, context);
 }
 
 void *receive_return(int size, void *context) {
     // Wait until the value is ready then return
-    while (!return_ready) {}
-    return (void *)return_value_ptr;
+    return _receive(size, (int64_t)&return_struct, context);
 }
 
 void send_token(int to_core, int64_t addr, void *context) {
