@@ -586,8 +586,13 @@ let emit_llvm tg filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : 
     clear_global_last_access mappings
   in
   let per_function f fn =
+    (* Allocate a return struct *)
     let fn_type = return_type (element_type (type_of fn)) in
-    new_addr_with_name "return_struct" fn_type |> ignore;
+    if fn_type != void_type then
+      new_addr_with_name "return_struct" fn_type |> ignore
+    else
+      (* If the type is void, allocate a bool in the struct for now *)
+      new_addr_with_name "return_struct" bool_type |> ignore;
     let blocks = fold_left_blocks (fun bs b -> b::bs) [] fn in
     let sorted = Sort_basic_blocks.sort_blocks (List.rev blocks) in
     List.iter (per_block f) sorted

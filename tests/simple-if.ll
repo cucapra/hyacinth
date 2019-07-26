@@ -3,15 +3,16 @@ source_filename = "llvm-link"
 target datalayout = "e-m:o-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-apple-macosx10.14.0"
 
-%struct.Context = type { %struct.Comm*, %struct._opaque_pthread_rwlock_t }
-%struct.Comm = type { i32, i32, i8*, %struct.Comm* }
-%struct._opaque_pthread_rwlock_t = type { i64, [192 x i8] }
+%struct.Context = type {}
 %struct._opaque_pthread_t = type { i64, %struct.__darwin_pthread_handler_rec*, [8176 x i8] }
 %struct.__darwin_pthread_handler_rec = type { void (i8*)*, i8*, %struct.__darwin_pthread_handler_rec* }
 %struct._opaque_pthread_attr_t = type { i64, [56 x i8] }
 
+@return_struct = global { i1, i1, i32 } zeroinitializer
 @comms = global { i32, i1, i32 } zeroinitializer
-@comms.1 = global { i1, i1, i32 } zeroinitializer
+@return_struct.1 = global { i1, i1, i32 } zeroinitializer
+@return_struct.2 = global { i1, i1, i32 } zeroinitializer
+@comms.3 = global { i1, i1, i32 } zeroinitializer
 @funs = global [2 x void (i8*)*] [void (i8*)* @if_f_0, void (i8*)* @if_f_1]
 @str.6.8 = private unnamed_addr constant [2 x i8] c"1\00", align 1
 @str.7.10 = private unnamed_addr constant [2 x i8] c"2\00", align 1
@@ -23,8 +24,6 @@ target triple = "x86_64-apple-macosx10.14.0"
 @str.5 = global [2 x i8] c"4\00"
 @str.6 = global [2 x i8] c"1\00"
 @str.7 = global [2 x i8] c"2\00"
-@return_ready = global i8 0, align 1
-@return_value_ptr = common local_unnamed_addr global i8* null, align 8
 
 ; Function Attrs: nounwind ssp uwtable
 define void @if_f(i32) local_unnamed_addr #0 {
@@ -87,7 +86,7 @@ entry:
   %send_alloca = alloca i1, !reason !9
   store i1 %1, i1* %send_alloca, !reason !9
   %send_cast = bitcast i1* %send_alloca to i8*, !reason !9
-  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast, i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 1, i64 ptrtoint ({ i1, i1, i32 }* @comms.1 to i64), i8* %0), !reason !9
+  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast, i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 1, i64 ptrtoint ({ i1, i1, i32 }* @comms.3 to i64), i8* %0), !reason !9
   br i1 %1, label %l, label %l1
 
 l:                                                ; preds = %entry
@@ -106,10 +105,10 @@ l2:                                               ; preds = %l1, %l
 
 define void @if_f_1(i8*) {
 entry:
-  %broadcast = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i1, i1, i32 }* @comms.1 to i64), i8* %0), !reason !11
+  %broadcast = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i1, i1, i32 }* @comms.3 to i64), i8* %0), !reason !11
   %bitcast = bitcast i8* %broadcast to i1*, !reason !11
   %receive_load = load i1, i1* %bitcast, !reason !11
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i1, i1, i32 }* @comms.1 to i64), i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i8* %0), !reason !11
+  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i1, i1, i32 }* @comms.3 to i64), i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i8* %0), !reason !11
   br i1 %receive_load, label %l, label %l1
 
 l:                                                ; preds = %entry
@@ -289,28 +288,16 @@ define i8* @receive_argument(i32, i64, i8* nocapture readnone) #4 {
   ret i8* %4
 }
 
-; Function Attrs: nounwind ssp uwtable
-define void @send_return(i8*, i32, i8* nocapture readnone) local_unnamed_addr #0 {
-  %4 = sext i32 %1 to i64
-  %5 = tail call i8* @malloc(i64 %4) #8
-  tail call void @volatile_copy(i8* %5, i8* %0, i32 %1)
-  store i8* %5, i8** @return_value_ptr, align 8, !tbaa !3
-  store volatile i8 1, i8* @return_ready, align 1, !tbaa !16
+; Function Attrs: norecurse nounwind ssp uwtable
+define void @send_return(i8*, i32, i8* nocapture readnone) local_unnamed_addr #4 {
+  tail call void @send(i8* %0, i32 %1, i32 undef, i64 ptrtoint ({ i1, i1, i32 }* @return_struct to i64), i8* undef)
   ret void
 }
 
 ; Function Attrs: norecurse nounwind ssp uwtable
 define i8* @receive_return(i32, i8* nocapture readnone) local_unnamed_addr #4 {
-  br label %3
-
-; <label>:3:                                      ; preds = %3, %2
-  %4 = load volatile i8, i8* @return_ready, align 1, !tbaa !16, !range !18
-  %5 = icmp eq i8 %4, 0
-  br i1 %5, label %3, label %6
-
-; <label>:6:                                      ; preds = %3
-  %7 = load i8*, i8** @return_value_ptr, align 8, !tbaa !3
-  ret i8* %7
+  %3 = tail call i8* @_receive(i32 %0, i64 ptrtoint ({ i1, i1, i32 }* @return_struct to i64), i8* undef)
+  ret i8* %3
 }
 
 ; Function Attrs: norecurse nounwind ssp uwtable
@@ -354,6 +341,3 @@ attributes #8 = { allocsize(0) }
 !13 = !{!14, !4, i64 0}
 !14 = !{!"Closure", !4, i64 0, !4, i64 8}
 !15 = !{!14, !4, i64 8}
-!16 = !{!17, !17, i64 0}
-!17 = !{!"_Bool", !5, i64 0}
-!18 = !{i8 0, i8 2}

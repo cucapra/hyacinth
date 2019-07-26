@@ -3,13 +3,12 @@ source_filename = "llvm-link"
 target datalayout = "e-m:o-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-apple-macosx10.14.0"
 
-%struct.Context = type { %struct.Comm*, %struct._opaque_pthread_rwlock_t }
-%struct.Comm = type { i32, i32, i8*, %struct.Comm* }
-%struct._opaque_pthread_rwlock_t = type { i64, [192 x i8] }
+%struct.Context = type {}
 %struct._opaque_pthread_t = type { i64, %struct.__darwin_pthread_handler_rec*, [8176 x i8] }
 %struct.__darwin_pthread_handler_rec = type { void (i8*)*, i8*, %struct.__darwin_pthread_handler_rec* }
 %struct._opaque_pthread_attr_t = type { i64, [56 x i8] }
 
+@return_struct = global { double, i1, i32 } zeroinitializer
 @comms = global { double, i1, i32 } zeroinitializer
 @comms.1 = global { double, i1, i32 } zeroinitializer
 @comms.2 = global { double, i1, i32 } zeroinitializer
@@ -19,13 +18,13 @@ target triple = "x86_64-apple-macosx10.14.0"
 @comms.6 = global { double, i1, i32 } zeroinitializer
 @comms.7 = global { double, i1, i32 } zeroinitializer
 @comms.8 = global { double, i1, i32 } zeroinitializer
+@return_struct.9 = global { double, i1, i32 } zeroinitializer
+@return_struct.10 = global { double, i1, i32 } zeroinitializer
 @funs = global [2 x void (i8*)*] [void (i8*)* @quadratic_0, void (i8*)* @quadratic_1]
 @str.4 = private unnamed_addr constant [14 x i8] c"starting main\00", align 1
 @.str.1.2 = private unnamed_addr constant [22 x i8] c"quadratic result: %f\0A\00", align 1
 @.str.1 = global [22 x i8] c"quadratic result: %f\0A\00"
 @str = global [14 x i8] c"starting main\00"
-@return_ready = global i8 0, align 1
-@return_value_ptr = common local_unnamed_addr global i8* null, align 8
 
 ; Function Attrs: nounwind ssp uwtable
 define double @quadratic(double, double, double) local_unnamed_addr #0 {
@@ -370,28 +369,16 @@ define i8* @receive_argument(i32, i64, i8* nocapture readnone) #6 {
   ret i8* %4
 }
 
-; Function Attrs: nounwind ssp uwtable
-define void @send_return(i8*, i32, i8* nocapture readnone) #0 {
-  %4 = sext i32 %1 to i64
-  %5 = tail call i8* @malloc(i64 %4) #9
-  tail call void @volatile_copy(i8* %5, i8* %0, i32 %1)
-  store i8* %5, i8** @return_value_ptr, align 8, !tbaa !3
-  store volatile i8 1, i8* @return_ready, align 1, !tbaa !33
+; Function Attrs: norecurse nounwind ssp uwtable
+define void @send_return(i8*, i32, i8* nocapture readnone) #6 {
+  tail call void @send(i8* %0, i32 %1, i32 undef, i64 ptrtoint ({ double, i1, i32 }* @return_struct to i64), i8* undef)
   ret void
 }
 
 ; Function Attrs: norecurse nounwind ssp uwtable
 define i8* @receive_return(i32, i8* nocapture readnone) #6 {
-  br label %3
-
-; <label>:3:                                      ; preds = %3, %2
-  %4 = load volatile i8, i8* @return_ready, align 1, !tbaa !33, !range !35
-  %5 = icmp eq i8 %4, 0
-  br i1 %5, label %3, label %6
-
-; <label>:6:                                      ; preds = %3
-  %7 = load i8*, i8** @return_value_ptr, align 8, !tbaa !3
-  ret i8* %7
+  %3 = tail call i8* @_receive(i32 %0, i64 ptrtoint ({ double, i1, i32 }* @return_struct to i64), i8* undef)
+  ret i8* %3
 }
 
 ; Function Attrs: norecurse nounwind ssp uwtable
@@ -453,6 +440,3 @@ attributes #9 = { allocsize(0) }
 !30 = !{!31, !4, i64 0}
 !31 = !{!"Closure", !4, i64 0, !4, i64 8}
 !32 = !{!31, !4, i64 8}
-!33 = !{!34, !34, i64 0}
-!34 = !{!"_Bool", !5, i64 0}
-!35 = !{i8 0, i8 2}
