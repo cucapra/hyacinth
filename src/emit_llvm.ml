@@ -79,7 +79,9 @@ let new_addr_with_name name ty : llvalue =
   const_ptrtoint gep (target_ptr_type ())
 
 let new_comms_addr ty : llvalue =
-  new_addr_with_name "comms" ty
+  let id = !comms_id in
+  comms_id := !comms_id + 1;
+  new_addr_with_name ("comms_" ^ (string_of_int id)) ty
 
 let size_of_ty ty =
   const_trunc (size_of ty) (target_ptr_type ())
@@ -408,7 +410,6 @@ let insert_ret_void block block_map partition =
   build_ret_void builder |> ignore
 
 let add_return_allocation fn =
-  print_endline (string_of_llvalue fn);
   (* Allocate a return struct *)
   let fn_type = return_type (element_type (type_of fn)) in
   if fn_type != void_type then
