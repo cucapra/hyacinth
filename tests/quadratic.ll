@@ -8,7 +8,6 @@ target triple = "x86_64-apple-macosx10.14.0"
 %struct.__darwin_pthread_handler_rec = type { void (i8*)*, i8*, %struct.__darwin_pthread_handler_rec* }
 %struct._opaque_pthread_attr_t = type { i64, [56 x i8] }
 
-@return_struct = global { double, i1, i32 } zeroinitializer
 @comms = global { double, i1, i32 } zeroinitializer
 @comms.1 = global { double, i1, i32 } zeroinitializer
 @comms.2 = global { double, i1, i32 } zeroinitializer
@@ -18,8 +17,7 @@ target triple = "x86_64-apple-macosx10.14.0"
 @comms.6 = global { double, i1, i32 } zeroinitializer
 @comms.7 = global { double, i1, i32 } zeroinitializer
 @comms.8 = global { double, i1, i32 } zeroinitializer
-@return_struct.9 = global { double, i1, i32 } zeroinitializer
-@return_struct.10 = global { double, i1, i32 } zeroinitializer
+@return_struct = global { double, i1, i32 } zeroinitializer
 @funs = global [2 x void (i8*)*] [void (i8*)* @quadratic_0, void (i8*)* @quadratic_1]
 @str.4 = private unnamed_addr constant [14 x i8] c"starting main\00", align 1
 @.str.1.2 = private unnamed_addr constant [22 x i8] c"quadratic result: %f\0A\00", align 1

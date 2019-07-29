@@ -8,41 +8,33 @@ target triple = "x86_64-apple-macosx10.14.0"
 %struct.__darwin_pthread_handler_rec = type { void (i8*)*, i8*, %struct.__darwin_pthread_handler_rec* }
 %struct._opaque_pthread_attr_t = type { i64, [56 x i8] }
 
-@return_struct = global { i1, i1, i32 } zeroinitializer
 @comms = global { i32, i1, i32 } zeroinitializer
-@return_struct.1 = global { i1, i1, i32 } zeroinitializer
-@return_struct.2 = global { i1, i1, i32 } zeroinitializer
-@comms.3 = global { i1, i1, i32 } zeroinitializer
+@comms.1 = global { i1, i1, i32 } zeroinitializer
+@return_struct = global { i1, i1, i32 } zeroinitializer
 @funs = global [2 x void (i8*)*] [void (i8*)* @if_f_0, void (i8*)* @if_f_1]
-@str.6.8 = private unnamed_addr constant [2 x i8] c"1\00", align 1
-@str.7.10 = private unnamed_addr constant [2 x i8] c"2\00", align 1
-@str.4 = private unnamed_addr constant [2 x i8] c"3\00", align 1
-@str.5.6 = private unnamed_addr constant [2 x i8] c"4\00", align 1
-@.str.4.2 = private unnamed_addr constant [7 x i8] c"b: %d\0A\00", align 1
-@.str.4 = global [7 x i8] c"b: %d\0A\00"
-@str = global [2 x i8] c"3\00"
-@str.5 = global [2 x i8] c"4\00"
-@str.6 = global [2 x i8] c"1\00"
-@str.7 = global [2 x i8] c"2\00"
+@str.3.7 = private unnamed_addr constant [2 x i8] c"1\00", align 1
+@str.5 = private unnamed_addr constant [2 x i8] c"2\00", align 1
+@.str.2.2 = private unnamed_addr constant [7 x i8] c"b: %d\0A\00", align 1
+@.str.2 = global [7 x i8] c"b: %d\0A\00"
+@str = global [2 x i8] c"2\00"
+@str.3 = global [2 x i8] c"1\00"
 
 ; Function Attrs: nounwind ssp uwtable
 define void @if_f(i32) local_unnamed_addr #0 {
   %2 = icmp slt i32 %0, 5
-  br i1 %2, label %3, label %6
+  br i1 %2, label %3, label %5
 
 ; <label>:3:                                      ; preds = %1
-  %4 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.6.8, i64 0, i64 0))
-  %5 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7.10, i64 0, i64 0))
-  br label %9
+  %4 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3.7, i64 0, i64 0))
+  br label %7
 
-; <label>:6:                                      ; preds = %1
-  %7 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.4, i64 0, i64 0))
-  %8 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5.6, i64 0, i64 0))
-  br label %9
+; <label>:5:                                      ; preds = %1
+  %6 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i64 0, i64 0))
+  br label %7
 
-; <label>:9:                                      ; preds = %6, %3
-  %10 = phi i32 [ 0, %3 ], [ 1, %6 ]
-  %11 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.4.2, i64 0, i64 0), i32 %10)
+; <label>:7:                                      ; preds = %5, %3
+  %8 = phi i32 [ 0, %3 ], [ 1, %5 ]
+  %9 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.2.2, i64 0, i64 0), i32 %8)
   ret void
 }
 
@@ -86,11 +78,11 @@ entry:
   %send_alloca = alloca i1, !reason !9
   store i1 %1, i1* %send_alloca, !reason !9
   %send_cast = bitcast i1* %send_alloca to i8*, !reason !9
-  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast, i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 1, i64 ptrtoint ({ i1, i1, i32 }* @comms.3 to i64), i8* %0), !reason !9
+  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast, i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 1, i64 ptrtoint ({ i1, i1, i32 }* @comms.1 to i64), i8* %0), !reason !9
   br i1 %1, label %l, label %l1
 
 l:                                                ; preds = %entry
-  %2 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.6, i64 0, i64 0)), !time !10
+  %2 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i64 0, i64 0)), !time !10
   br label %l2
 
 l1:                                               ; preds = %entry
@@ -99,24 +91,22 @@ l1:                                               ; preds = %entry
 
 l2:                                               ; preds = %l1, %l
   %new_phi = phi i32 [ 0, %l ], [ 1, %l1 ], !time !8
-  %4 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.4, i64 0, i64 0), i32 %new_phi), !time !10
+  %4 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.2, i64 0, i64 0), i32 %new_phi), !time !10
   ret void
 }
 
 define void @if_f_1(i8*) {
 entry:
-  %broadcast = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i1, i1, i32 }* @comms.3 to i64), i8* %0), !reason !11
+  %broadcast = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i1, i1, i32 }* @comms.1 to i64), i8* %0), !reason !11
   %bitcast = bitcast i8* %broadcast to i1*, !reason !11
   %receive_load = load i1, i1* %bitcast, !reason !11
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i1, i1, i32 }* @comms.3 to i64), i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i8* %0), !reason !11
+  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i1, i1, i32 }* @comms.1 to i64), i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i8* %0), !reason !11
   br i1 %receive_load, label %l, label %l1
 
 l:                                                ; preds = %entry
-  %1 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.7, i64 0, i64 0)), !time !10
   br label %l2
 
 l1:                                               ; preds = %entry
-  %2 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i64 0, i64 0)), !time !10
   br label %l2
 
 l2:                                               ; preds = %l1, %l
