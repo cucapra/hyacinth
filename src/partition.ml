@@ -1,12 +1,12 @@
 open Smtlib
-open Dfg
-open Ast
 open Pervasives
+open Llvm
+open Llvm_shared
 
 exception UnexpectedTerm of term
 
-module NodeMap =
-  Map.Make(struct type t = Dfg.node;; let compare = compare end)
+module ValueMap =
+  Map.Make(struct type t = llvalue;; let compare = compare end)
 
 type config =
   {
@@ -25,7 +25,7 @@ type placement =
   }
 
 (* node, core assignment, (starting time, ending time) *)
-and assignments = (node * term * (term * term)) list
+and assignments = (llvalue * term * (term * term)) list
 
 let rows = ref 2
 let cols = ref 2
@@ -84,31 +84,6 @@ let results_to_strings r : string list =
   let print_term (Id s, t) = s ^ "\t: " ^ (term_to_string t) in
   List.map print_term sorted
 
-let time_per_internal_op (uo : internal_op) : int =
-  match uo with
-  | UNot -> 2
-  | UNeg -> 2
-  | USqrt -> 10
-  | UAbs -> 3
-  | BAnd -> 1
-  | BOr -> 1
-  | BEquals -> 1
-  | BNotEquals -> 1
-  | BLess -> 1
-  | BLessEq -> 1
-  | BGreater -> 1
-  | BGreaterEq -> 1
-  | BAdd -> 3
-  | BSub -> 3
-  | BMul -> 5
-  | BDiv -> 10
-
-let time_per_op (o : operation) : int =
-  match o with
-  | OPhi -> 0
-  | OOp(OInternal(io)) -> time_per_internal_op io
-  | OOp(OExternal(_, cost)) -> cost
-
 (* The cost for communicating between two partitions is their manhattan distance
   in the core grid *)
 let components (p : int) : (int * int) =
@@ -148,50 +123,64 @@ let constrain_comms_times (s : solver) =
 let time_for_comms (p1 : term) (p2 : term) : term =
   App(dist_fun_id, [p1; p2])
 
-let constrain_per_incoming (s : solver) (a : assignments) (i_n : node) pt t1 =
-  let _, i_n' = i_n in
-  match i_n' with
-  | NLit _ -> () (* No cost for incoming literals *)
-  | NOp _ | NInput _->
-    begin match (List.find_opt (fun ((_, n'), _, _) -> i_n' == n') a) with
+let constrain_per_operand (s : solver) (a : assignments) (operand : llvalue) pt t1 =
+  (* Instruction operands may reside on a different partition *)
+  let constrain_per_instr_operand _ =
+    match (List.find_opt (fun (v, _, _) -> v == operand) a) with
     | Some (_, pt', (_, t2')) ->
-      let partition_comms_term = time_for_comms pt pt' in
-      (* The starting time must be after the incoming ending time plus the
-      communication cost *)
-      assert_ s (gte t1 (add t2' partition_comms_term))
-    | None -> print_endline ("Cannot find partition for: " ^ (print_node i_n))
-    end
+      begin match (classify_type (type_of operand)) with
+      (* For now, pointers can not be sent across partitions *)
+      | Pointer ->
+        assert_ s (equals t1 t2');
+        assert_ s (equals pt pt')
+      (* Otherwise, the starting time must be after the incoming ending time
+        plus the communication cost *)
+      | _ ->
+        let partition_comms_term = time_for_comms pt pt' in
+        assert_ s (gte t1 (add t2' partition_comms_term))
+      end
+    | None ->
+      print_endline ("Missing partition for: " ^ (string_of_llvalue operand))
+  in
+  match (classify_value operand) with
+  (* Arguments *)
+  | Argument ->
+    (* TODO: there should be a cost if this argument isn't already assigned
+    to this core elsewhere *)
+    ()
+  (* Constants *)
+  | ConstantAggregateZero  | ConstantArray  | ConstantDataArray
+    | ConstantDataVector  | ConstantExpr  | ConstantFP  | ConstantInt
+    | ConstantPointerNull  | ConstantStruct  | ConstantVector | NullValue ->
+    (* No cost for incoming constants. *)
+    ()
+  (* Globals *)
+  | GlobalAlias | GlobalVariable ->
+    (* No cost for incoming globals. *)
+    ()
+  (* Instructions *)
+  | Instruction _ ->
+    constrain_per_instr_operand ()
+  (* Should not be operands *)
+  | BasicBlock | InlineAsm | MDNode | MDString | BlockAddress | Function
+    | UndefValue | GlobalIFunc ->
+    failwith ("Unexpected operand" ^ (string_of_llvalue operand))
 
-let constrain_per_node (s : solver) (a : assignments) p : unit =
-  match p with
-  | ((_, NLit(_)), _, _) -> failwith "Literals should not be directly constrained"
-  | ((_, NOp(op)), pt, (t1, t2)) ->
+let constrain_per_instruction (s : solver) (a : assignments) current : unit =
+  let (value, pt, (t1, t2)) = current in
+  match (classify_value value) with
+  | Instruction opcode ->
     (* The ending time must be after the starting time plus the op time *)
-    let op_cost_term = int_to_term (time_per_op op.op) in
+    let op_cost_term = int_to_term (opcode_cost opcode) in
     assert_ s (equals (add t1 op_cost_term) t2);
-    (* For now, map memory instructions to core 0*)
-(*     begin match op.op with
-    | OOp(OExternal(name, _)) ->
-      begin match name with
-      | "alloca" | "load" | "store" | "getelementptr" ->
-        assert_ s (equals pt term_0)
-      | _ -> ()
-      end;
-    | _ -> ()
-    end; *)
 
     (* The starting time must be after the ending time of each incoming node *)
-    let f (n : node) = constrain_per_incoming s a n pt t1 in
-    List.iter f op.incoming
-  | ((_, NInput _), pt, (t1, t2)) ->
-    (* The ending time must be after the starting time plus the input time *)
-    let input_cost = int_to_term 1 in
-    assert_ s (equals (add t1 input_cost) t2);
-    (* For now, inputs must be from partition 0 *)
-    assert_ s (equals pt term_0)
+    let f (v : llvalue) = constrain_per_operand s a v pt t1 in
+    iter_operands f value
+  | _ -> failwith ("Expected instruction, got: " ^ (string_of_llvalue value))
 
-let constrain_nodes (s : solver) (a : assignments) =
-  List.iter (fun (p) -> constrain_per_node s a p) a
+let constrain_instructions (s : solver) (a : assignments) =
+  List.iter (fun (p) -> constrain_per_instruction s a p) a
 
 let constrain_partitions (s : solver) (a : assignments) =
   let tiles = !rows * !cols in
@@ -220,10 +209,11 @@ let latest_time (s : solver) (a : assignments) : term =
   (con l)
 
 let sequential_time (a : assignments) : int =
-  let total_time (acc : int) ((_, n), _, _) = match n with
-  | NLit _ -> acc
-  | NOp o -> time_per_op o.op + acc
-  | NInput _ -> acc in
+  let total_time (acc : int) (v, _, _) =
+    match (classify_value v) with
+    | Instruction opcode -> acc + (opcode_cost opcode)
+    | _ -> failwith ("Expected instruction, got: " ^ (string_of_llvalue v))
+  in
   List.fold_left total_time 0 a
 
 let solve_for_goal (s : solver) (total : term) (goal : int) =
@@ -265,11 +255,11 @@ let set_configuration (s : solver) (c : config) =
     lookup_table := not c.debug
 
 (* Idea: take in the list of nodes, return a list with partition assignments *)
-let solve_dfg (graph : dfg) (config : config) : placement NodeMap.t =
+let solve_dfg (graph : llvalue list) (config : config) : placement ValueMap.t =
   print_endline "\nStarting to solve partitioning for subgraph";
   let s : solver = Smtlib.make_solver "z3" in
   set_configuration s config;
-  let a = List.mapi (fun (i : int) (x : node) ->
+  let a = List.mapi (fun (i : int) (x : llvalue) ->
     let pt = "p_" ^ string_of_int i in
     let t1 = "t1_" ^ string_of_int i in
     let t2 = "t2_" ^ string_of_int i in
@@ -283,30 +273,30 @@ let solve_dfg (graph : dfg) (config : config) : placement NodeMap.t =
   constrain_comms_times s;
   constrain_partitions s a;
   constrain_overlapping_times s a;
-  constrain_nodes s a;
+  constrain_instructions s a;
   let total_time = latest_time s a in
   let upper_bound = sequential_time a in
   print_endline ("Sequential time: " ^ (string_of_int upper_bound) ^"\n");
 
-  let partitioning = ref NodeMap.empty in
+  let partitioning = ref ValueMap.empty in
   let opt_res = incrememntal_solve_loop s total_time upper_bound None in
   begin match opt_res with
   | Some res ->
     let s = results_to_strings res in
     print_endline (Core.String.concat ~sep:"\n" s);
-    List.iteri (fun (i : int) (x : node) ->
+    List.iteri (fun (i : int) (x : llvalue) ->
       let find_t s = List.find (fun (Id i, _) -> String.equal i s) res in
       let find_int s = (let (_, t) = find_t s in term_to_int t) in
       let pt = find_int ("p_" ^ string_of_int i) in
       let t1 = find_int ("t1_" ^ string_of_int i) in
       let t2 = find_int ("t2_" ^ string_of_int i) in
       let placement = {partition = pt; start_time = t1; end_time = t2;} in
-      partitioning := NodeMap.add x placement !partitioning) graph
+      partitioning := ValueMap.add x placement !partitioning) graph
   | None ->
     print_endline "No partitioning found, assigning everything to core 0";
-    List.iter (fun (x : node) ->
+    List.iter (fun (x : llvalue) ->
       let placement = {partition = 0; start_time = 0; end_time = 0;} in
-      partitioning := NodeMap.add x placement !partitioning) graph
+      partitioning := ValueMap.add x placement !partitioning) graph
   end;
   !partitioning
 

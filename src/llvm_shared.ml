@@ -7,6 +7,16 @@ let include_function fn =
 let iter_included_functions (f : llvalue -> unit) (md : llmodule) =
   iter_functions (fun fn -> if include_function fn then f fn) md
 
+let arity_range (instr : llvalue) =
+  let arity = num_operands instr in
+  Core.List.range 0 arity
+
+let iter_operands (f : llvalue -> unit) (instr : llvalue) =
+  List.iter (fun i -> f (operand instr i)) (arity_range instr)
+
+let map_operands f  (instr : llvalue) =
+  List.map (fun i -> f (operand instr i)) (arity_range instr)
+
 let rec print_type llty : string =
   let ty = classify_type llty in
   match ty with

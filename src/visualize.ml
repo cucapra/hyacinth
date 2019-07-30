@@ -1,22 +1,10 @@
-open Dfg
-open Pretty
 open Graph
+open Llvm
+open Llvm_shared
 open Partition
 
-let print_operation (o : operation) : string =
-  match o with
-  | OPhi -> "Phi"
-  | OOp op -> pretty_op op
-
-let print_address n : string =
-  let address = 2*(Obj.magic n) in
-  Printf.sprintf "(%d)" address
-
-let string_of_node (_, n : node) : string =
-  match n with
-  | NLit fl -> "literal: " ^ (string_of_float fl)
-  | NOp o -> "operation: " ^ (print_operation o.op)
-  | NInput n -> "input: " ^ (string_of_int n)
+let string_of_node (v : llvalue) : string =
+  string_of_llvalue v
 
 let string_of_partition (n, p, (t1, t2)) =
   let node = string_of_node n in
@@ -24,17 +12,13 @@ let string_of_partition (n, p, (t1, t2)) =
     ^ "\nTime: (" ^ (string_of_int t1) ^ ", " ^ (string_of_int t2) ^ ")" in
   "\"" ^ node ^ sched ^ "\""
 
-let vertex_attribute ((_, n), p, _) =
+let vertex_attribute (_, p, _) =
   let color = match p with
   | 0 -> 0xb7d2ff
   | 1 -> 0xf7f08a
   | 2 -> 0xff9393
   | _ -> 0xd5b7ff in
-  let shape = match n with
-  | NInput _ -> `Diamond
-  | NLit _ -> `Box
-  | NOp _ -> `Ellipse in
-  [`Shape shape; `Fillcolor color; `Style `Filled]
+  [`Shape `Box; `Fillcolor color; `Style `Filled]
 
 let edge_attribute ((_, p1, _), _, (_, p2, _)) =
   if (p1 = p2) then
@@ -44,7 +28,7 @@ let edge_attribute ((_, p1, _), _, (_, p2, _)) =
     [`Label ("Cost: " ^ string_of_int cost)]
 
 module VNode = struct
-  type t = (node * int * (int * int))
+  type t = (llvalue * int * (int * int))
   let compare = Pervasives.compare
   let hash = Hashtbl.hash
   let equal = (==)
@@ -70,15 +54,13 @@ module Dot = Graphviz.Dot(struct
   let graph_attributes _ = []
 end)
 
-let incoming ((_, n) : node) : node list=
-  match n with
-  | NOp o -> o.incoming
-  | _ -> []
+let incoming (v : llvalue) : llvalue list=
+  map_operands (fun v' -> v') v
 
-let dfg_to_viz_graph (graph : placement NodeMap.t) : G.t =
+let dfg_to_viz_graph (graph : placement ValueMap.t) : G.t =
   let g = G.create () in
   let add_edge n1 n2 =
-    match NodeMap.find_opt n2 graph with
+    match ValueMap.find_opt n2 graph with
     | Some p -> G.add_edge g (n2, p.partition, (p.start_time, p.end_time)) n1
     | _ -> (* Literal *)
       let (_, p', (t1', _)) = n1 in
@@ -87,9 +69,9 @@ let dfg_to_viz_graph (graph : placement NodeMap.t) : G.t =
     G.add_vertex g (n, p.partition, (p.start_time, p.end_time));
     let p' = (n, p.partition, (p.start_time, p.end_time)) in
     List.iter (add_edge p') (incoming n) in
-  NodeMap.iter per_node graph;
+  ValueMap.iter per_node graph;
   g
 
-let visualize_dfg (graph : placement NodeMap.t) (output : string) =
+let visualize_dfg (graph : placement ValueMap.t) (output : string) =
   let file = open_out_bin output in
   Dot.output_graph file (dfg_to_viz_graph graph)

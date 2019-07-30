@@ -1,5 +1,3 @@
-open Dfg
-open Ast
 open Partition
 open Llvm
 open Llvm_shared
@@ -395,8 +393,9 @@ let clone_blocks_per_partition host_md partitions mappings =
   let per_function fn = List.iter (per_partition fn) partitions in
   iter_included_functions per_function host_md
 
-let get_nonempty_partitions (dfg : placement NodeMap.t) : int list =
-  NodeMap.bindings dfg |> List.map (fun (_, p) -> p.partition) |> List.sort_uniq compare
+let get_nonempty_partitions (dfg : placement ValueMap.t) : int list =
+  ValueMap.bindings dfg |>
+   List.map (fun (_, p) -> p.partition) |> List.sort_uniq compare
 
 let insert_ret_void block block_map partition =
   let builder, _ = builder_and_fun partition block block_map in
@@ -533,14 +532,14 @@ let set_target_specific_data_layout host_md =
     in
     iter_globals set cores_module
 
-let emit_llvm tg filename (dfg : placement NodeMap.t) ((host_md, llvm_to_ast) : (llmodule * (llvalue * com) list)) (node_map : node ComMap.t) =
+let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
   print_endline "\nStarting to emit LLVM";
   target := tg;
   declare_external_functions host_md;
 
   let placement_for_com c =
-    let n = ComMap.find c node_map in
-    match NodeMap.find_opt n dfg with
+    let n = ValueMap.find c node_map in
+    match ValueMap.find_opt n dfg with
     | Some p -> p
     | None -> failwith ("No placement for:" ^ (print_node n) ^ ",  com: " ^ (Pretty.pretty c))
   in
