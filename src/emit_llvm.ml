@@ -537,24 +537,13 @@ let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
   target := tg;
   declare_external_functions host_md;
 
-  let placement_for_com c =
-    let n = ValueMap.find c node_map in
-    match ValueMap.find_opt n dfg with
-    | Some p -> p
-    | None -> failwith ("No placement for:" ^ (print_node n) ^ ",  com: " ^ (Pretty.pretty c))
-  in
   let partitions = get_nonempty_partitions dfg in
   let mappings = init_mappings () in
 
-  let find_partition_opt v' =
-    let pair_opt = List.find_opt (fun (x, _) -> x == v') llvm_to_ast in
-    match pair_opt with
-    | Some (_, c) -> Some (placement_for_com c).partition
+  let find_partition_opt v =
+    match ValueMap.find_opt v dfg with
+    | Some p -> Some p.partition
     | None -> None
-  in
-  let find_partition v' = match find_partition_opt v' with
-  | Some p' -> p'
-  | None -> failwith "No partition"
   in
   clone_blocks_per_partition host_md partitions mappings;
 
@@ -563,19 +552,19 @@ let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
     let op = instr_opcode v in
     let block = instr_parent v in
     let add_straightline () =
-      let _, com = List.find (fun (x, _) -> x == v) llvm_to_ast in
-      let placement = placement_for_com com in
+      let placement = ValueMap.find v dfg in
       let find_partition_default v' = match find_partition_opt v' with
       | Some p' -> p'
-      | None -> placement.partition
+      | None ->
+        print_endline ("defaulting for: " ^ (string_of_llvalue v'));
+        placement.partition
       in
       add_straightline_instructions v block placement find_partition_default partitions mappings host_md
     in
     begin match (op : Opcode.t) with
     | Alloca -> add_alloca_instructions v mappings
     | Load | Store ->
-      let _, com = List.find (fun (x, _) -> x == v) llvm_to_ast in
-      let placement = placement_for_com com in
+      let placement = ValueMap.find v dfg in
       add_load_store_synchronization v placement.partition block mappings;
       add_straightline ()
     | Br -> () (* To be repaired later *)
@@ -591,6 +580,8 @@ let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
     let sorted = Sort_basic_blocks.sort_blocks (List.rev blocks) in
     List.iter (per_block f) sorted
   in
+
+  let find_partition v = (ValueMap.find v dfg).partition in
   iter_included_functions (per_function add_instructions) host_md;
   let repair_phi = repair_phi_node find_partition mappings in
   iter_included_functions (per_function repair_phi) host_md;

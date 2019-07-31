@@ -1,4 +1,5 @@
 command = "cd ..; make tests/{base}_partitioned.out; tests/{base}_partitioned.out {args} > tests/output"
 
 output.ll = "{base}_partitioned.ll"
+output.intermediate = "{base}_intermediate.ll"
 output.output = "output"

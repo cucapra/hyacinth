@@ -29,11 +29,11 @@ let flatten_maps maps =
   let merge k p1 p2 =
     if p1.partition != p2.partition then
       let partitions = (string_of_int p1.partition)^", "^(string_of_int p2.partition) in
-      failwith ("Unexpected inconsistent partitions "^ partitions ^" for: " ^ (Dfg.print_node k))
+      failwith ("Unexpected inconsistent partitions "^ partitions ^" for: " ^ (Llvm.string_of_llvalue k))
     else
       Some p1
   in
-  List.fold_left (NodeMap.union merge) NodeMap.empty maps
+  List.fold_left (ValueMap.union merge) ValueMap.empty maps
 
 let _ =
   Arg.parse spec_list anon_fun usage;
@@ -46,15 +46,16 @@ let _ =
       direct_distance = !direct_man_distance;
     }
   in
-  let md, instrs_per_block = Llvmin.parse_llvm stdin in
+  let md, instrs_per_block = Llvm_in.parse_llvm stdin in
   print_endline ("\nPartitioning for spatial layout with " ^ (string_of_int !rows)
     ^ " rows, " ^ (string_of_int !columns) ^ " columns, "
     ^ (string_of_int !timeout) ^"s timeout");
   let partitions = List.map (fun dfg -> Partition.solve_dfg dfg config) instrs_per_block in
   let dfg_assignments = flatten_maps partitions in
   Visualize.visualize_dfg dfg_assignments (!out_filename ^ ".dot");
-  match llvm_ast_map_opt with
-  | Some llvm_ast_map ->
-    let target = Emit_utils.target_of_string !target_string in
-    Emit_llvm.emit_llvm target !out_filename dfg_assignments
-  | None -> ()
+
+  Intermediate_llvm.emit_intermediate_llvm !out_filename md dfg_assignments;
+
+  let target = Emit_utils.target_of_string !target_string in
+  Emit_llvm.emit_llvm target !out_filename dfg_assignments md
+

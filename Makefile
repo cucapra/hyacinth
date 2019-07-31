@@ -35,7 +35,7 @@ test_save:
 	make clean
 
 %_comms.ll %_host.ll %_cores.ll %.dot: %.bc
-	cat $< | $(SSAC) -l -t $(TIMEOUT) -r $(ROWS) -c $(COLS) -target $(TARGET) -o $*
+	cat $< | $(SSAC) -t $(TIMEOUT) -r $(ROWS) -c $(COLS) -target $(TARGET) -o $*
 
 %_partitioned.ll: %_comms.ll  %_host.ll %_cores.ll src/pthreads/communication.ll
 	llvm-link -S $^ -o $@

@@ -5,7 +5,7 @@ Note: this project is under active development, and this documentation may not b
 
 -----
 
-This is a compiler that partitions programs in a simple Static-Single Assignment (SSA) form across a spatial architecture of cores, minimizing the estimated idealized cycle count. It is currently under development to take in a and emit a subset of LLVM. 
+This is a compiler that partitions a program's [LLVM][] intermediate representation across a spatial architecture of cores, minimizing the estimated idealized cycle count.
 
 Installing Dependencies
 ------
@@ -21,11 +21,10 @@ On Linux:
 
     $ apt install opam
 
-Then, we require [Dune][] for the build system, [Core][] for additional OCaml functionality, [Menhir][] for the parser, [OCamlgraph][] for the partition visualization, and [OCaml-Z3][] for constraint generation.
+Then, we require [Dune][] for the build system, [Core][] for additional OCaml functionality, [OCamlgraph][] for the partition visualization, and [OCaml-Z3][] for constraint generation.
 
     $ opam install dune
     $ opam install core 
-    $ opam install menhir
     $ opam install ocamlgraph
     $ opam pin add z3 https://github.com/plasma-umass/ocaml-z3.git
 
@@ -56,7 +55,6 @@ Then:
 
 [opam]: https://github.com/ocaml/dune 
 [dune]: https://github.com/ocaml/dune
-[menhir]: http://gallium.inria.fr/~fpottier/menhir/
 [core]: https://github.com/janestreet/core
 [ocamlgraph]: https://github.com/backtracking/ocamlgraph
 [ocaml-z3]: https://github.com/plasma-umass/ocaml-z3
@@ -71,10 +69,6 @@ Run the following from the top-level directory to install the compiler's `ssac` 
     $ eval $(opam env)
     $ make install
 
-Program are read from standard input:
-
-    $ cat examples/simple_phi | ssac
-    
 Assuming you have a file `hello.c`, to simulate partitioning the file:
 
     $ make hello_partitioned.out
@@ -83,15 +77,13 @@ The `ssac` executable supports the following arguments:
 
     $ SSA-Spatial Compiler
     $ 
-    $   -l Expects LLVM bitcode as the input program
-    $   -p Pretty prints the input program
-    $   -b Prints the bound variables from the SSA check
-    $   -i Prints the interpreter final store
     $   -d Prints debugging for constraint generation
+    $   -m Computes Manhattan distance directly rather than via a lookup table
     $   -r Number of rows in the spatial configuration
     $   -c Number of columns in the spatial configuration
     $   -t Timeout for z3, in seconds
-    $   -o Filename for the dot output file
+    $   -o (Partial) filename for output files
+    $   -target Target: 'pthread' (default), 'bsg_manycore'
     $   -help  Display this list of options
     $   --help  Display this list of options
 
