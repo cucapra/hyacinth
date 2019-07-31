@@ -150,63 +150,63 @@ entry:
   br label %l
 
 l:                                                ; preds = %l4, %entry
-  %new_phi = phi i64 [ 0, %entry ], [ %8, %l4 ], !time !8
+  %new_phi = phi i64 [ 0, %entry ], [ %8, %l4 ]
   br label %l1
 
 l1:                                               ; preds = %l3, %l
-  %new_phi6 = phi i64 [ 0, %l ], [ %6, %l3 ], !time !8
-  %1 = getelementptr inbounds [3 x double], [3 x double]* %receive_load, i64 %new_phi, i64 %new_phi6, !time !8
-  store double 0.000000e+00, double* %1, align 8, !tbaa !3, !time !8
+  %new_phi6 = phi i64 [ 0, %l ], [ %6, %l3 ]
+  %1 = getelementptr inbounds [3 x double], [3 x double]* %receive_load, i64 %new_phi, i64 %new_phi6
+  store double 0.000000e+00, double* %1, align 8, !tbaa !3
   br label %l2
 
 l2:                                               ; preds = %l2, %l1
-  %new_phi7 = phi i64 [ 0, %l1 ], [ %4, %l2 ], !time !9
-  %send_alloca = alloca i64, !reason !10
-  store i64 %new_phi, i64* %send_alloca, !reason !10
-  %send_cast = bitcast i64* %send_alloca to i8*, !reason !10
-  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast, i64 ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i64), i32 1, i64 ptrtoint ({ i64, i1, i32 }* @comms_2 to i64), i8* %0), !reason !10
-  %send_alloca8 = alloca i64, !reason !10
-  store i64 %new_phi7, i64* %send_alloca8, !reason !10
-  %send_cast9 = bitcast i64* %send_alloca8 to i8*, !reason !10
-  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast9, i64 ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i64), i32 1, i64 ptrtoint ({ i64, i1, i32 }* @comms_3 to i64), i8* %0), !reason !10
-  %2 = getelementptr inbounds [3 x double], [3 x double]* %receive_load12, i64 %new_phi7, i64 %new_phi6, !time !11
-  %3 = load double, double* %2, align 8, !tbaa !3, !time !12
-  %send_alloca13 = alloca double, !reason !10
-  store double %3, double* %send_alloca13, !reason !10
-  %send_cast14 = bitcast double* %send_alloca13 to i8*, !reason !10
-  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast14, i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 1, i64 ptrtoint ({ double, i1, i32 }* @comms_5 to i64), i8* %0), !reason !10
-  %send_alloca15 = alloca double*, !reason !10
-  store double* %1, double** %send_alloca15, !reason !10
-  %send_cast16 = bitcast double** %send_alloca15 to i8*, !reason !10
-  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast16, i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i32 1, i64 ptrtoint ({ double*, i1, i32 }* @comms_6 to i64), i8* %0), !reason !10
-  %send_alloca17 = alloca double*, !reason !10
-  store double* %1, double** %send_alloca17, !reason !10
-  %send_cast18 = bitcast double** %send_alloca17 to i8*, !reason !10
-  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast18, i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i32 1, i64 ptrtoint ({ double*, i1, i32 }* @comms_7 to i64), i8* %0), !reason !10
-  %4 = add nuw nsw i64 %new_phi7, 1, !time !13
-  %5 = icmp eq i64 %4, 3, !time !14
-  %send_alloca19 = alloca i1, !reason !15
-  store i1 %5, i1* %send_alloca19, !reason !15
-  %send_cast20 = bitcast i1* %send_alloca19 to i8*, !reason !15
-  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast20, i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 1, i64 ptrtoint ({ i1, i1, i32 }* @comms_8 to i64), i8* %0), !reason !15
+  %new_phi7 = phi i64 [ 0, %l1 ], [ %4, %l2 ]
+  %send_alloca = alloca i64, !reason !8
+  store i64 %new_phi, i64* %send_alloca, !reason !8
+  %send_cast = bitcast i64* %send_alloca to i8*, !reason !8
+  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast, i64 ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i64), i32 1, i64 ptrtoint ({ i64, i1, i32 }* @comms_2 to i64), i8* %0), !reason !8
+  %send_alloca8 = alloca i64, !reason !8
+  store i64 %new_phi7, i64* %send_alloca8, !reason !8
+  %send_cast9 = bitcast i64* %send_alloca8 to i8*, !reason !8
+  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast9, i64 ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i64), i32 1, i64 ptrtoint ({ i64, i1, i32 }* @comms_3 to i64), i8* %0), !reason !8
+  %2 = getelementptr inbounds [3 x double], [3 x double]* %receive_load12, i64 %new_phi7, i64 %new_phi6
+  %3 = load double, double* %2, align 8, !tbaa !3
+  %send_alloca13 = alloca double, !reason !8
+  store double %3, double* %send_alloca13, !reason !8
+  %send_cast14 = bitcast double* %send_alloca13 to i8*, !reason !8
+  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast14, i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 1, i64 ptrtoint ({ double, i1, i32 }* @comms_5 to i64), i8* %0), !reason !8
+  %send_alloca15 = alloca double*, !reason !8
+  store double* %1, double** %send_alloca15, !reason !8
+  %send_cast16 = bitcast double** %send_alloca15 to i8*, !reason !8
+  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast16, i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i32 1, i64 ptrtoint ({ double*, i1, i32 }* @comms_6 to i64), i8* %0), !reason !8
+  %send_alloca17 = alloca double*, !reason !8
+  store double* %1, double** %send_alloca17, !reason !8
+  %send_cast18 = bitcast double** %send_alloca17 to i8*, !reason !8
+  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast18, i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i32 1, i64 ptrtoint ({ double*, i1, i32 }* @comms_7 to i64), i8* %0), !reason !8
+  %4 = add nuw nsw i64 %new_phi7, 1
+  %5 = icmp eq i64 %4, 3
+  %send_alloca19 = alloca i1, !reason !9
+  store i1 %5, i1* %send_alloca19, !reason !9
+  %send_cast20 = bitcast i1* %send_alloca19 to i8*, !reason !9
+  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast20, i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 1, i64 ptrtoint ({ i1, i1, i32 }* @comms_8 to i64), i8* %0), !reason !9
   br i1 %5, label %l3, label %l2
 
 l3:                                               ; preds = %l2
-  %6 = add nuw nsw i64 %new_phi6, 1, !time !16
-  %7 = icmp eq i64 %6, 3, !time !11
-  %send_alloca21 = alloca i1, !reason !15
-  store i1 %7, i1* %send_alloca21, !reason !15
-  %send_cast22 = bitcast i1* %send_alloca21 to i8*, !reason !15
-  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast22, i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 1, i64 ptrtoint ({ i1, i1, i32 }* @comms_9 to i64), i8* %0), !reason !15
+  %6 = add nuw nsw i64 %new_phi6, 1
+  %7 = icmp eq i64 %6, 3
+  %send_alloca21 = alloca i1, !reason !9
+  store i1 %7, i1* %send_alloca21, !reason !9
+  %send_cast22 = bitcast i1* %send_alloca21 to i8*, !reason !9
+  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast22, i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 1, i64 ptrtoint ({ i1, i1, i32 }* @comms_9 to i64), i8* %0), !reason !9
   br i1 %7, label %l4, label %l1
 
 l4:                                               ; preds = %l3
-  %8 = add nuw nsw i64 %new_phi, 1, !time !16
-  %9 = icmp eq i64 %8, 3, !time !11
-  %send_alloca23 = alloca i1, !reason !15
-  store i1 %9, i1* %send_alloca23, !reason !15
-  %send_cast24 = bitcast i1* %send_alloca23 to i8*, !reason !15
-  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast24, i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 1, i64 ptrtoint ({ i1, i1, i32 }* @comms_10 to i64), i8* %0), !reason !15
+  %8 = add nuw nsw i64 %new_phi, 1
+  %9 = icmp eq i64 %8, 3
+  %send_alloca23 = alloca i1, !reason !9
+  store i1 %9, i1* %send_alloca23, !reason !9
+  %send_cast24 = bitcast i1* %send_alloca23 to i8*, !reason !9
+  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast24, i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 1, i64 ptrtoint ({ i1, i1, i32 }* @comms_10 to i64), i8* %0), !reason !9
   br i1 %9, label %l5, label %l
 
 l5:                                               ; preds = %l4
@@ -228,50 +228,50 @@ l1:                                               ; preds = %l3, %l
   br label %l2
 
 l2:                                               ; preds = %l2, %l1
-  %receive = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i64, i1, i32 }* @comms_2 to i64), i8* %0), !reason !10
-  %bitcast6 = bitcast i8* %receive to i64*, !reason !10
-  %receive_load7 = load i64, i64* %bitcast6, !reason !10
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i64, i1, i32 }* @comms_2 to i64), i64 ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i64), i8* %0), !reason !10
-  %receive8 = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i64, i1, i32 }* @comms_3 to i64), i8* %0), !reason !10
-  %bitcast9 = bitcast i8* %receive8 to i64*, !reason !10
-  %receive_load10 = load i64, i64* %bitcast9, !reason !10
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i64, i1, i32 }* @comms_3 to i64), i64 ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i64), i8* %0), !reason !10
-  %1 = getelementptr inbounds [3 x double], [3 x double]* %receive_load, i64 %receive_load7, i64 %receive_load10, !time !17
-  %2 = load double, double* %1, align 8, !tbaa !3, !time !18
-  %receive11 = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 0, i64 ptrtoint ({ double, i1, i32 }* @comms_5 to i64), i8* %0), !reason !10
-  %bitcast12 = bitcast i8* %receive11 to double*, !reason !10
-  %receive_load13 = load double, double* %bitcast12, !reason !10
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ double, i1, i32 }* @comms_5 to i64), i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i8* %0), !reason !10
-  %3 = fmul double %2, %receive_load13, !time !19
-  %receive14 = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i32 0, i64 ptrtoint ({ double*, i1, i32 }* @comms_6 to i64), i8* %0), !reason !10
-  %bitcast15 = bitcast i8* %receive14 to double**, !reason !10
-  %receive_load16 = load double*, double** %bitcast15, !reason !10
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ double*, i1, i32 }* @comms_6 to i64), i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i8* %0), !reason !10
-  %4 = load double, double* %receive_load16, align 8, !tbaa !3, !time !20
-  %5 = fadd double %4, %3, !time !21
-  %receive17 = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i32 0, i64 ptrtoint ({ double*, i1, i32 }* @comms_7 to i64), i8* %0), !reason !10
-  %bitcast18 = bitcast i8* %receive17 to double**, !reason !10
-  %receive_load19 = load double*, double** %bitcast18, !reason !10
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ double*, i1, i32 }* @comms_7 to i64), i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i8* %0), !reason !10
-  store double %5, double* %receive_load19, align 8, !tbaa !3, !time !22
-  %broadcast = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i1, i1, i32 }* @comms_8 to i64), i8* %0), !reason !23
-  %bitcast20 = bitcast i8* %broadcast to i1*, !reason !23
-  %receive_load21 = load i1, i1* %bitcast20, !reason !23
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i1, i1, i32 }* @comms_8 to i64), i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i8* %0), !reason !23
+  %receive = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i64, i1, i32 }* @comms_2 to i64), i8* %0), !reason !8
+  %bitcast6 = bitcast i8* %receive to i64*, !reason !8
+  %receive_load7 = load i64, i64* %bitcast6, !reason !8
+  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i64, i1, i32 }* @comms_2 to i64), i64 ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i64), i8* %0), !reason !8
+  %receive8 = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i64, i1, i32 }* @comms_3 to i64), i8* %0), !reason !8
+  %bitcast9 = bitcast i8* %receive8 to i64*, !reason !8
+  %receive_load10 = load i64, i64* %bitcast9, !reason !8
+  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i64, i1, i32 }* @comms_3 to i64), i64 ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i64), i8* %0), !reason !8
+  %1 = getelementptr inbounds [3 x double], [3 x double]* %receive_load, i64 %receive_load7, i64 %receive_load10
+  %2 = load double, double* %1, align 8, !tbaa !3
+  %receive11 = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 0, i64 ptrtoint ({ double, i1, i32 }* @comms_5 to i64), i8* %0), !reason !8
+  %bitcast12 = bitcast i8* %receive11 to double*, !reason !8
+  %receive_load13 = load double, double* %bitcast12, !reason !8
+  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ double, i1, i32 }* @comms_5 to i64), i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i8* %0), !reason !8
+  %3 = fmul double %2, %receive_load13
+  %receive14 = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i32 0, i64 ptrtoint ({ double*, i1, i32 }* @comms_6 to i64), i8* %0), !reason !8
+  %bitcast15 = bitcast i8* %receive14 to double**, !reason !8
+  %receive_load16 = load double*, double** %bitcast15, !reason !8
+  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ double*, i1, i32 }* @comms_6 to i64), i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i8* %0), !reason !8
+  %4 = load double, double* %receive_load16, align 8, !tbaa !3
+  %5 = fadd double %4, %3
+  %receive17 = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i32 0, i64 ptrtoint ({ double*, i1, i32 }* @comms_7 to i64), i8* %0), !reason !8
+  %bitcast18 = bitcast i8* %receive17 to double**, !reason !8
+  %receive_load19 = load double*, double** %bitcast18, !reason !8
+  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ double*, i1, i32 }* @comms_7 to i64), i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i8* %0), !reason !8
+  store double %5, double* %receive_load19, align 8, !tbaa !3
+  %broadcast = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i1, i1, i32 }* @comms_8 to i64), i8* %0), !reason !10
+  %bitcast20 = bitcast i8* %broadcast to i1*, !reason !10
+  %receive_load21 = load i1, i1* %bitcast20, !reason !10
+  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i1, i1, i32 }* @comms_8 to i64), i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i8* %0), !reason !10
   br i1 %receive_load21, label %l3, label %l2
 
 l3:                                               ; preds = %l2
-  %broadcast22 = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i1, i1, i32 }* @comms_9 to i64), i8* %0), !reason !23
-  %bitcast23 = bitcast i8* %broadcast22 to i1*, !reason !23
-  %receive_load24 = load i1, i1* %bitcast23, !reason !23
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i1, i1, i32 }* @comms_9 to i64), i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i8* %0), !reason !23
+  %broadcast22 = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i1, i1, i32 }* @comms_9 to i64), i8* %0), !reason !10
+  %bitcast23 = bitcast i8* %broadcast22 to i1*, !reason !10
+  %receive_load24 = load i1, i1* %bitcast23, !reason !10
+  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i1, i1, i32 }* @comms_9 to i64), i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i8* %0), !reason !10
   br i1 %receive_load24, label %l4, label %l1
 
 l4:                                               ; preds = %l3
-  %broadcast25 = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i1, i1, i32 }* @comms_10 to i64), i8* %0), !reason !23
-  %bitcast26 = bitcast i8* %broadcast25 to i1*, !reason !23
-  %receive_load27 = load i1, i1* %bitcast26, !reason !23
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i1, i1, i32 }* @comms_10 to i64), i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i8* %0), !reason !23
+  %broadcast25 = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i1, i1, i32 }* @comms_10 to i64), i8* %0), !reason !10
+  %bitcast26 = bitcast i8* %broadcast25 to i1*, !reason !10
+  %receive_load27 = load i1, i1* %bitcast26, !reason !10
+  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i1, i1, i32 }* @comms_10 to i64), i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i8* %0), !reason !10
   br i1 %receive_load27, label %l5, label %l
 
 l5:                                               ; preds = %l4
@@ -287,8 +287,8 @@ define void @volatile_copy(i8*, i8*, i32) local_unnamed_addr #0 {
   %6 = phi i32 [ %12, %5 ], [ %2, %3 ]
   %7 = phi i8* [ %11, %5 ], [ %1, %3 ]
   %8 = phi i8* [ %10, %5 ], [ %0, %3 ]
-  %9 = load volatile i8, i8* %7, align 1, !tbaa !24
-  store volatile i8 %9, i8* %8, align 1, !tbaa !24
+  %9 = load volatile i8, i8* %7, align 1, !tbaa !11
+  store volatile i8 %9, i8* %8, align 1, !tbaa !11
   %10 = getelementptr inbounds i8, i8* %8, i64 1
   %11 = getelementptr inbounds i8, i8* %7, i64 1
   %12 = add i32 %6, -1
@@ -307,10 +307,10 @@ define noalias i8* @init() #5 {
 ; Function Attrs: nounwind ssp uwtable
 define noalias i8* @_call_function(i8* nocapture readonly) #1 {
   %2 = bitcast i8* %0 to void (%struct.Context*)**
-  %3 = load void (%struct.Context*)*, void (%struct.Context*)** %2, align 8, !tbaa !25
+  %3 = load void (%struct.Context*)*, void (%struct.Context*)** %2, align 8, !tbaa !12
   %4 = getelementptr inbounds i8, i8* %0, i64 8
   %5 = bitcast i8* %4 to %struct.Context**
-  %6 = load %struct.Context*, %struct.Context** %5, align 8, !tbaa !28
+  %6 = load %struct.Context*, %struct.Context** %5, align 8, !tbaa !15
   tail call void %3(%struct.Context* %6) #4
   ret i8* null
 }
@@ -333,12 +333,12 @@ define i8* @call_partitioned_functions(i32, void (i8*)** nocapture readonly, i8*
   %13 = tail call i8* @malloc(i64 16) #8
   %14 = getelementptr inbounds void (i8*)*, void (i8*)** %1, i64 %12
   %15 = bitcast void (i8*)** %14 to i64*
-  %16 = load i64, i64* %15, align 8, !tbaa !29
+  %16 = load i64, i64* %15, align 8, !tbaa !16
   %17 = bitcast i8* %13 to i64*
-  store i64 %16, i64* %17, align 8, !tbaa !25
+  store i64 %16, i64* %17, align 8, !tbaa !12
   %18 = getelementptr inbounds i8, i8* %13, i64 8
   %19 = bitcast i8* %18 to i8**
-  store i8* %2, i8** %19, align 8, !tbaa !28
+  store i8* %2, i8** %19, align 8, !tbaa !15
   %20 = getelementptr inbounds %struct._opaque_pthread_t*, %struct._opaque_pthread_t** %7, i64 %12
   %21 = tail call i32 @pthread_create(%struct._opaque_pthread_t** %20, %struct._opaque_pthread_attr_t* null, i8* (i8*)* nonnull @_call_function, i8* %13) #4
   %22 = add nuw nsw i64 %12, 1
@@ -367,7 +367,7 @@ define void @join_partitioned_functions(i32, i8* nocapture readonly) #1 {
 ; <label>:7:                                      ; preds = %7, %5
   %8 = phi i64 [ 0, %5 ], [ %12, %7 ]
   %9 = getelementptr inbounds %struct._opaque_pthread_t*, %struct._opaque_pthread_t** %3, i64 %8
-  %10 = load %struct._opaque_pthread_t*, %struct._opaque_pthread_t** %9, align 8, !tbaa !29
+  %10 = load %struct._opaque_pthread_t*, %struct._opaque_pthread_t** %9, align 8, !tbaa !16
   %11 = tail call i32 @"\01_pthread_join"(%struct._opaque_pthread_t* %10, i8** null) #4
   %12 = add nuw nsw i64 %8, 1
   %13 = icmp eq i64 %12, %6
@@ -387,7 +387,7 @@ define void @send(i8*, i32, i32, i64, i8* nocapture readnone) #0 {
   br label %9
 
 ; <label>:9:                                      ; preds = %9, %5
-  %10 = load volatile i8, i8* %8, align 1, !tbaa !24
+  %10 = load volatile i8, i8* %8, align 1, !tbaa !11
   %11 = icmp eq i8 %10, 0
   br i1 %11, label %12, label %9
 
@@ -395,7 +395,7 @@ define void @send(i8*, i32, i32, i64, i8* nocapture readnone) #0 {
   tail call void @volatile_copy(i8* nonnull %6, i8* %0, i32 %1)
   %13 = sext i32 %1 to i64
   %14 = getelementptr i8, i8* %6, i64 %13
-  store i8 1, i8* %14, align 1, !tbaa !24
+  store i8 1, i8* %14, align 1, !tbaa !11
   ret void
 }
 
@@ -407,7 +407,7 @@ define i8* @_receive(i32, i64, i8* nocapture readnone) local_unnamed_addr #0 {
   br label %7
 
 ; <label>:7:                                      ; preds = %7, %3
-  %8 = load volatile i8, i8* %6, align 1, !tbaa !24
+  %8 = load volatile i8, i8* %6, align 1, !tbaa !11
   %9 = icmp eq i8 %8, 0
   br i1 %9, label %7, label %10
 
@@ -427,7 +427,7 @@ define void @free_comms(i64, i32, i8* nocapture readnone) #0 {
   %4 = inttoptr i64 %0 to i8*
   %5 = sext i32 %1 to i64
   %6 = getelementptr i8, i8* %4, i64 %5
-  store volatile i8 0, i8* %6, align 1, !tbaa !24
+  store volatile i8 0, i8* %6, align 1, !tbaa !11
   ret void
 }
 
@@ -488,25 +488,12 @@ attributes #8 = { allocsize(0) }
 !5 = !{!"omnipotent char", !6, i64 0}
 !6 = !{!"Simple C/C++ TBAA"}
 !7 = !{!"replace argument"}
-!8 = !{!"0", !"0"}
-!9 = !{!"2", !"2"}
-!10 = !{!"replace mapped op"}
-!11 = !{!"3", !"6"}
-!12 = !{!"6", !"7"}
-!13 = !{!"7", !"10"}
-!14 = !{!"10", !"13"}
-!15 = !{!"broadcast"}
-!16 = !{!"0", !"3"}
-!17 = !{!"4", !"7"}
-!18 = !{!"8", !"9"}
-!19 = !{!"9", !"11"}
-!20 = !{!"7", !"8"}
-!21 = !{!"11", !"13"}
-!22 = !{!"13", !"14"}
-!23 = !{!"receive"}
-!24 = !{!5, !5, i64 0}
-!25 = !{!26, !27, i64 0}
-!26 = !{!"Closure", !27, i64 0, !27, i64 8}
-!27 = !{!"any pointer", !5, i64 0}
-!28 = !{!26, !27, i64 8}
-!29 = !{!27, !27, i64 0}
+!8 = !{!"replace mapped op"}
+!9 = !{!"broadcast"}
+!10 = !{!"receive"}
+!11 = !{!5, !5, i64 0}
+!12 = !{!13, !14, i64 0}
+!13 = !{!"Closure", !14, i64 0, !14, i64 8}
+!14 = !{!"any pointer", !5, i64 0}
+!15 = !{!13, !14, i64 8}
+!16 = !{!14, !14, i64 0}

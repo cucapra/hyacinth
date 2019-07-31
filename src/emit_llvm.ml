@@ -37,13 +37,6 @@ let target_ptr_type () =
   | BSGManycore -> i32_type context
   end
 
-let set_metadata_placement inst placement  =
-  let id = mdkind_id context "time" in
-  let s = mdstring context (string_of_int placement.start_time) in
-  let e = mdstring context (string_of_int placement.end_time) in
-  let m = mdnode context [| s; e|] in
-  set_metadata inst id m
-
 let set_metadata_string (s : string) inst =
   let s_id = mdkind_id context "reason" in
   let v = mdstring context s in
@@ -473,11 +466,9 @@ let add_straightline_instructions v block placement find_partition partitions ma
     List.iter (insert_ret_void block mappings) partitions
   | PHI ->
     let clone = build_empty_phi (type_of v) "new_phi" new_builder in
-    set_metadata_placement clone placement;
     add_instr mappings v clone
   | _ ->
     let clone = instr_clone v in
-    set_metadata_placement clone placement;
     add_instr mappings v clone;
     replace_operands clone block p new_builder find_partition mappings host_md;
     insert_into_builder clone "" new_builder

@@ -74,33 +74,33 @@ entry:
   %bitcast = bitcast i8* %argument to i32*, !reason !7
   %receive_load = load i32, i32* %bitcast, !reason !7
   call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i32, i1, i32 }* @comms_0 to i64), i64 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i64), i8* %0), !reason !7
-  %1 = icmp slt i32 %receive_load, 5, !time !8
-  %send_alloca = alloca i1, !reason !9
-  store i1 %1, i1* %send_alloca, !reason !9
-  %send_cast = bitcast i1* %send_alloca to i8*, !reason !9
-  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast, i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 1, i64 ptrtoint ({ i1, i1, i32 }* @comms_1 to i64), i8* %0), !reason !9
+  %1 = icmp slt i32 %receive_load, 5
+  %send_alloca = alloca i1, !reason !8
+  store i1 %1, i1* %send_alloca, !reason !8
+  %send_cast = bitcast i1* %send_alloca to i8*, !reason !8
+  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast, i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 1, i64 ptrtoint ({ i1, i1, i32 }* @comms_1 to i64), i8* %0), !reason !8
   br i1 %1, label %l, label %l1
 
 l:                                                ; preds = %entry
-  %2 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i64 0, i64 0)), !time !10
+  %2 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i64 0, i64 0))
   br label %l2
 
 l1:                                               ; preds = %entry
-  %3 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i64 0, i64 0)), !time !10
+  %3 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i64 0, i64 0))
   br label %l2
 
 l2:                                               ; preds = %l1, %l
-  %new_phi = phi i32 [ 0, %l ], [ 1, %l1 ], !time !8
-  %4 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.2, i64 0, i64 0), i32 %new_phi), !time !10
+  %new_phi = phi i32 [ 0, %l ], [ 1, %l1 ]
+  %4 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.2, i64 0, i64 0), i32 %new_phi)
   ret void
 }
 
 define void @if_f_1(i8*) {
 entry:
-  %broadcast = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i1, i1, i32 }* @comms_1 to i64), i8* %0), !reason !11
-  %bitcast = bitcast i8* %broadcast to i1*, !reason !11
-  %receive_load = load i1, i1* %bitcast, !reason !11
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i1, i1, i32 }* @comms_1 to i64), i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i8* %0), !reason !11
+  %broadcast = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i1, i1, i32 }* @comms_1 to i64), i8* %0), !reason !9
+  %bitcast = bitcast i8* %broadcast to i1*, !reason !9
+  %receive_load = load i1, i1* %bitcast, !reason !9
+  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i1, i1, i32 }* @comms_1 to i64), i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i8* %0), !reason !9
   br i1 %receive_load, label %l, label %l1
 
 l:                                                ; preds = %entry
@@ -122,8 +122,8 @@ define void @volatile_copy(i8*, i8*, i32) local_unnamed_addr #4 {
   %6 = phi i32 [ %12, %5 ], [ %2, %3 ]
   %7 = phi i8* [ %11, %5 ], [ %1, %3 ]
   %8 = phi i8* [ %10, %5 ], [ %0, %3 ]
-  %9 = load volatile i8, i8* %7, align 1, !tbaa !12
-  store volatile i8 %9, i8* %8, align 1, !tbaa !12
+  %9 = load volatile i8, i8* %7, align 1, !tbaa !10
+  store volatile i8 %9, i8* %8, align 1, !tbaa !10
   %10 = getelementptr inbounds i8, i8* %8, i64 1
   %11 = getelementptr inbounds i8, i8* %7, i64 1
   %12 = add i32 %6, -1
@@ -142,10 +142,10 @@ define noalias i8* @init() #5 {
 ; Function Attrs: nounwind ssp uwtable
 define noalias i8* @_call_function(i8* nocapture readonly) #0 {
   %2 = bitcast i8* %0 to void (%struct.Context*)**
-  %3 = load void (%struct.Context*)*, void (%struct.Context*)** %2, align 8, !tbaa !13
+  %3 = load void (%struct.Context*)*, void (%struct.Context*)** %2, align 8, !tbaa !11
   %4 = getelementptr inbounds i8, i8* %0, i64 8
   %5 = bitcast i8* %4 to %struct.Context**
-  %6 = load %struct.Context*, %struct.Context** %5, align 8, !tbaa !15
+  %6 = load %struct.Context*, %struct.Context** %5, align 8, !tbaa !13
   tail call void %3(%struct.Context* %6) #1
   ret i8* null
 }
@@ -170,10 +170,10 @@ define i8* @call_partitioned_functions(i32, void (i8*)** nocapture readonly, i8*
   %15 = bitcast void (i8*)** %14 to i64*
   %16 = load i64, i64* %15, align 8, !tbaa !3
   %17 = bitcast i8* %13 to i64*
-  store i64 %16, i64* %17, align 8, !tbaa !13
+  store i64 %16, i64* %17, align 8, !tbaa !11
   %18 = getelementptr inbounds i8, i8* %13, i64 8
   %19 = bitcast i8* %18 to i8**
-  store i8* %2, i8** %19, align 8, !tbaa !15
+  store i8* %2, i8** %19, align 8, !tbaa !13
   %20 = getelementptr inbounds %struct._opaque_pthread_t*, %struct._opaque_pthread_t** %7, i64 %12
   %21 = tail call i32 @pthread_create(%struct._opaque_pthread_t** %20, %struct._opaque_pthread_attr_t* null, i8* (i8*)* nonnull @_call_function, i8* %13) #1
   %22 = add nuw nsw i64 %12, 1
@@ -222,7 +222,7 @@ define void @send(i8*, i32, i32, i64, i8* nocapture readnone) #4 {
   br label %9
 
 ; <label>:9:                                      ; preds = %9, %5
-  %10 = load volatile i8, i8* %8, align 1, !tbaa !12
+  %10 = load volatile i8, i8* %8, align 1, !tbaa !10
   %11 = icmp eq i8 %10, 0
   br i1 %11, label %12, label %9
 
@@ -230,7 +230,7 @@ define void @send(i8*, i32, i32, i64, i8* nocapture readnone) #4 {
   tail call void @volatile_copy(i8* nonnull %6, i8* %0, i32 %1)
   %13 = sext i32 %1 to i64
   %14 = getelementptr i8, i8* %6, i64 %13
-  store i8 1, i8* %14, align 1, !tbaa !12
+  store i8 1, i8* %14, align 1, !tbaa !10
   ret void
 }
 
@@ -242,7 +242,7 @@ define i8* @_receive(i32, i64, i8* nocapture readnone) local_unnamed_addr #4 {
   br label %7
 
 ; <label>:7:                                      ; preds = %7, %3
-  %8 = load volatile i8, i8* %6, align 1, !tbaa !12
+  %8 = load volatile i8, i8* %6, align 1, !tbaa !10
   %9 = icmp eq i8 %8, 0
   br i1 %9, label %7, label %10
 
@@ -262,7 +262,7 @@ define void @free_comms(i64, i32, i8* nocapture readnone) #4 {
   %4 = inttoptr i64 %0 to i8*
   %5 = sext i32 %1 to i64
   %6 = getelementptr i8, i8* %4, i64 %5
-  store volatile i8 0, i8* %6, align 1, !tbaa !12
+  store volatile i8 0, i8* %6, align 1, !tbaa !10
   ret void
 }
 
@@ -323,11 +323,9 @@ attributes #8 = { allocsize(0) }
 !5 = !{!"omnipotent char", !6, i64 0}
 !6 = !{!"Simple C/C++ TBAA"}
 !7 = !{!"replace argument"}
-!8 = !{!"0", !"0"}
-!9 = !{!"broadcast"}
-!10 = !{!"0", !"3"}
-!11 = !{!"receive"}
-!12 = !{!5, !5, i64 0}
-!13 = !{!14, !4, i64 0}
-!14 = !{!"Closure", !4, i64 0, !4, i64 8}
-!15 = !{!14, !4, i64 8}
+!8 = !{!"broadcast"}
+!9 = !{!"receive"}
+!10 = !{!5, !5, i64 0}
+!11 = !{!12, !4, i64 0}
+!12 = !{!"Closure", !4, i64 0, !4, i64 8}
+!13 = !{!12, !4, i64 8}
