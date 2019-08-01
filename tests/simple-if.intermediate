@@ -9,21 +9,21 @@ target triple = "x86_64-apple-macosx10.14.0"
 
 ; Function Attrs: nounwind ssp uwtable
 define void @if_f(i32) local_unnamed_addr #0 {
-  %2 = icmp slt i32 %0, 5, !partition !3
+  %2 = icmp slt i32 %0, 5, !partition !3, !start !3, !end !4
   br i1 %2, label %3, label %5
 
 ; <label>:3:                                      ; preds = %1
-  %4 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i64 0, i64 0)), !partition !3
+  %4 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i64 0, i64 0)), !partition !3, !start !3, !end !4
   br label %7
 
 ; <label>:5:                                      ; preds = %1
-  %6 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i64 0, i64 0)), !partition !3
+  %6 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i64 0, i64 0)), !partition !3, !start !3, !end !4
   br label %7
 
 ; <label>:7:                                      ; preds = %5, %3
-  %8 = phi i32 [ 0, %3 ], [ 1, %5 ], !partition !3
-  %9 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.2, i64 0, i64 0), i32 %8), !partition !3
-  ret void, !partition !4
+  %8 = phi i32 [ 0, %3 ], [ 1, %5 ], !partition !3, !start !3, !end !3
+  %9 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.2, i64 0, i64 0), i32 %8), !partition !5, !start !5, !end !6
+  ret void, !partition !5, !start !3, !end !5
 }
 
 ; Function Attrs: nounwind
@@ -32,7 +32,7 @@ declare i32 @printf(i8* nocapture readonly, ...) local_unnamed_addr #1
 ; Function Attrs: nounwind ssp uwtable
 define i32 @main(i32, i8** nocapture readonly) local_unnamed_addr #0 {
   %3 = getelementptr inbounds i8*, i8** %1, i64 1
-  %4 = load i8*, i8** %3, align 8, !tbaa !5
+  %4 = load i8*, i8** %3, align 8, !tbaa !7
   %5 = tail call i32 @atoi(i8* %4)
   tail call void @if_f(i32 %5)
   ret i32 0
@@ -56,8 +56,10 @@ attributes #3 = { nounwind }
 !1 = !{i32 7, !"PIC Level", i32 2}
 !2 = !{!"clang version 8.0.0 (tags/RELEASE_800/final)"}
 !3 = !{!"0"}
-!4 = !{!"1"}
-!5 = !{!6, !6, i64 0}
-!6 = !{!"any pointer", !7, i64 0}
-!7 = !{!"omnipotent char", !8, i64 0}
-!8 = !{!"Simple C/C++ TBAA"}
+!4 = !{!"3"}
+!5 = !{!"1"}
+!6 = !{!"4"}
+!7 = !{!8, !8, i64 0}
+!8 = !{!"any pointer", !9, i64 0}
+!9 = !{!"omnipotent char", !10, i64 0}
+!10 = !{!"Simple C/C++ TBAA"}

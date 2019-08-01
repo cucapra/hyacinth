@@ -7,35 +7,35 @@ target triple = "x86_64-apple-macosx10.14.0"
 
 ; Function Attrs: norecurse nounwind readnone ssp uwtable
 define i32 @fib(i32) local_unnamed_addr #0 {
-  %2 = icmp sgt i32 %0, 0, !partition !3
+  %2 = icmp sgt i32 %0, 0, !partition !3, !start !3, !end !4
   br i1 %2, label %3, label %16
 
 ; <label>:3:                                      ; preds = %1, %3
-  %4 = phi i32 [ %11, %3 ], [ 0, %1 ], !partition !3
-  %5 = phi i32 [ %10, %3 ], [ 1, %1 ], !partition !3
-  %6 = phi i32 [ %9, %3 ], [ 0, %1 ], !partition !3
-  %7 = icmp ult i32 %4, 2, !partition !3
-  %8 = add nsw i32 %5, %6, !partition !3
-  %9 = select i1 %7, i32 %6, i32 %5, !partition !3
-  %10 = select i1 %7, i32 %5, i32 %8, !partition !3
-  %11 = add nuw nsw i32 %4, 1, !partition !3
-  %12 = icmp eq i32 %11, %0, !partition !3
+  %4 = phi i32 [ %11, %3 ], [ 0, %1 ], !partition !3, !start !3, !end !3
+  %5 = phi i32 [ %10, %3 ], [ 1, %1 ], !partition !5, !start !3, !end !3
+  %6 = phi i32 [ %9, %3 ], [ 0, %1 ], !partition !5, !start !3, !end !3
+  %7 = icmp ult i32 %4, 2, !partition !5, !start !6, !end !7
+  %8 = add nsw i32 %5, %6, !partition !3, !start !8, !end !9
+  %9 = select i1 %7, i32 %6, i32 %5, !partition !3, !start !9, !end !10
+  %10 = select i1 %7, i32 %5, i32 %8, !partition !5, !start !10, !end !11
+  %11 = add nuw nsw i32 %4, 1, !partition !3, !start !5, !end !8
+  %12 = icmp eq i32 %11, %0, !partition !5, !start !7, !end !10
   br i1 %12, label %13, label %3
 
 ; <label>:13:                                     ; preds = %3
-  %14 = add i32 %0, -1, !partition !3
-  %15 = select i1 %7, i32 %14, i32 %8, !partition !3
+  %14 = add i32 %0, -1, !partition !3, !start !3, !end !3
+  %15 = select i1 %7, i32 %14, i32 %8, !partition !3, !start !3, !end !3
   br label %16
 
 ; <label>:16:                                     ; preds = %13, %1
-  %17 = phi i32 [ %15, %13 ], [ 0, %1 ], !partition !4
-  ret i32 %17, !partition !4
+  %17 = phi i32 [ %15, %13 ], [ 0, %1 ], !partition !3, !start !3, !end !3
+  ret i32 %17, !partition !3, !start !3, !end !3
 }
 
 ; Function Attrs: nounwind ssp uwtable
 define i32 @main(i32, i8** nocapture readonly) local_unnamed_addr #1 {
   %3 = getelementptr inbounds i8*, i8** %1, i64 1
-  %4 = load i8*, i8** %3, align 8, !tbaa !5
+  %4 = load i8*, i8** %3, align 8, !tbaa !12
   %5 = tail call i32 @atoi(i8* %4)
   %6 = tail call i32 @fib(i32 %5)
   %7 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i64 0, i64 0), i32 %6)
@@ -60,8 +60,15 @@ attributes #3 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disa
 !1 = !{i32 7, !"PIC Level", i32 2}
 !2 = !{!"clang version 8.0.0 (tags/RELEASE_800/final)"}
 !3 = !{!"0"}
-!4 = !{!"1"}
-!5 = !{!6, !6, i64 0}
-!6 = !{!"any pointer", !7, i64 0}
-!7 = !{!"omnipotent char", !8, i64 0}
-!8 = !{!"Simple C/C++ TBAA"}
+!4 = !{!"3"}
+!5 = !{!"1"}
+!6 = !{!"2"}
+!7 = !{!"5"}
+!8 = !{!"4"}
+!9 = !{!"7"}
+!10 = !{!"8"}
+!11 = !{!"9"}
+!12 = !{!13, !13, i64 0}
+!13 = !{!"any pointer", !14, i64 0}
+!14 = !{!"omnipotent char", !15, i64 0}
+!15 = !{!"Simple C/C++ TBAA"}

@@ -11,11 +11,19 @@ let arity_range (instr : llvalue) =
   let arity = num_operands instr in
   Core.List.range 0 arity
 
-let iter_operands (f : llvalue -> unit) (instr : llvalue) =
-  List.iter (fun i -> f (operand instr i)) (arity_range instr)
+let included_operands (instr : llvalue) =
+  let include_operand (i : int) =
+    match (instr_opcode instr) with
+    | PHI -> None
+    | _ -> Some (operand instr i)
+  in
+  Core.List.filter_map ~f:include_operand (arity_range instr)
 
-let map_operands f  (instr : llvalue) =
-  List.map (fun i -> f (operand instr i)) (arity_range instr)
+let iter_operands (f : llvalue -> unit) (instr : llvalue) =
+  List.iter f (included_operands instr)
+
+let map_operands f (instr : llvalue) =
+  List.map f (included_operands instr)
 
 let rec print_type llty : string =
   let ty = classify_type llty in

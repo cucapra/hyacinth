@@ -92,7 +92,7 @@ let components (p : int) : (int * int) =
   (x, y)
 
 let manhattan_dist (x, y) (x', y') =
-  (abs (x - x')) + (abs (y - y'))
+  1 + ((abs (x - x')) + (abs (y - y')))/5
 
 let constrain_comms_times_lookup_table (s : solver) =
   declare_fun s dist_fun_id [int_sort; int_sort] int_sort;

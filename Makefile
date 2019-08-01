@@ -1,5 +1,5 @@
 SSAC := dune exec ssac --
-TIMEOUT := 1
+TIMEOUT := 2
 ROWS := 1
 COLS := 2
 TARGET := pthreads
@@ -22,7 +22,7 @@ install:
 
 clean:
 	rm -f {.,src,examples/*}/*.{ll,bc,out,dot,png}
-	rm -f tests/*{.bc,.out,.dot,_partitioned.ll,_host.ll,_cores.ll,_comms.ll}
+	rm -f tests/*{.bc,.out,.dot,.png,_partitioned.ll,_host.ll,_cores.ll,_comms.ll}
 	rm -f tests/output
 	dune clean
 

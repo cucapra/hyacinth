@@ -12,41 +12,41 @@ define void @multiply([3 x double]* nocapture readonly, [3 x double]* nocapture 
   br label %4
 
 ; <label>:4:                                      ; preds = %23, %3
-  %5 = phi i64 [ 0, %3 ], [ %24, %23 ], !partition !3
+  %5 = phi i64 [ 0, %3 ], [ %24, %23 ], !partition !3, !start !3, !end !3
   br label %6
 
 ; <label>:6:                                      ; preds = %20, %4
-  %7 = phi i64 [ 0, %4 ], [ %21, %20 ], !partition !3
-  %8 = getelementptr inbounds [3 x double], [3 x double]* %2, i64 %5, i64 %7, !partition !3
-  store double 0.000000e+00, double* %8, align 8, !tbaa !4, !partition !3
+  %7 = phi i64 [ 0, %4 ], [ %21, %20 ], !partition !3, !start !3, !end !3
+  %8 = getelementptr inbounds [3 x double], [3 x double]* %2, i64 %5, i64 %7, !partition !3, !start !3, !end !3
+  store double 0.000000e+00, double* %8, align 8, !tbaa !4, !partition !3, !start !3, !end !3
   br label %9
 
 ; <label>:9:                                      ; preds = %9, %6
-  %10 = phi i64 [ 0, %6 ], [ %18, %9 ], !partition !3
-  %11 = getelementptr inbounds [3 x double], [3 x double]* %0, i64 %5, i64 %10, !partition !3
-  %12 = load double, double* %11, align 8, !tbaa !4, !partition !3
-  %13 = getelementptr inbounds [3 x double], [3 x double]* %1, i64 %10, i64 %7, !partition !3
-  %14 = load double, double* %13, align 8, !tbaa !4, !partition !3
-  %15 = fmul double %12, %14, !partition !3
-  %16 = load double, double* %8, align 8, !tbaa !4, !partition !3
-  %17 = fadd double %16, %15, !partition !3
-  store double %17, double* %8, align 8, !tbaa !4, !partition !3
-  %18 = add nuw nsw i64 %10, 1, !partition !3
-  %19 = icmp eq i64 %18, 3, !partition !3
+  %10 = phi i64 [ 0, %6 ], [ %18, %9 ], !partition !8, !start !3, !end !3
+  %11 = getelementptr inbounds [3 x double], [3 x double]* %0, i64 %5, i64 %10, !partition !8, !start !8, !end !9
+  %12 = load double, double* %11, align 8, !tbaa !4, !partition !8, !start !9, !end !10
+  %13 = getelementptr inbounds [3 x double], [3 x double]* %1, i64 %10, i64 %7, !partition !3, !start !8, !end !9
+  %14 = load double, double* %13, align 8, !tbaa !4, !partition !3, !start !9, !end !10
+  %15 = fmul double %12, %14, !partition !8, !start !11, !end !12
+  %16 = load double, double* %8, align 8, !tbaa !4, !partition !3, !start !3, !end !8
+  %17 = fadd double %16, %15, !partition !3, !start !13, !end !14
+  store double %17, double* %8, align 8, !tbaa !4, !partition !8, !start !15, !end !16
+  %18 = add nuw nsw i64 %10, 1, !partition !3, !start !10, !end !12
+  %19 = icmp eq i64 %18, 3, !partition !8, !start !13, !end !15
   br i1 %19, label %20, label %9
 
 ; <label>:20:                                     ; preds = %9
-  %21 = add nuw nsw i64 %7, 1, !partition !3
-  %22 = icmp eq i64 %21, 3, !partition !3
+  %21 = add nuw nsw i64 %7, 1, !partition !3, !start !3, !end !3
+  %22 = icmp eq i64 %21, 3, !partition !3, !start !3, !end !3
   br i1 %22, label %23, label %6
 
 ; <label>:23:                                     ; preds = %20
-  %24 = add nuw nsw i64 %5, 1, !partition !3
-  %25 = icmp eq i64 %24, 3, !partition !3
+  %24 = add nuw nsw i64 %5, 1, !partition !3, !start !3, !end !3
+  %25 = icmp eq i64 %24, 3, !partition !3, !start !3, !end !3
   br i1 %25, label %26, label %4
 
 ; <label>:26:                                     ; preds = %23
-  ret void, !partition !3
+  ret void, !partition !3, !start !3, !end !8
 }
 
 ; Function Attrs: nounwind ssp uwtable
@@ -113,3 +113,12 @@ attributes #4 = { nounwind }
 !5 = !{!"double", !6, i64 0}
 !6 = !{!"omnipotent char", !7, i64 0}
 !7 = !{!"Simple C/C++ TBAA"}
+!8 = !{!"1"}
+!9 = !{!"4"}
+!10 = !{!"5"}
+!11 = !{!"6"}
+!12 = !{!"8"}
+!13 = !{!"9"}
+!14 = !{!"11"}
+!15 = !{!"12"}
+!16 = !{!"13"}
