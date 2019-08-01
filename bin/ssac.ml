@@ -46,7 +46,7 @@ let _ =
       direct_distance = !direct_man_distance;
     }
   in
-  let md, instrs_per_block = Llvm_in.parse_llvm stdin in
+  let md, instrs_per_block = Llvm_in.parse_llvm () in
   print_endline ("\nPartitioning for spatial layout with " ^ (string_of_int !rows)
     ^ " rows, " ^ (string_of_int !columns) ^ " columns, "
     ^ (string_of_int !timeout) ^"s timeout");

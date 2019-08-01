@@ -21,13 +21,9 @@ let llvm_to_block_lists (md : llmodule) : (llvalue list list) =
   in
   fold_left_functions f_function [] md
 
-let parse_llvm (_llvm_in : in_channel) : (llmodule * llvalue list list) =
+let parse_llvm _ : (llmodule * llvalue list list) =
   let context = global_context () in
   let buffer = MemoryBuffer.of_stdin () in
   let md = Llvm_bitreader.parse_bitcode context buffer in
   let instrs_per_block = llvm_to_block_lists md in
-
-(*   List.iter (fun ls -> print_endline "block: ";
-    List.iter (fun v -> print_endline (string_of_llvalue v)) ls)
-   instrs_per_block; *)
   (md, instrs_per_block)
