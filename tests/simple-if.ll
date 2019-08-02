@@ -8,7 +8,7 @@ target triple = "x86_64-apple-macosx10.14.0"
 %struct.__darwin_pthread_handler_rec = type { void (i8*)*, i8*, %struct.__darwin_pthread_handler_rec* }
 %struct._opaque_pthread_attr_t = type { i64, [56 x i8] }
 
-@comms_0 = global { i32, i1, i32 } zeroinitializer
+@arg_0 = global { i32, i1, i32 } zeroinitializer
 @comms_1 = global { i32, i1, i32 } zeroinitializer
 @comms_2 = global { i1, i1, i32 } zeroinitializer
 @return_struct = global { i1, i1, i32 } zeroinitializer
@@ -64,17 +64,17 @@ entry:
   %send_alloca = alloca i32, !reason !11
   store i32 %0, i32* %send_alloca, !reason !11
   %send_cast = bitcast i32* %send_alloca to i8*, !reason !11
-  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send_argument to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast, i64 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i32, i1, i32 }* @comms_0 to i64), i8* %1), !reason !11
+  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send_argument to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast, i64 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i32, i1, i32 }* @arg_0 to i64), i8* %1), !reason !11
   call void @join_partitioned_functions(i32 2, i8* %call_partitioned_functions)
   ret void
 }
 
 define void @if_f_0(i8*) {
 entry:
-  %argument = call i8* bitcast (i8* (i32, i64, i8*)* @receive_argument to i8* (i64, i64, i8*)*)(i64 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i64), i64 ptrtoint ({ i32, i1, i32 }* @comms_0 to i64), i8* %0), !reason !11
+  %argument = call i8* bitcast (i8* (i32, i64, i8*)* @receive_argument to i8* (i64, i64, i8*)*)(i64 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i64), i64 ptrtoint ({ i32, i1, i32 }* @arg_0 to i64), i8* %0), !reason !11
   %bitcast = bitcast i8* %argument to i32*, !reason !11
   %receive_load = load i32, i32* %bitcast, !reason !11
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i32, i1, i32 }* @comms_0 to i64), i64 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i64), i8* %0), !reason !11
+  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i32, i1, i32 }* @arg_0 to i64), i64 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i64), i8* %0), !reason !11
   %1 = icmp slt i32 %receive_load, 5, !partition !3, !start !3, !end !4
   %send_alloca3 = alloca i1, !reason !12
   store i1 %1, i1* %send_alloca3, !reason !12

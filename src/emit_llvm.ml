@@ -25,6 +25,7 @@ let send_return_name = "send_return"
 let receive_return_name = "receive_return"
 let call_partitioned_name = "call_partitioned_functions"
 let join_name = "join_partitioned_functions"
+let address_name = "address_for_symbol"
 let comms_id = ref 0
 let comms_locations : (int list ref) = ref [] (* ID -> address string *)
 let target = ref PThreads
@@ -73,6 +74,13 @@ let new_comms_addr ty : llvalue =
   let id = !comms_id in
   comms_id := !comms_id + 1;
   new_addr_with_name ("comms_" ^ (string_of_int id)) ty
+
+let new_arg_addr_name ty : (llvalue * string) =
+  let id = !comms_id in
+  comms_id := !comms_id + 1;
+  let name = "arg_" ^ (string_of_int id) in
+  let addr = new_addr_with_name name ty in
+  (addr, name)
 
 let size_of_ty ty =
   const_trunc (size_of ty) (target_ptr_type ())
@@ -209,6 +217,13 @@ let declare_external_functions host_md =
   let join_t = function_type void_type [| int_type; void_pt_type |] in
   declare_function join_name join_t host_md |> ignore;
 
+  begin match !target with
+  | PThreads -> ()
+  | BSGManycore ->
+    let address_t = function_type int_type [| void_pt_type; void_pt_type |] in
+    declare_function address_name address_t host_md |> ignore;
+  end;
+
   let declare_function (f : llvalue) =
     if (is_declaration f) then
       declare_function (value_name f) (element_type (type_of f)) cores_module |> ignore
@@ -246,6 +261,17 @@ let is_alloca v =
   | Alloca -> true
   | _ -> false
 
+let host_argument_address builder addr name ctx host_md =
+  match !target with
+  | PThreads -> addr
+  | BSGManycore ->
+    let address_lookup = lookup_function_in address_name host_md in
+    let name_value = const_string context name in
+    let name_global = define_global name name_value host_md in
+    let bitcast = build_bitcast name_global void_pt_type "arg_cast" builder in
+    let args = [| bitcast; ctx; |] in
+    build_call address_lookup args name builder
+
 let replace_operand idx inst block partition builder find_partition mappings host_md =
   let op = operand inst idx in
   match (get_instr_opt mappings op) with
@@ -273,9 +299,11 @@ let replace_operand idx inst block partition builder find_partition mappings hos
         let entry_builder = builder_at context (instr_begin entry) in
         let ctx = param new_fun 0 in
         if (op != ctx) then (
-          let id = new_comms_addr (type_of op) in
-          let call = call_receive_arg "argument" "replace argument" (type_of op) id entry_builder ctx in
-          call_send_variant send_arg_name op "replace argument" partition id replace_builder r_ctx |> ignore;
+          let addr, name = new_arg_addr_name (type_of op) in
+          let host_addr = host_argument_address replace_builder addr name r_ctx host_md in
+          print_endline ("arg: " ^ (string_of_llvalue host_addr));
+          let call = call_receive_arg "argument" "replace argument" (type_of op) addr entry_builder ctx in
+          call_send_variant send_arg_name op "replace argument" partition host_addr replace_builder r_ctx |> ignore;
           add_arg mappings partition op call;
           set_operand inst idx call)
       end

@@ -8,10 +8,10 @@ target triple = "x86_64-apple-macosx10.14.0"
 %struct.__darwin_pthread_handler_rec = type { void (i8*)*, i8*, %struct.__darwin_pthread_handler_rec* }
 %struct._opaque_pthread_attr_t = type { i64, [56 x i8] }
 
-@comms_0 = global { [3 x double]*, i1, i32 } zeroinitializer
-@comms_1 = global { [3 x double]*, i1, i32 } zeroinitializer
+@arg_0 = global { [3 x double]*, i1, i32 } zeroinitializer
+@arg_1 = global { [3 x double]*, i1, i32 } zeroinitializer
 @comms_2 = global { i64, i1, i32 } zeroinitializer
-@comms_3 = global { [3 x double]*, i1, i32 } zeroinitializer
+@arg_3 = global { [3 x double]*, i1, i32 } zeroinitializer
 @comms_4 = global { i64, i1, i32 } zeroinitializer
 @comms_5 = global { double, i1, i32 } zeroinitializer
 @comms_6 = global { double, i1, i32 } zeroinitializer
@@ -122,15 +122,15 @@ entry:
   %send_alloca = alloca [3 x double]*, !reason !17
   store [3 x double]* %2, [3 x double]** %send_alloca, !reason !17
   %send_cast = bitcast [3 x double]** %send_alloca to i8*, !reason !17
-  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send_argument to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast, i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i32 0, i64 ptrtoint ({ [3 x double]*, i1, i32 }* @comms_0 to i64), i8* %3), !reason !17
+  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send_argument to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast, i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i32 0, i64 ptrtoint ({ [3 x double]*, i1, i32 }* @arg_0 to i64), i8* %3), !reason !17
   %send_alloca1 = alloca [3 x double]*, !reason !17
   store [3 x double]* %0, [3 x double]** %send_alloca1, !reason !17
   %send_cast2 = bitcast [3 x double]** %send_alloca1 to i8*, !reason !17
-  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send_argument to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast2, i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i32 1, i64 ptrtoint ({ [3 x double]*, i1, i32 }* @comms_1 to i64), i8* %3), !reason !17
+  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send_argument to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast2, i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i32 1, i64 ptrtoint ({ [3 x double]*, i1, i32 }* @arg_1 to i64), i8* %3), !reason !17
   %send_alloca3 = alloca [3 x double]*, !reason !17
   store [3 x double]* %1, [3 x double]** %send_alloca3, !reason !17
   %send_cast4 = bitcast [3 x double]** %send_alloca3 to i8*, !reason !17
-  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send_argument to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast4, i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i32 0, i64 ptrtoint ({ [3 x double]*, i1, i32 }* @comms_3 to i64), i8* %3), !reason !17
+  call void bitcast (void (i8*, i32, i32, i64, i8*)* @send_argument to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast4, i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i32 0, i64 ptrtoint ({ [3 x double]*, i1, i32 }* @arg_3 to i64), i8* %3), !reason !17
   call void @join_partitioned_functions(i32 2, i8* %call_partitioned_functions)
   ret void
 }
@@ -143,14 +143,14 @@ declare i32 @putchar(i32) #4
 
 define void @multiply_0(i8*) {
 entry:
-  %argument7 = call i8* bitcast (i8* (i32, i64, i8*)* @receive_argument to i8* (i64, i64, i8*)*)(i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i64 ptrtoint ({ [3 x double]*, i1, i32 }* @comms_3 to i64), i8* %0), !reason !17
+  %argument7 = call i8* bitcast (i8* (i32, i64, i8*)* @receive_argument to i8* (i64, i64, i8*)*)(i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i64 ptrtoint ({ [3 x double]*, i1, i32 }* @arg_3 to i64), i8* %0), !reason !17
   %bitcast8 = bitcast i8* %argument7 to [3 x double]**, !reason !17
   %receive_load9 = load [3 x double]*, [3 x double]** %bitcast8, !reason !17
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ [3 x double]*, i1, i32 }* @comms_3 to i64), i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i8* %0), !reason !17
-  %argument = call i8* bitcast (i8* (i32, i64, i8*)* @receive_argument to i8* (i64, i64, i8*)*)(i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i64 ptrtoint ({ [3 x double]*, i1, i32 }* @comms_0 to i64), i8* %0), !reason !17
+  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ [3 x double]*, i1, i32 }* @arg_3 to i64), i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i8* %0), !reason !17
+  %argument = call i8* bitcast (i8* (i32, i64, i8*)* @receive_argument to i8* (i64, i64, i8*)*)(i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i64 ptrtoint ({ [3 x double]*, i1, i32 }* @arg_0 to i64), i8* %0), !reason !17
   %bitcast = bitcast i8* %argument to [3 x double]**, !reason !17
   %receive_load = load [3 x double]*, [3 x double]** %bitcast, !reason !17
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ [3 x double]*, i1, i32 }* @comms_0 to i64), i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i8* %0), !reason !17
+  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ [3 x double]*, i1, i32 }* @arg_0 to i64), i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i8* %0), !reason !17
   br label %l
 
 l:                                                ; preds = %l4, %entry
@@ -235,10 +235,10 @@ l5:                                               ; preds = %l4
 
 define void @multiply_1(i8*) {
 entry:
-  %argument = call i8* bitcast (i8* (i32, i64, i8*)* @receive_argument to i8* (i64, i64, i8*)*)(i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i64 ptrtoint ({ [3 x double]*, i1, i32 }* @comms_1 to i64), i8* %0), !reason !17
+  %argument = call i8* bitcast (i8* (i32, i64, i8*)* @receive_argument to i8* (i64, i64, i8*)*)(i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i64 ptrtoint ({ [3 x double]*, i1, i32 }* @arg_1 to i64), i8* %0), !reason !17
   %bitcast = bitcast i8* %argument to [3 x double]**, !reason !17
   %receive_load = load [3 x double]*, [3 x double]** %bitcast, !reason !17
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ [3 x double]*, i1, i32 }* @comms_1 to i64), i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i8* %0), !reason !17
+  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ [3 x double]*, i1, i32 }* @arg_1 to i64), i64 ptrtoint (i1** getelementptr (i1*, i1** null, i32 1) to i64), i8* %0), !reason !17
   br label %l
 
 l:                                                ; preds = %l4, %entry
