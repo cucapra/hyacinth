@@ -26,6 +26,9 @@ let receive_return_name = "receive_return"
 let call_partitioned_name = "call_partitioned_functions"
 let join_name = "join_partitioned_functions"
 let address_name = "address_for_symbol"
+let start_execution_name = "start_device_execution"
+let end_execution_name = "end_device_execution"
+let device_execute_name = "device_execute"
 let comms_id = ref 0
 let comms_locations : (int list ref) = ref [] (* ID -> address string *)
 let target = ref PThreads
@@ -78,7 +81,7 @@ let new_comms_addr ty : llvalue =
 let new_arg_addr_name ty : (llvalue * string) =
   let id = !comms_id in
   comms_id := !comms_id + 1;
-  let name = "arg_" ^ (string_of_int id) in
+  let name = "arg_" ^ (string_of_int id) ^ "\x00" in
   let addr = new_addr_with_name name ty in
   (addr, name)
 
@@ -222,6 +225,9 @@ let declare_external_functions host_md =
   | BSGManycore ->
     let address_t = function_type int_type [| void_pt_type; void_pt_type |] in
     declare_function address_name address_t host_md |> ignore;
+    let execute_t = function_type void_type [| |] in
+    declare_function start_execution_name execute_t host_md |> ignore;
+    declare_function end_execution_name execute_t host_md |> ignore
   end;
 
   let declare_function (f : llvalue) =
@@ -301,7 +307,6 @@ let replace_operand idx inst block partition builder find_partition mappings hos
         if (op != ctx) then (
           let addr, name = new_arg_addr_name (type_of op) in
           let host_addr = host_argument_address replace_builder addr name r_ctx host_md in
-          print_endline ("arg: " ^ (string_of_llvalue host_addr));
           let call = call_receive_arg "argument" "replace argument" (type_of op) addr entry_builder ctx in
           call_send_variant send_arg_name op "replace argument" partition host_addr replace_builder r_ctx |> ignore;
           add_arg mappings partition op call;
@@ -436,7 +441,11 @@ let add_return_allocation fn =
     new_addr_with_name "return_struct" fn_type |> ignore
   else
     (* If the type is void, allocate a bool in the struct for now *)
-    new_addr_with_name "return_struct" bool_type |> ignore
+    new_addr_with_name "return_struct" bool_type |> ignore;
+
+  match lookup_global "return_struct" comms_module with
+  | Some g ->  set_section ".dram" g
+  | _ -> ()
 
 let add_alloca_instructions v mappings =
   let ty = type_of v in
@@ -500,7 +509,7 @@ let add_straightline_instructions v block placement find_partition partitions ma
     replace_operands clone block p new_builder find_partition mappings host_md;
     insert_into_builder clone "" new_builder
 
-let pthread_replace_fun host_md old_fun (_, ctx, new_fun_set) =
+let replace_fun host_md old_fun (_, ctx, new_fun_set) =
   let old_name = value_name old_fun in
   let new_fun = lookup_function_in ("replace_" ^ old_name) host_md in
   let return_t = return_type (element_type (type_of old_fun)) in
@@ -509,40 +518,56 @@ let pthread_replace_fun host_md old_fun (_, ctx, new_fun_set) =
   | Before v -> instr_succ v
   | At_end _ -> failwith "builder should be after init"
   in
-  let builder = builder_at context after_init in
-  let threads = call_partitioned_funs builder host_md ctx new_fun_set in
 
+  let builder = builder_at context after_init in
   let end_builder = builder_at_end context (entry_block new_fun) in
-  let call_join _ =
-    let join = lookup_function_in join_name host_md in
-    let funs_len = size new_fun_set in
-    build_call join [| const_i32 funs_len; threads |] "" end_builder |> ignore
+
+  let after_execute =
+    match !target with
+    | PThreads ->
+      (* For pthreads, we need to call the partitioned functions, then later
+      join the threads*)
+      let threads = call_partitioned_funs builder host_md ctx new_fun_set in
+
+      (* After execution function (timing depends on return type) *)
+      fun _ ->
+        let join = lookup_function_in join_name host_md in
+        let funs_len = size new_fun_set in
+        build_call join [| const_i32 funs_len; threads |] "" end_builder |> ignore
+    | BSGManycore ->
+      (* For manycore, we need the host to call the host's start_device_execution
+      function, which will call device_execute and call_partitioned_funs
+      device-side. *)
+
+      (* Define the device-side device_execute function, which will get called
+      from C-defined host code using the BSG API *)
+      let fun_ty = function_type void_type [| |] in
+      let device_exec = define_function device_execute_name fun_ty cores_module in
+      let device_builder = builder_at context (instr_begin (entry_block device_exec)) in
+      let null_ctx = const_null (void_pt_type) in
+      call_partitioned_funs device_builder cores_module null_ctx new_fun_set |> ignore;
+      build_ret_void device_builder |> ignore;
+
+      (* Call start_device_execution which envokes BSG API calls *)
+      let start_exec = lookup_function_in start_execution_name host_md in
+      build_call start_exec [| |] "" end_builder |> ignore;
+
+      (* After execution function (timing depends on return type) *)
+      fun _ ->
+        (* Call end_device_execution which envokes BSG API calls *)
+        let end_exec = lookup_function_in end_execution_name host_md in
+        build_call end_exec [| |] "" end_builder |> ignore
   in
 
   if return_t == void_type then begin
-    call_join ();
+    after_execute ();
     build_ret_void end_builder |> ignore
   end
   else begin
     let return = call_receive_return "return" "return" return_t end_builder ctx in
-    call_join ();
+    after_execute ();
     build_ret return end_builder |> ignore
   end
-
-let manycore_construct_main mappings =
-  (* The same program gets run on every tile. The main function calls the
-  C-defined call_partitioned_functions, which uses the tile_id to call the
-  correct version of the function per tile. *)
-  let main_t = function_type int_type [||] in
-  let main_fun = define_function "main" main_t cores_module in
-  let builder = builder_at context (instr_begin (entry_block main_fun)) in
-
-  let call_partitioned_per_fun _ (_, _, new_fun_set) =
-    let null = const_null void_pt_type in
-    call_partitioned_funs builder cores_module null new_fun_set |> ignore
-  in
-  iter_funs mappings call_partitioned_per_fun;
-  build_ret (const_i32 0) builder |> ignore
 
 let set_target_specific_data_layout host_md =
   match !target with
@@ -619,7 +644,7 @@ let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
 
   iter_included_functions add_return_allocation host_md;
 
-  iter_funs mappings (pthread_replace_fun host_md);
+  iter_funs mappings (replace_fun host_md);
   set_target_specific_data_layout host_md;
 
   let per_global g =

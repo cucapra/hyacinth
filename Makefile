@@ -34,7 +34,7 @@ test_save:
 	-turnt --save tests/*.c
 	make clean
 
-%_comms.ll %_host.ll %_cores.ll %.dot: %.bc
+%_comms.ll %_host.ll %_cores.ll %.dot: %.bc install
 	cat $< | $(SSAC) -t $(TIMEOUT) -r $(ROWS) -c $(COLS) -target $(TARGET) -o $*
 
 %_partitioned.ll: %_comms.ll  %_host.ll %_cores.ll src/pthreads/communication.ll
