@@ -12,13 +12,10 @@ target triple = "x86_64-apple-macosx10.14.0"
 @comms_1 = global { i32, i1, i32 } zeroinitializer
 @comms_2 = global { i1, i1, i32 } zeroinitializer
 @return_struct = global { i1, i1, i32 } zeroinitializer
+@.str.2 = dso_local constant [7 x i8] c"b: %d\0A\00", align 1
+@str = dso_local constant [2 x i8] c"2\00", align 1
+@str.3 = dso_local constant [2 x i8] c"1\00", align 1
 @funs = global [2 x void (i8*)*] [void (i8*)* @if_f_0, void (i8*)* @if_f_1]
-@str.3.7 = private unnamed_addr constant [2 x i8] c"1\00", align 1
-@str.5 = private unnamed_addr constant [2 x i8] c"2\00", align 1
-@.str.2.2 = private unnamed_addr constant [7 x i8] c"b: %d\0A\00", align 1
-@.str.2 = global [7 x i8] c"b: %d\0A\00"
-@str = global [2 x i8] c"2\00"
-@str.3 = global [2 x i8] c"1\00"
 
 ; Function Attrs: nounwind ssp uwtable
 define void @if_f(i32) local_unnamed_addr #0 {
@@ -26,16 +23,16 @@ define void @if_f(i32) local_unnamed_addr #0 {
   br i1 %2, label %3, label %5
 
 ; <label>:3:                                      ; preds = %1
-  %4 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3.7, i64 0, i64 0)), !partition !3, !start !3, !end !4
+  %4 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i64 0, i64 0)), !partition !3, !start !3, !end !4
   br label %7
 
 ; <label>:5:                                      ; preds = %1
-  %6 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.5, i64 0, i64 0)), !partition !3, !start !3, !end !4
+  %6 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i64 0, i64 0)), !partition !3, !start !3, !end !4
   br label %7
 
 ; <label>:7:                                      ; preds = %5, %3
   %8 = phi i32 [ 0, %3 ], [ 1, %5 ], !partition !3, !start !3, !end !3
-  %9 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.2.2, i64 0, i64 0), i32 %8), !partition !5, !start !5, !end !6
+  %9 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.2, i64 0, i64 0), i32 %8), !partition !5, !start !5, !end !6
   ret void, !partition !5, !start !3, !end !5
 }
 

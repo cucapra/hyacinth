@@ -21,9 +21,9 @@ target triple = "x86_64-apple-macosx10.14.0"
 @comms_10 = global { double, i1, i32 } zeroinitializer
 @comms_11 = global { double, i1, i32 } zeroinitializer
 @return_struct = global { double, i1, i32 } zeroinitializer
+@.str.1 = dso_local constant [22 x i8] c"quadratic result: %f\0A\00", align 1
+@str = dso_local constant [14 x i8] c"starting main\00", align 1
 @funs = global [2 x void (i8*)*] [void (i8*)* @quadratic_0, void (i8*)* @quadratic_1]
-@str = private unnamed_addr constant [14 x i8] c"starting main\00", align 1
-@.str.1 = private unnamed_addr constant [22 x i8] c"quadratic result: %f\0A\00", align 1
 
 ; Function Attrs: nounwind ssp uwtable
 define double @quadratic(double, double, double) local_unnamed_addr #0 {

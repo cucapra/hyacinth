@@ -23,8 +23,8 @@ target triple = "x86_64-apple-macosx10.14.0"
 @comms_12 = global { i1, i1, i32 } zeroinitializer
 @comms_13 = global { i1, i1, i32 } zeroinitializer
 @return_struct = global { i32, i1, i32 } zeroinitializer
+@.str = dso_local constant [4 x i8] c"%d\0A\00", align 1
 @funs = global [2 x void (i8*)*] [void (i8*)* @fib_0, void (i8*)* @fib_1]
-@.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 
 ; Function Attrs: norecurse nounwind readnone ssp uwtable
 define i32 @fib(i32) local_unnamed_addr #0 {

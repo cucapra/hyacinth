@@ -242,6 +242,8 @@ let declare_external_functions host_md =
       let g' = define_global (value_name g) (global_initializer g) cores_module in
       set_section ".dram" g'
     | PThreads ->
+      set_linkage External g;
+      print_endline (string_of_llvalue g);
       declare_global (element_type (type_of g)) (value_name g) cores_module |> ignore;
   in
   iter_globals define_global host_md
