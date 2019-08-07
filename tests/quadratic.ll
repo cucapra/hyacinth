@@ -22,10 +22,8 @@ target triple = "x86_64-apple-macosx10.14.0"
 @comms_11 = global { double, i1, i32 } zeroinitializer
 @return_struct = global { double, i1, i32 } zeroinitializer
 @funs = global [2 x void (i8*)*] [void (i8*)* @quadratic_0, void (i8*)* @quadratic_1]
-@str.4 = private unnamed_addr constant [14 x i8] c"starting main\00", align 1
-@.str.1.2 = private unnamed_addr constant [22 x i8] c"quadratic result: %f\0A\00", align 1
-@.str.1 = global [22 x i8] c"quadratic result: %f\0A\00"
-@str = global [14 x i8] c"starting main\00"
+@str = private unnamed_addr constant [14 x i8] c"starting main\00", align 1
+@.str.1 = private unnamed_addr constant [22 x i8] c"quadratic result: %f\0A\00", align 1
 
 ; Function Attrs: nounwind ssp uwtable
 define double @quadratic(double, double, double) local_unnamed_addr #0 {
@@ -60,7 +58,7 @@ declare double @llvm.sqrt.f64(double) #2
 
 ; Function Attrs: nounwind ssp uwtable
 define i32 @main(i32, i8** nocapture readonly) local_unnamed_addr #0 {
-  %3 = tail call i32 @puts(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str.4, i64 0, i64 0))
+  %3 = tail call i32 @puts(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str, i64 0, i64 0))
   %4 = getelementptr inbounds i8*, i8** %1, i64 1
   %5 = load i8*, i8** %4, align 8, !tbaa !28
   %6 = tail call i32 @atoi(i8* %5)
@@ -74,7 +72,7 @@ define i32 @main(i32, i8** nocapture readonly) local_unnamed_addr #0 {
   %14 = tail call i32 @atoi(i8* %13)
   %15 = sitofp i32 %14 to double
   %16 = tail call double @replace_quadratic(double %7, double %11, double %15)
-  %17 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([22 x i8], [22 x i8]* @.str.1.2, i64 0, i64 0), double %16)
+  %17 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([22 x i8], [22 x i8]* @.str.1, i64 0, i64 0), double %16)
   ret i32 0
 }
 

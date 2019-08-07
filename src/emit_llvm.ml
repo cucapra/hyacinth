@@ -237,7 +237,12 @@ let declare_external_functions host_md =
   iter_functions declare_function host_md;
 
   let define_global (g : llvalue) =
-    define_global (value_name g) (global_initializer g) cores_module |> ignore
+    match !target with
+    | BSGManycore ->
+      let g' = define_global (value_name g) (global_initializer g) cores_module in
+      set_section ".dram" g'
+    | PThreads ->
+      declare_global (element_type (type_of g)) (value_name g) cores_module |> ignore;
   in
   iter_globals define_global host_md
 
@@ -444,7 +449,11 @@ let add_return_allocation fn =
     new_addr_with_name "return_struct" bool_type |> ignore;
 
   match lookup_global "return_struct" comms_module with
-  | Some g ->  set_section ".dram" g
+  | Some g ->
+    begin match !target with
+    | BSGManycore -> set_section ".dram" g
+    | PThreads -> ()
+    end
   | _ -> ()
 
 let add_alloca_instructions v mappings =

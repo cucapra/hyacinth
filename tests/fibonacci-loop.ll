@@ -24,8 +24,7 @@ target triple = "x86_64-apple-macosx10.14.0"
 @comms_13 = global { i1, i1, i32 } zeroinitializer
 @return_struct = global { i32, i1, i32 } zeroinitializer
 @funs = global [2 x void (i8*)*] [void (i8*)* @fib_0, void (i8*)* @fib_1]
-@.str.2 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
-@.str = global [4 x i8] c"%d\0A\00"
+@.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 
 ; Function Attrs: norecurse nounwind readnone ssp uwtable
 define i32 @fib(i32) local_unnamed_addr #0 {
@@ -60,7 +59,7 @@ define i32 @main(i32, i8** nocapture readonly) local_unnamed_addr #1 {
   %4 = load i8*, i8** %3, align 8, !tbaa !12
   %5 = tail call i32 @atoi(i8* %4)
   %6 = tail call i32 @replace_fib(i32 %5)
-  %7 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.2, i64 0, i64 0), i32 %6)
+  %7 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i64 0, i64 0), i32 %6)
   ret i32 0
 }
 
