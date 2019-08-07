@@ -22,6 +22,9 @@ val get_arg_opt :  mappings -> int -> llvalue -> llvalue option
 val add_block : mappings -> int -> llbasicblock -> llbasicblock -> unit
 val get_block : mappings -> int -> llbasicblock -> llbasicblock
 
+val add_global : mappings -> llvalue -> llvalue -> unit
+val iter_mapped_globals : mappings -> (llvalue -> llvalue -> unit) -> unit
+
 val set_global_last_access : mappings -> llvalue -> int -> unit
 val get_global_last_access_opt : mappings -> llvalue -> int option
 val clear_global_last_access  : mappings -> unit

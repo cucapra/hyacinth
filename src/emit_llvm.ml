@@ -19,6 +19,7 @@ let receive_name = "receive"
 let free_name = "free_comms"
 let send_arg_name = "send_argument"
 let receive_arg_name = "receive_argument"
+let retrieve_global_name = "retrieve_global"
 let send_token_name = "send_token"
 let receive_token_name = "receive_token"
 let send_return_name = "send_return"
@@ -69,8 +70,7 @@ let new_addr_with_name name ty : llvalue =
   let global = define_global name comms_struct comms_module in
 
   (* Return the pointer to this global *)
-  let indices = [| const_i32 0 |] in
-  let gep = const_gep global indices in
+  let gep = const_gep global [| const_i32 0 |] in
   const_ptrtoint gep (target_ptr_type ())
 
 let new_comms_addr ty : llvalue =
@@ -114,7 +114,7 @@ let value_to_value_ptr value reason builder =
     List.iter (set_metadata_string reason) [alloca; store; bitcast];
     bitcast, store
   | _ ->
-    print_endline ("should bitcast send for: " ^ (print_type ty) ^ ", " ^  string_of_llvalue value);
+    print_endline ("should bitcast send for: " ^ (string_of_lltype ty) ^ ", " ^  string_of_llvalue value);
     value, value
   in
   let size = size_of_ty ty in
@@ -186,7 +186,7 @@ let broadcast_value value from_partition branches block block_map builder ctx =
   in
   List.iter insert_comms branches
 
-let declare_external_functions host_md =
+let declare_external_functions host_md mappings =
   (* TODO: we should be able to import external functions from a header *)
   (* declare init, send*, receive*, replace, join *)
   let ptr_ty = target_ptr_type () in
@@ -203,6 +203,8 @@ let declare_external_functions host_md =
   let receive_arg_t = function_type void_pt_type [| ptr_ty; ptr_ty; void_pt_type |] in
   declare_function receive_arg_name receive_arg_t cores_module |> ignore;
   declare_function receive_arg_name receive_arg_t host_md |> ignore;
+  let retrieve_global_t = function_type void_type [| void_pt_type; ptr_ty; ptr_ty; void_pt_type |] in
+  declare_function retrieve_global_name retrieve_global_t host_md |> ignore;
   let send_token_t = function_type void_type [| int_type; ptr_ty; void_pt_type |] in
   declare_function send_token_name send_token_t cores_module |> ignore;
   let receive_token_t = function_type void_pt_type [| ptr_ty; void_pt_type |] in
@@ -236,14 +238,15 @@ let declare_external_functions host_md =
   in
   iter_functions declare_function host_md;
 
+  (* Copy globals from host to device DRAM *)
   let define_global (g : llvalue) =
     match !target with
     | BSGManycore ->
       let g' = define_global (value_name g) (global_initializer g) cores_module in
-      set_section ".dram" g'
+      set_section ".dram" g';
+      add_global mappings g g'
     | PThreads ->
       set_linkage External g;
-      print_endline (string_of_llvalue g);
       declare_global (element_type (type_of g)) (value_name g) cores_module |> ignore;
   in
   iter_globals define_global host_md
@@ -274,16 +277,18 @@ let is_alloca v =
   | Alloca -> true
   | _ -> false
 
-let host_argument_address builder addr name ctx host_md =
-  match !target with
-  | PThreads -> addr
-  | BSGManycore ->
+let lookup_address builder name ctx host_md =
     let address_lookup = lookup_function_in address_name host_md in
     let name_value = const_string context name in
     let name_global = define_global name name_value host_md in
     let bitcast = build_bitcast name_global void_pt_type "arg_cast" builder in
     let args = [| bitcast; ctx; |] in
     build_call address_lookup args name builder
+
+let host_argument_address builder addr name ctx host_md =
+  match !target with
+  | PThreads -> addr
+  | BSGManycore -> lookup_address builder name ctx host_md
 
 let replace_operand idx inst block partition builder find_partition mappings host_md =
   let op = operand inst idx in
@@ -307,17 +312,23 @@ let replace_operand idx inst block partition builder find_partition mappings hos
       begin match (get_arg_opt mappings partition op) with
       | Some new_arg -> set_operand inst idx new_arg
       | None ->
-        let _, new_fun, replace_builder, r_ctx = builders_from_block block partition mappings host_md in
-        let entry = entry_block new_fun in
-        let entry_builder = builder_at context (instr_begin entry) in
-        let ctx = param new_fun 0 in
-        if (op != ctx) then (
-          let addr, name = new_arg_addr_name (type_of op) in
-          let host_addr = host_argument_address replace_builder addr name r_ctx host_md in
-          let call = call_receive_arg "argument" "replace argument" (type_of op) addr entry_builder ctx in
-          call_send_variant send_arg_name op "replace argument" partition host_addr replace_builder r_ctx |> ignore;
-          add_arg mappings partition op call;
-          set_operand inst idx call)
+        begin match (!target, classify_type (type_of op)) with
+        | (BSGManycore, Pointer) ->
+          failwith "Pointer arguments for BSGManycore target not implemented yet"
+        | _ ->
+          (* Send argument from host to device SRAM *)
+          let _, new_fun, replace_builder, r_ctx = builders_from_block block partition mappings host_md in
+          let entry = entry_block new_fun in
+          let entry_builder = builder_at context (instr_begin entry) in
+          let ctx = param new_fun 0 in
+          if (op != ctx) then (
+            let addr, name = new_arg_addr_name (type_of op) in
+            let host_addr = host_argument_address replace_builder addr name r_ctx host_md in
+            let call = call_receive_arg "argument" "replace argument" (type_of op) addr entry_builder ctx in
+            call_send_variant send_arg_name op "replace argument" partition host_addr replace_builder r_ctx |> ignore;
+            add_arg mappings partition op call;
+            set_operand inst idx call)
+        end
       end
     | _ -> ()
     end
@@ -476,18 +487,6 @@ let add_load_store_synchronization v p _block mappings =
     (* Last access is on a different partition, insert synchronization *)
     if p != p' then begin
       (* TODO: rethink this! *)
-(*
-      let builder, cfun = builder_and_fun p block mappings in
-      let builder', cfun' = builder_and_fun p' block mappings in
-      let id = new_comms_addr (int_type) in
-      let ctx' = param cfun' 0 in
-      let send_token = lookup_function_in send_token_name cores_module in
-      let send_token_args = [| (const_i32 p); id; ctx' |] in
-      build_call send_token send_token_args "" builder' |> ignore;
-      let ctx = param cfun 0 in
-      let receive_token = lookup_function_in receive_token_name cores_module in
-      let receive_token_args = [| id; ctx |] in
-      build_call receive_token receive_token_args "" builder |> ignore *)
     end
   | None -> ()
   end;
@@ -520,7 +519,7 @@ let add_straightline_instructions v block placement find_partition partitions ma
     replace_operands clone block p new_builder find_partition mappings host_md;
     insert_into_builder clone "" new_builder
 
-let replace_fun host_md old_fun (_, ctx, new_fun_set) =
+let replace_fun mappings host_md old_fun (_, ctx, new_fun_set) =
   let old_name = value_name old_fun in
   let new_fun = lookup_function_in ("replace_" ^ old_name) host_md in
   let return_t = return_type (element_type (type_of old_fun)) in
@@ -565,6 +564,20 @@ let replace_fun host_md old_fun (_, ctx, new_fun_set) =
 
       (* After execution function (timing depends on return type) *)
       fun _ ->
+        (* Copy global values back over from DRAM *)
+        let retrieve_global host_g device_g =
+          let host_ptr = const_gep host_g [| const_i32 0 |] in
+          let bitcast = build_bitcast host_ptr void_pt_type "" end_builder in
+          let size = size_of_ty (element_type (type_of host_g)) in
+          let name = (value_name device_g) ^ "\x00" in
+          let addr = lookup_address end_builder name ctx host_md in
+          let retrieve = lookup_function_in retrieve_global_name host_md in
+          let args = [| bitcast; size; addr; ctx|] in
+          build_call retrieve args "" end_builder |> ignore;
+        in
+
+        iter_mapped_globals mappings retrieve_global;
+
         (* Call end_device_execution which envokes BSG API calls *)
         let end_exec = lookup_function_in end_execution_name host_md in
         build_call end_exec [| |] "" end_builder |> ignore
@@ -599,10 +612,10 @@ let set_target_specific_data_layout host_md =
 let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
   print_endline "\nStarting to emit LLVM";
   target := tg;
-  declare_external_functions host_md;
 
-  let partitions = get_nonempty_partitions dfg in
   let mappings = init_mappings () in
+  declare_external_functions host_md mappings;
+  let partitions = get_nonempty_partitions dfg in
 
   let find_partition_opt v =
     match ValueMap.find_opt v dfg with
@@ -635,14 +648,10 @@ let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
     | _ -> add_straightline ()
     end
   in
-  let per_block f b =
-    iter_instrs f b;
-    clear_global_last_access mappings
-  in
   let per_function f fn =
     let blocks = fold_left_blocks (fun bs b -> b::bs) [] fn in
     let sorted = Sort_basic_blocks.sort_blocks (List.rev blocks) in
-    List.iter (per_block f) sorted
+    List.iter (iter_instrs f) sorted
   in
 
   let find_partition v = (ValueMap.find v dfg).partition in
@@ -654,8 +663,7 @@ let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
   iter_included_functions (per_function repair_branch) host_md;
 
   iter_included_functions add_return_allocation host_md;
-
-  iter_funs mappings (replace_fun host_md);
+  iter_funs mappings (replace_fun mappings host_md);
   set_target_specific_data_layout host_md;
 
   let per_global g =
