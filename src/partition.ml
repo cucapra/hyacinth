@@ -32,6 +32,7 @@ let cols = ref 2
 
 let debug = ref false
 let lookup_table = ref true
+let placements : placement ValueMap.t ref = ref ValueMap.empty
 
 let term_0 = int_to_term 0
 let dist_fun_id = (Id "manhattan_dist")
@@ -126,22 +127,25 @@ let time_for_comms (p1 : term) (p2 : term) : term =
 let constrain_per_operand (s : solver) (a : assignments) (operand : llvalue) pt t1 =
   (* Instruction operands may reside on a different partition *)
   let constrain_per_instr_operand _ =
-    match (List.find_opt (fun (v, _, _) -> v == operand) a) with
-    | Some (_, pt', (_, t2')) ->
-      begin match (classify_type (type_of operand)) with
-      (* For now, pointers can not be sent across partitions *)
-      | Pointer ->
-        assert_ s (equals t1 t2');
-        assert_ s (equals pt pt')
-      (* Otherwise, the starting time must be after the incoming ending time
-        plus the communication cost *)
-      | _ ->
-        let partition_comms_term = time_for_comms pt pt' in
-        assert_ s (gte t1 (add t2' partition_comms_term))
-      end
-    | None ->
-      (* TODO: if that was partitioned already, we could use it here *)
-      print_endline ("Missing partition for: " ^ (string_of_llvalue operand))
+    let current_placement = List.find_opt (fun (v, _, _) -> v == operand) a in
+    let previous_placement = ValueMap.find_opt operand !placements in
+    let op_pt, op_end_t = match (current_placement, previous_placement) with
+    | Some (_, pt', (_, t2')), _ ->
+      pt', t2'
+    | _, Some placement ->
+      int_to_term placement.partition, int_to_term placement.end_time
+    | _ -> failwith ("No placement for operand: " ^ (string_of_llvalue operand))
+    in
+    match (classify_type (type_of operand)) with
+    (* For now, pointers can not be sent across partitions *)
+    | Pointer ->
+      assert_ s (gte t1 op_end_t);
+      assert_ s (equals pt op_pt)
+    (* Otherwise, the starting time must be after the incoming ending time
+      plus the communication cost *)
+    | _ ->
+      let partition_comms_term = time_for_comms pt op_end_t in
+      assert_ s (gte t1 (add op_end_t partition_comms_term))
   in
   match (classify_value operand) with
   (* Arguments *)
@@ -158,7 +162,7 @@ let constrain_per_operand (s : solver) (a : assignments) (operand : llvalue) pt 
   (* Globals *)
   | GlobalAlias | GlobalVariable ->
     (* No cost for incoming globals. *)
-    ()
+    assert_ s (equals pt term_0)
   (* Instructions *)
   | Instruction _ ->
     constrain_per_instr_operand ()
@@ -269,7 +273,7 @@ let solve_partitioning s total_time upper_bound partitioning no_partitioning gra
   | None -> no_partitioning ()
 
 (* Idea: take in the list of nodes, return a list with partition assignments *)
-let solve_dfg (graph : llvalue list) (config : config) : placement ValueMap.t =
+let solve_dfg (previous : placement ValueMap.t) (graph : llvalue list) (config : config) : placement ValueMap.t =
   print_endline "\nStarting to solve partitioning for subgraph";
   let s : solver = Smtlib.make_solver "z3" in
   set_configuration s config;
@@ -290,12 +294,13 @@ let solve_dfg (graph : llvalue list) (config : config) : placement ValueMap.t =
   constrain_instructions s a;
   let total_time = latest_time s a in
 
-  let partitioning = ref ValueMap.empty in
+  placements := previous;
+
   let no_partitioning _ =
     print_endline "No partitioning found, assigning everything to core 0";
     let to_zero x =
       let placement = {partition = 0; start_time = 0; end_time = 0;} in
-      partitioning := ValueMap.add x placement !partitioning
+      placements := ValueMap.add x placement !placements
     in
     List.iter to_zero graph
   in
@@ -305,6 +310,5 @@ let solve_dfg (graph : llvalue list) (config : config) : placement ValueMap.t =
   if (upper_bound < 1) then
     no_partitioning ()
   else
-    solve_partitioning s total_time upper_bound partitioning no_partitioning graph;
-  !partitioning
-
+    solve_partitioning s total_time upper_bound placements no_partitioning graph;
+  !placements

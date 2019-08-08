@@ -640,10 +640,11 @@ let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
     in
     begin match (op : Opcode.t) with
     | Alloca -> add_alloca_instructions v mappings
-    | Load | Store ->
+(*     | Load | Store ->
       let placement = ValueMap.find v dfg in
       add_load_store_synchronization v placement.partition block mappings;
-      add_straightline ()
+      add_straightline () *)
+
     | Br -> () (* To be repaired later *)
     | _ -> add_straightline ()
     end

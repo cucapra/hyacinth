@@ -25,16 +25,6 @@ let spec_list : (Arg.key * Arg.spec * Arg.doc) list =
     ("-target", Arg.Set_string target_string, "Target: 'pthread' (default), 'bsg_manycore'");
   ]
 
-let flatten_maps maps =
-  let merge k p1 p2 =
-    if p1.partition != p2.partition then
-      let partitions = (string_of_int p1.partition)^", "^(string_of_int p2.partition) in
-      failwith ("Unexpected inconsistent partitions "^ partitions ^" for: " ^ (Llvm.string_of_llvalue k))
-    else
-      Some p1
-  in
-  List.fold_left (ValueMap.union merge) ValueMap.empty maps
-
 let _ =
   Arg.parse spec_list anon_fun usage;
   let config =
@@ -50,12 +40,12 @@ let _ =
   print_endline ("\nPartitioning for spatial layout with " ^ (string_of_int !rows)
     ^ " rows, " ^ (string_of_int !columns) ^ " columns, "
     ^ (string_of_int !timeout) ^"s timeout");
-  let partitions = List.map (fun dfg -> Partition.solve_dfg dfg config) instrs_per_block in
-  let dfg_assignments = flatten_maps partitions in
-  Visualize.visualize_dfg dfg_assignments (!out_filename ^ ".dot");
+  let fold_solve acc instrs = Partition.solve_dfg acc instrs config in
+  let partitions = List.fold_left fold_solve ValueMap.empty instrs_per_block in
+  Visualize.visualize_dfg partitions (!out_filename ^ ".dot");
 
-  Intermediate_llvm.emit_intermediate_llvm !out_filename md dfg_assignments;
+  Intermediate_llvm.emit_intermediate_llvm !out_filename md partitions;
 
   let target = Emit_utils.target_of_string !target_string in
-  Emit_llvm.emit_llvm target !out_filename dfg_assignments md
+  Emit_llvm.emit_llvm target !out_filename partitions md
 
