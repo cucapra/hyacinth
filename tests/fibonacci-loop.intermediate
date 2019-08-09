@@ -58,7 +58,7 @@ attributes #3 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disa
 
 !0 = !{i32 1, !"wchar_size", i32 4}
 !1 = !{i32 7, !"PIC Level", i32 2}
-!2 = !{!"clang version 8.0.0 (tags/RELEASE_800/final)"}
+!2 = !{!"clang version 8.0.1 (tags/RELEASE_801/final)"}
 !3 = !{!"0"}
 !4 = !{!"3"}
 !5 = !{!"4"}

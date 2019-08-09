@@ -186,7 +186,7 @@ let broadcast_value value from_partition branches block block_map builder ctx =
   in
   List.iter insert_comms branches
 
-let declare_external_functions host_md mappings =
+let declare_external_functions host_md =
   (* TODO: we should be able to import external functions from a header *)
   (* declare init, send*, receive*, replace, join *)
   let ptr_ty = target_ptr_type () in
@@ -243,8 +243,7 @@ let declare_external_functions host_md mappings =
     match !target with
     | BSGManycore ->
       let g' = define_global (value_name g) (global_initializer g) cores_module in
-      set_section ".dram" g';
-      add_global mappings g g'
+      set_section ".dram" g'
     | PThreads ->
       set_linkage External g;
       declare_global (element_type (type_of g)) (value_name g) cores_module |> ignore;
@@ -290,10 +289,19 @@ let host_argument_address builder addr name ctx host_md =
   | PThreads -> addr
   | BSGManycore -> lookup_address builder name ctx host_md
 
+let check_global_memory inst operand new_operand mappings =
+  match classify_value operand with
+  | GlobalAlias | GlobalVariable ->
+    if opcode_may_write_to_mem (instr_opcode inst) then
+      add_global mappings operand new_operand
+  | _ -> ()
+
 let replace_operand idx inst block partition builder find_partition mappings host_md =
   let op = operand inst idx in
   match (get_instr_opt mappings op) with
   | Some new_op ->
+    (* If the operand is a global, check whether it can write to memory *)
+    check_global_memory inst op new_op mappings;
     (* If the operand is on a different partition, insert send/receive *)
     let op_partition = find_partition op in
     if (partition != op_partition) && not (is_alloca op) then
@@ -614,7 +622,7 @@ let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
   target := tg;
 
   let mappings = init_mappings () in
-  declare_external_functions host_md mappings;
+  declare_external_functions host_md;
   let partitions = get_nonempty_partitions dfg in
 
   let find_partition_opt v =

@@ -161,11 +161,15 @@ let constrain_per_operand (s : solver) (a : assignments) (operand : llvalue) pt 
     ()
   (* Globals *)
   | GlobalAlias | GlobalVariable ->
-    (* No cost for incoming globals. *)
+    (* No cost for incoming globals, but for now they can only be accessed
+    from partition 0 *)
     assert_ s (equals pt term_0)
   (* Instructions *)
   | Instruction _ ->
-    constrain_per_instr_operand ()
+    begin match instr_opcode operand with
+    | Alloca | Load | Store -> assert_ s (equals pt term_0)
+    | _ -> constrain_per_instr_operand ()
+    end
   (* External operands? *)
   | Function ->
     ()

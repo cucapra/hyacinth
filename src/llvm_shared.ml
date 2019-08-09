@@ -127,6 +127,16 @@ let pretty_opcode (opcode : Opcode.t) : string =
   | LandingPad -> "landingpad"
   | _ -> "other"
 
+(* Logic opied from LLVM's  Instruction::mayWriteToMemory()  *)
+let opcode_may_write_to_mem (opcode : Opcode.t) : bool =
+  match opcode with
+  (* Yes *)
+  | Fence | Store | VAArg | AtomicCmpXchg | AtomicRMW | CatchPad | CatchRet
+  (* Depends on subsequent calls, for now say yes*)
+  | Call | Invoke | Load ->
+    true
+  | _ -> false
+
 let print_val lv =
   Printf.printf "  name %s\n" (value_name lv) ;
   let llty = type_of lv in
