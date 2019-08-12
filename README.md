@@ -20,12 +20,14 @@ On OSX:
 On Linux:
 
     $ apt-get install opam
+    
+Initialize Opam with:
+    
+    $ opam init
 
 Then, we require [Dune][] for the build system, [Core][] for additional OCaml functionality, [OCamlgraph][] for the partition visualization, and [OCaml-Z3][] for constraint generation.
 
-    $ opam install dune
-    $ opam install core 
-    $ opam install ocamlgraph
+    $ opam install dune core ocamlgraph
     $ opam pin add z3 https://github.com/plasma-umass/ocaml-z3.git
 
 Finally, we require [Z3][] itself for constraint solving.
