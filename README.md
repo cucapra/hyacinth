@@ -19,7 +19,7 @@ On OSX:
 
 On Linux:
 
-    $ apt install opam
+    $ apt-get install opam
 
 Then, we require [Dune][] for the build system, [Core][] for additional OCaml functionality, [OCamlgraph][] for the partition visualization, and [OCaml-Z3][] for constraint generation.
 
@@ -37,7 +37,7 @@ On OSX:
 
 On Linux:
 
-    $ apt install z3
+    $ apt-get install z3
 
 To take in [LLVM][] bitcode as input, install both the distribution and the OCaml bindings:
 
@@ -47,7 +47,7 @@ On OSX:
 
 On Linux:
 
-    $ apt install llvm
+    $ apt-get install llvm-8 clang-8
 
 Then:
 
