@@ -17,9 +17,7 @@ On OSX:
     $ # Homebrew
     $ brew install opam
 
-On Linux:
-
-    $ apt-get install opam
+On Linux, use the [binary installation script][].
     
 Initialize Opam with:
     
@@ -55,7 +53,8 @@ Then:
 
     $ opam install llvm
 
-[opam]: https://github.com/ocaml/dune 
+[opam]: https://opam.ocaml.org
+[binary installation script]: https://opam.ocaml.org/doc/Install.html#Binary-distribution
 [dune]: https://github.com/ocaml/dune
 [core]: https://github.com/janestreet/core
 [ocamlgraph]: https://github.com/backtracking/ocamlgraph
