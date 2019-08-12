@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 
-void multiply(double a[3][3], double b[3][3], double res1[3][3], double res2[3][3], double res3[3][3], double res4[3][3]) { 
+void _p_multiply(double a[3][3], double b[3][3], double res1[3][3], double res2[3][3], double res3[3][3], double res4[3][3]) { 
     for (int i = 0; i < 3; i++) { 
         for (int j = 0; j < 3; j++) { 
             res1[i][j] = 0; 
@@ -29,7 +29,7 @@ int main(int argc, char const *argv[]) {
     double a[3][3] = {{1, 1, 1}, {2, 2, 2}, {3, 3, 3}}; 
     double b[3][3] = {{1, 2, 3}, {1, 2, 3}, {1, 2, 3}}; 
   
-    multiply(a, b, res1, res2, res3, res4); 
+    _p_multiply(a, b, res1, res2, res3, res4); 
 
     for (int i = 0; i < 3; i++) { 
         for (int j = 0; j < 3; j++) {

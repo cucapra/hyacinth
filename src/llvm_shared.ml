@@ -2,7 +2,7 @@ open Llvm
 
 let include_function fn =
   let name = value_name fn in
-  not ((is_declaration fn) || (name = "main") || (Core.String.is_prefix name ~prefix:"replace_"))
+  not (is_declaration fn) && (Core.String.is_prefix name ~prefix:"_p_")
 
 let iter_included_functions (f : llvalue -> unit) (md : llmodule) =
   iter_functions (fun fn -> if include_function fn then f fn) md

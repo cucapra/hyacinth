@@ -5,7 +5,7 @@
 #include <math.h>
 #include <unistd.h>
 
-void if_f(int a) {
+void _p_if_f(int a) {
     int b = 0;
     if (a < 5) {
         printf("1\n");
@@ -18,6 +18,6 @@ void if_f(int a) {
 }
 
 int main(int argc, char **argv) {
-    if_f(atoi(argv[1]));
+    _p_if_f(atoi(argv[1]));
     return 0;
 }

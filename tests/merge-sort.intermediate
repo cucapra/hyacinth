@@ -7,7 +7,7 @@ target triple = "x86_64-apple-macosx10.14.0"
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 
 ; Function Attrs: norecurse nounwind ssp uwtable
-define void @ms_mergesort() local_unnamed_addr #0 {
+define void @_p_mergesort() local_unnamed_addr #0 {
   %1 = alloca [256 x i32], align 16, !partition !3, !start !3, !end !4
   %2 = alloca [256 x i32], align 16, !partition !4, !start !3, !end !4
   br label %3
@@ -25,57 +25,57 @@ define void @ms_mergesort() local_unnamed_addr #0 {
   br label %13
 
 ; <label>:13:                                     ; preds = %3, %146
-  %14 = phi i64 [ %6, %3 ], [ %152, %146 ], !partition !3, !start !9, !end !9
-  %15 = phi i32 [ %4, %3 ], [ %151, %146 ], !partition !3, !start !10, !end !10
+  %14 = phi i64 [ %6, %3 ], [ %152, %146 ], !partition !4, !start !9, !end !9
+  %15 = phi i32 [ %4, %3 ], [ %151, %146 ], !partition !4, !start !10, !end !10
   %16 = phi i64 [ 0, %3 ], [ %150, %146 ], !partition !3, !start !11, !end !11
   %17 = phi i64 [ 0, %3 ], [ %147, %146 ], !partition !3, !start !12, !end !12
-  %18 = phi i32 [ 0, %3 ], [ %148, %146 ], !partition !3, !start !13, !end !13
-  %19 = sext i32 %15 to i64, !partition !3, !start !7, !end !5
+  %18 = phi i32 [ 0, %3 ], [ %148, %146 ], !partition !4, !start !13, !end !13
+  %19 = sext i32 %15 to i64, !partition !4, !start !7, !end !5
   %20 = mul nsw i64 %16, %6, !partition !4, !start !14, !end !15
   %21 = getelementptr [256 x i32], [256 x i32]* %1, i64 0, i64 %20, !partition !3, !start !3, !end !6
   %22 = bitcast i32* %21 to i8*, !partition !3, !start !16, !end !17
   %23 = getelementptr [256 x i32], [256 x i32]* @a, i64 0, i64 %20, !partition !3, !start !6, !end !7
   %24 = bitcast i32* %23 to i8*, !partition !3, !start !18, !end !12
-  %25 = mul nuw i64 %16, %9, !partition !3, !start !19, !end !20
-  %26 = trunc i64 %25 to i32, !partition !4, !start !21, !end !14
-  %27 = add i32 %4, %26, !partition !4, !start !22, !end !19
-  %28 = trunc i64 %25 to i32, !partition !4, !start !15, !end !9
-  %29 = or i32 %28, 1, !partition !4, !start !23, !end !24
-  %30 = icmp sgt i32 %27, %29, !partition !4, !start !19, !end !20
-  %31 = select i1 %30, i32 %27, i32 %29, !partition !4, !start !6, !end !23
-  %32 = trunc i64 %16 to i32, !partition !3, !start !9, !end !25
-  %33 = mul i32 %8, %32, !partition !3, !start !11, !end !13
-  %34 = add i32 %33, -1, !partition !3, !start !26, !end !10
-  %35 = add i32 %31, %34, !partition !4, !start !27, !end !28
-  %36 = zext i32 %35 to i64, !partition !3, !start !22, !end !19
-  %37 = shl nuw nsw i64 %36, 2, !partition !3, !start !29, !end !26
-  %38 = add nuw nsw i64 %37, 4, !partition !4, !start !30, !end !18
-  %39 = sext i32 %15 to i64, !partition !4, !start !29, !end !26
-  %40 = mul nsw i64 %16, %6, !partition !4, !start !31, !end !29
-  %41 = getelementptr [256 x i32], [256 x i32]* %2, i64 0, i64 %40, !partition !3, !start !14, !end !15
-  %42 = bitcast i32* %41 to i8*, !partition !3, !start !25, !end !11
+  %25 = mul nuw i64 %16, %9, !partition !4, !start !19, !end !20
+  %26 = trunc i64 %25 to i32, !partition !4, !start !12, !end !14
+  %27 = add i32 %4, %26, !partition !4, !start !21, !end !19
+  %28 = trunc i64 %25 to i32, !partition !3, !start !15, !end !9
+  %29 = or i32 %28, 1, !partition !3, !start !22, !end !23
+  %30 = icmp sgt i32 %27, %29, !partition !3, !start !24, !end !25
+  %31 = select i1 %30, i32 %27, i32 %29, !partition !4, !start !26, !end !27
+  %32 = trunc i64 %16 to i32, !partition !4, !start !28, !end !29
+  %33 = mul i32 %8, %32, !partition !3, !start !11, !end !30
+  %34 = add i32 %33, -1, !partition !4, !start !23, !end !10
+  %35 = add i32 %31, %34, !partition !3, !start !21, !end !19
+  %36 = zext i32 %35 to i64, !partition !3, !start !27, !end !24
+  %37 = shl nuw nsw i64 %36, 2, !partition !4, !start !22, !end !23
+  %38 = add nuw nsw i64 %37, 4, !partition !4, !start !3, !end !6
+  %39 = sext i32 %15 to i64, !partition !3, !start !12, !end !14
+  %40 = mul nsw i64 %16, %6, !partition !4, !start !11, !end !30
+  %41 = getelementptr [256 x i32], [256 x i32]* %2, i64 0, i64 %40, !partition !3, !start !31, !end !21
+  %42 = bitcast i32* %41 to i8*, !partition !3, !start !19, !end !20
   %43 = getelementptr [256 x i32], [256 x i32]* @a, i64 0, i64 %40, !partition !3, !start !20, !end !16
-  %44 = bitcast i32* %43 to i8*, !partition !3, !start !32, !end !33
-  %45 = mul nuw i64 %16, %7, !partition !4, !start !34, !end !30
-  %46 = trunc i64 %45 to i32, !partition !4, !start !17, !end !31
-  %47 = add i32 %4, %46, !partition !3, !start !17, !end !31
-  %48 = trunc i64 %45 to i32, !partition !4, !start !35, !end !21
-  %49 = or i32 %48, 1, !partition !4, !start !36, !end !34
-  %50 = icmp sgt i32 %47, %49, !partition !3, !start !27, !end !28
-  %51 = select i1 %50, i32 %47, i32 %49, !partition !3, !start !5, !end !22
-  %52 = trunc i64 %16 to i32, !partition !4, !start !13, !end !37
-  %53 = mul i32 %8, %52, !partition !4, !start !9, !end !25
-  %54 = add i32 %53, -1, !partition !4, !start !20, !end !16
-  %55 = add i32 %51, %54, !partition !4, !start !11, !end !13
-  %56 = zext i32 %55 to i64, !partition !4, !start !37, !end !27
-  %57 = shl nuw nsw i64 %56, 2, !partition !4, !start !16, !end !17
-  %58 = add nuw nsw i64 %57, 4, !partition !3, !start !15, !end !9
-  %59 = add nsw i64 %17, %10, !partition !3, !start !21, !end !14
+  %44 = bitcast i32* %43 to i8*, !partition !3, !start !32, !end !18
+  %45 = mul nuw i64 %16, %7, !partition !4, !start !6, !end !7
+  %46 = trunc i64 %45 to i32, !partition !3, !start !23, !end !10
+  %47 = add i32 %4, %46, !partition !4, !start !17, !end !33
+  %48 = trunc i64 %45 to i32, !partition !4, !start !34, !end !11
+  %49 = or i32 %48, 1, !partition !4, !start !30, !end !26
+  %50 = icmp sgt i32 %47, %49, !partition !4, !start !24, !end !25
+  %51 = select i1 %50, i32 %47, i32 %49, !partition !4, !start !5, !end !21
+  %52 = trunc i64 %16 to i32, !partition !3, !start !14, !end !15
+  %53 = mul i32 %8, %52, !partition !4, !start !9, !end !34
+  %54 = add i32 %53, -1, !partition !4, !start !33, !end !22
+  %55 = add i32 %51, %54, !partition !3, !start !30, !end !26
+  %56 = zext i32 %55 to i64, !partition !4, !start !27, !end !24
+  %57 = shl nuw nsw i64 %56, 2, !partition !4, !start !15, !end !9
+  %58 = add nuw nsw i64 %57, 4, !partition !4, !start !10, !end !32
+  %59 = add nsw i64 %17, %10, !partition !4, !start !16, !end !17
   %60 = add nsw i32 %18, %4, !partition !3, !start !10, !end !32
-  %61 = add nsw i64 %59, %11, !partition !4, !start !25, !end !11
-  %62 = add nsw i32 %60, %4, !partition !4, !start !3, !end !6
-  %63 = add nsw i32 %62, -1, !partition !3, !start !31, !end !29
-  %64 = icmp slt i64 %61, 257, !partition !4, !start !24, !end !22
+  %61 = add nsw i64 %59, %11, !partition !3, !start !34, !end !11
+  %62 = add nsw i32 %60, %4, !partition !3, !start !9, !end !34
+  %63 = add nsw i32 %62, -1, !partition !3, !start !33, !end !22
+  %64 = icmp slt i64 %61, 257, !partition !4, !start !20, !end !16
   br i1 %64, label %66, label %65
 
 ; <label>:65:                                     ; preds = %13
@@ -101,14 +101,14 @@ define void @ms_mergesort() local_unnamed_addr #0 {
   br label %86
 
 ; <label>:76:                                     ; preds = %67, %76
-  %77 = phi i64 [ %19, %67 ], [ %84, %76 ], !partition !3, !start !38, !end !38
-  %78 = getelementptr inbounds [256 x i32], [256 x i32]* @a, i64 0, i64 %77, !partition !3, !start !38, !end !39
-  %79 = load i32, i32* %78, align 4, !tbaa !40, !partition !3, !start !39, !end !8
+  %77 = phi i64 [ %19, %67 ], [ %84, %76 ], !partition !3, !start !35, !end !35
+  %78 = getelementptr inbounds [256 x i32], [256 x i32]* @a, i64 0, i64 %77, !partition !3, !start !35, !end !36
+  %79 = load i32, i32* %78, align 4, !tbaa !37, !partition !3, !start !36, !end !8
   %80 = trunc i64 %77 to i32, !partition !4, !start !3, !end !6
   %81 = sub i32 %69, %80, !partition !4, !start !6, !end !7
   %82 = sext i32 %81 to i64, !partition !3, !start !3, !end !6
-  %83 = getelementptr inbounds [256 x i32], [256 x i32]* %1, i64 0, i64 %82, !partition !3, !start !23, !end !24
-  store i32 %79, i32* %83, align 4, !tbaa !40, !partition !3, !start !24, !end !38
+  %83 = getelementptr inbounds [256 x i32], [256 x i32]* %1, i64 0, i64 %82, !partition !3, !start !41, !end !31
+  store i32 %79, i32* %83, align 4, !tbaa !37, !partition !3, !start !31, !end !35
   %84 = add nsw i64 %77, 1, !partition !4, !start !7, !end !5
   %85 = icmp slt i64 %84, %61, !partition !4, !start !5, !end !8
   br i1 %85, label %76, label %70
@@ -117,23 +117,23 @@ define void @ms_mergesort() local_unnamed_addr #0 {
   %87 = phi i64 [ %17, %72 ], [ %105, %102 ], !partition !3, !start !6, !end !6
   %88 = phi i32 [ %75, %72 ], [ %104, %102 ], !partition !3, !start !6, !end !6
   %89 = phi i32 [ %74, %72 ], [ %103, %102 ], !partition !3, !start !6, !end !6
-  %90 = sext i32 %89 to i64, !partition !4, !start !38, !end !39
+  %90 = sext i32 %89 to i64, !partition !4, !start !35, !end !36
   %91 = getelementptr inbounds [256 x i32], [256 x i32]* %1, i64 0, i64 %90, !partition !3, !start !6, !end !7
-  %92 = load i32, i32* %91, align 4, !tbaa !40, !partition !3, !start !19, !end !44
-  %93 = sext i32 %88 to i64, !partition !4, !start !23, !end !24
+  %92 = load i32, i32* %91, align 4, !tbaa !37, !partition !3, !start !19, !end !42
+  %93 = sext i32 %88 to i64, !partition !4, !start !41, !end !31
   %94 = getelementptr inbounds [256 x i32], [256 x i32]* %1, i64 0, i64 %93, !partition !3, !start !3, !end !6
-  %95 = load i32, i32* %94, align 4, !tbaa !40, !partition !3, !start !7, !end !24
-  %96 = icmp slt i32 %92, %95, !partition !3, !start !24, !end !22
-  %97 = getelementptr inbounds [256 x i32], [256 x i32]* @a, i64 0, i64 %87, !partition !3, !start !22, !end !19
+  %95 = load i32, i32* %94, align 4, !tbaa !37, !partition !3, !start !7, !end !31
+  %96 = icmp slt i32 %92, %95, !partition !3, !start !31, !end !21
+  %97 = getelementptr inbounds [256 x i32], [256 x i32]* @a, i64 0, i64 %87, !partition !3, !start !21, !end !19
   br i1 %96, label %98, label %100
 
 ; <label>:98:                                     ; preds = %86
-  store i32 %92, i32* %97, align 4, !tbaa !40, !partition !3, !start !3, !end !3
+  store i32 %92, i32* %97, align 4, !tbaa !37, !partition !3, !start !3, !end !3
   %99 = add nsw i32 %89, -1, !partition !3, !start !3, !end !3
   br label %102
 
 ; <label>:100:                                    ; preds = %86
-  store i32 %95, i32* %97, align 4, !tbaa !40, !partition !3, !start !3, !end !3
+  store i32 %95, i32* %97, align 4, !tbaa !37, !partition !3, !start !3, !end !3
   %101 = add nsw i32 %88, 1, !partition !3, !start !3, !end !3
   br label %102
 
@@ -161,40 +161,40 @@ define void @ms_mergesort() local_unnamed_addr #0 {
   br label %125
 
 ; <label>:114:                                    ; preds = %114, %110
-  %115 = phi i64 [ %39, %110 ], [ %122, %114 ], !partition !3, !start !44, !end !44
-  %116 = getelementptr inbounds [256 x i32], [256 x i32]* @a, i64 0, i64 %115, !partition !3, !start !23, !end !24
-  %117 = load i32, i32* %116, align 4, !tbaa !40, !partition !3, !start !24, !end !38
-  %118 = sub i64 %111, %115, !partition !4, !start !22, !end !19
-  %119 = shl i64 %118, 32, !partition !3, !start !38, !end !39
+  %115 = phi i64 [ %39, %110 ], [ %122, %114 ], !partition !3, !start !42, !end !42
+  %116 = getelementptr inbounds [256 x i32], [256 x i32]* @a, i64 0, i64 %115, !partition !3, !start !41, !end !31
+  %117 = load i32, i32* %116, align 4, !tbaa !37, !partition !3, !start !31, !end !35
+  %118 = sub i64 %111, %115, !partition !4, !start !21, !end !19
+  %119 = shl i64 %118, 32, !partition !3, !start !35, !end !36
   %120 = ashr exact i64 %119, 32, !partition !4, !start !3, !end !6
   %121 = getelementptr inbounds [256 x i32], [256 x i32]* %2, i64 0, i64 %120, !partition !3, !start !3, !end !6
-  store i32 %117, i32* %121, align 4, !tbaa !40, !partition !3, !start !6, !end !23
-  %122 = add nsw i64 %115, 1, !partition !3, !start !39, !end !44
-  %123 = trunc i64 %122 to i32, !partition !4, !start !24, !end !22
-  %124 = icmp eq i32 %123, 257, !partition !4, !start !23, !end !24
+  store i32 %117, i32* %121, align 4, !tbaa !37, !partition !3, !start !6, !end !41
+  %122 = add nsw i64 %115, 1, !partition !3, !start !36, !end !42
+  %123 = trunc i64 %122 to i32, !partition !4, !start !31, !end !21
+  %124 = icmp eq i32 %123, 257, !partition !4, !start !41, !end !31
   br i1 %124, label %112, label %114
 
 ; <label>:125:                                    ; preds = %141, %112
   %126 = phi i64 [ %17, %112 ], [ %144, %141 ], !partition !3, !start !6, !end !6
   %127 = phi i32 [ 256, %112 ], [ %143, %141 ], !partition !3, !start !6, !end !6
   %128 = phi i32 [ %113, %112 ], [ %142, %141 ], !partition !3, !start !6, !end !6
-  %129 = sext i32 %127 to i64, !partition !4, !start !38, !end !39
+  %129 = sext i32 %127 to i64, !partition !4, !start !35, !end !36
   %130 = getelementptr inbounds [256 x i32], [256 x i32]* %2, i64 0, i64 %129, !partition !3, !start !6, !end !7
-  %131 = load i32, i32* %130, align 4, !tbaa !40, !partition !3, !start !19, !end !44
-  %132 = sext i32 %128 to i64, !partition !4, !start !23, !end !24
+  %131 = load i32, i32* %130, align 4, !tbaa !37, !partition !3, !start !19, !end !42
+  %132 = sext i32 %128 to i64, !partition !4, !start !41, !end !31
   %133 = getelementptr inbounds [256 x i32], [256 x i32]* %2, i64 0, i64 %132, !partition !3, !start !3, !end !6
-  %134 = load i32, i32* %133, align 4, !tbaa !40, !partition !3, !start !7, !end !24
-  %135 = icmp slt i32 %131, %134, !partition !3, !start !24, !end !22
-  %136 = getelementptr inbounds [256 x i32], [256 x i32]* @a, i64 0, i64 %126, !partition !3, !start !22, !end !19
+  %134 = load i32, i32* %133, align 4, !tbaa !37, !partition !3, !start !7, !end !31
+  %135 = icmp slt i32 %131, %134, !partition !3, !start !31, !end !21
+  %136 = getelementptr inbounds [256 x i32], [256 x i32]* @a, i64 0, i64 %126, !partition !3, !start !21, !end !19
   br i1 %135, label %137, label %139
 
 ; <label>:137:                                    ; preds = %125
-  store i32 %131, i32* %136, align 4, !tbaa !40, !partition !3, !start !3, !end !3
+  store i32 %131, i32* %136, align 4, !tbaa !37, !partition !3, !start !3, !end !3
   %138 = add nsw i32 %127, -1, !partition !3, !start !3, !end !3
   br label %141
 
 ; <label>:139:                                    ; preds = %125
-  store i32 %134, i32* %136, align 4, !tbaa !40, !partition !3, !start !3, !end !3
+  store i32 %134, i32* %136, align 4, !tbaa !37, !partition !3, !start !3, !end !3
   %140 = add nsw i32 %128, 1, !partition !3, !start !3, !end !3
   br label %141
 
@@ -225,13 +225,13 @@ define void @ms_mergesort() local_unnamed_addr #0 {
 
 ; Function Attrs: nounwind ssp uwtable
 define i32 @main(i32, i8** nocapture readnone) local_unnamed_addr #1 {
-  tail call void @ms_mergesort()
+  tail call void @_p_mergesort()
   br label %3
 
 ; <label>:3:                                      ; preds = %3, %2
   %4 = phi i64 [ 0, %2 ], [ %8, %3 ]
   %5 = getelementptr inbounds [256 x i32], [256 x i32]* @a, i64 0, i64 %4
-  %6 = load i32, i32* %5, align 4, !tbaa !40
+  %6 = load i32, i32* %5, align 4, !tbaa !37
   %7 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i64 0, i64 0), i32 %6)
   %8 = add nuw nsw i64 %4, 1
   %9 = icmp eq i64 %8, 256
@@ -264,39 +264,37 @@ attributes #3 = { argmemonly nounwind }
 !6 = !{!"3"}
 !7 = !{!"6"}
 !8 = !{!"12"}
-!9 = !{!"54"}
+!9 = !{!"52"}
 !10 = !{!"34"}
-!11 = !{!"60"}
-!12 = !{!"44"}
-!13 = !{!"63"}
-!14 = !{!"48"}
-!15 = !{!"51"}
+!11 = !{!"58"}
+!12 = !{!"43"}
+!13 = !{!"42"}
+!14 = !{!"46"}
+!15 = !{!"49"}
 !16 = !{!"19"}
 !17 = !{!"22"}
-!18 = !{!"41"}
+!18 = !{!"40"}
 !19 = !{!"13"}
 !20 = !{!"16"}
-!21 = !{!"45"}
-!22 = !{!"10"}
-!23 = !{!"4"}
-!24 = !{!"7"}
-!25 = !{!"57"}
-!26 = !{!"31"}
-!27 = !{!"69"}
-!28 = !{!"72"}
-!29 = !{!"28"}
-!30 = !{!"38"}
-!31 = !{!"25"}
+!21 = !{!"10"}
+!22 = !{!"28"}
+!23 = !{!"31"}
+!24 = !{!"68"}
+!25 = !{!"71"}
+!26 = !{!"64"}
+!27 = !{!"65"}
+!28 = !{!"38"}
+!29 = !{!"41"}
+!30 = !{!"61"}
+!31 = !{!"7"}
 !32 = !{!"37"}
-!33 = !{!"40"}
-!34 = !{!"35"}
-!35 = !{!"42"}
-!36 = !{!"32"}
-!37 = !{!"66"}
-!38 = !{!"8"}
-!39 = !{!"11"}
-!40 = !{!41, !41, i64 0}
-!41 = !{!"int", !42, i64 0}
-!42 = !{!"omnipotent char", !43, i64 0}
-!43 = !{!"Simple C/C++ TBAA"}
-!44 = !{!"14"}
+!33 = !{!"25"}
+!34 = !{!"55"}
+!35 = !{!"8"}
+!36 = !{!"11"}
+!37 = !{!38, !38, i64 0}
+!38 = !{!"int", !39, i64 0}
+!39 = !{!"omnipotent char", !40, i64 0}
+!40 = !{!"Simple C/C++ TBAA"}
+!41 = !{!"4"}
+!42 = !{!"14"}

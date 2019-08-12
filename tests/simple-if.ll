@@ -14,10 +14,10 @@ target triple = "x86_64-apple-macosx10.14.0"
 @.str.2 = dso_local constant [7 x i8] c"b: %d\0A\00", align 1
 @str = dso_local constant [2 x i8] c"2\00", align 1
 @str.3 = dso_local constant [2 x i8] c"1\00", align 1
-@funs = global [2 x void (i8*)*] [void (i8*)* @if_f_0, void (i8*)* @if_f_1]
+@funs = global [2 x void (i8*)*] [void (i8*)* @_p_if_f_0, void (i8*)* @_p_if_f_1]
 
 ; Function Attrs: nounwind ssp uwtable
-define void @if_f(i32) local_unnamed_addr #0 {
+define void @_p_if_f(i32) local_unnamed_addr #0 {
   %2 = icmp slt i32 %0, 5, !partition !3, !start !3, !end !4
   br i1 %2, label %3, label %5
 
@@ -46,14 +46,14 @@ define i32 @main(i32, i8** nocapture readonly) local_unnamed_addr #0 {
   %3 = getelementptr inbounds i8*, i8** %1, i64 1
   %4 = load i8*, i8** %3, align 8, !tbaa !6
   %5 = tail call i32 @atoi(i8* %4)
-  tail call void @replace_if_f(i32 %5)
+  tail call void @replace__p_if_f(i32 %5)
   ret i32 0
 }
 
 ; Function Attrs: nounwind readonly
 declare i32 @atoi(i8* nocapture) #3
 
-define void @replace_if_f(i32) {
+define void @replace__p_if_f(i32) {
 entry:
   %1 = call i8* @init()
   %call_partitioned_functions = call i8* @call_partitioned_functions(i32 2, void (i8*)** getelementptr inbounds ([2 x void (i8*)*], [2 x void (i8*)*]* @funs, i32 0, i32 0), i8* %1)
@@ -65,7 +65,7 @@ entry:
   ret void
 }
 
-define void @if_f_0(i8*) {
+define void @_p_if_f_0(i8*) {
 entry:
   %argument = call i8* bitcast (i8* (i32, i64, i8*)* @receive_argument to i8* (i64, i64, i8*)*)(i64 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i64), i64 ptrtoint ({ i32, i1, i32 }* @arg_0 to i64), i8* %0), !reason !10
   %bitcast = bitcast i8* %argument to i32*, !reason !10
@@ -92,7 +92,7 @@ l2:                                               ; preds = %l1, %l
   ret void
 }
 
-define void @if_f_1(i8*) {
+define void @_p_if_f_1(i8*) {
 entry:
   %broadcast = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i1, i1, i32 }* @comms_1 to i64), i8* %0), !reason !12
   %bitcast = bitcast i8* %broadcast to i1*, !reason !12

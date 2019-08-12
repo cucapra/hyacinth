@@ -22,10 +22,10 @@ target triple = "x86_64-apple-macosx10.14.0"
 @b = global [3 x [3 x double]] [[3 x double] [double 1.000000e+00, double 2.000000e+00, double 3.000000e+00], [3 x double] [double 1.000000e+00, double 2.000000e+00, double 3.000000e+00], [3 x double] [double 1.000000e+00, double 2.000000e+00, double 3.000000e+00]], align 16
 @res = global [3 x [3 x double]] zeroinitializer, align 16
 @.str = dso_local constant [4 x i8] c"%f \00", align 1
-@funs = global [2 x void (i8*)*] [void (i8*)* @multiply_0, void (i8*)* @multiply_1]
+@funs = global [2 x void (i8*)*] [void (i8*)* @_p_multiply_0, void (i8*)* @_p_multiply_1]
 
 ; Function Attrs: norecurse nounwind ssp uwtable
-define void @multiply() local_unnamed_addr #0 {
+define void @_p_multiply() local_unnamed_addr #0 {
   br label %1
 
 ; <label>:1:                                      ; preds = %20, %0
@@ -68,7 +68,7 @@ define void @multiply() local_unnamed_addr #0 {
 
 ; Function Attrs: nounwind ssp uwtable
 define i32 @main(i32, i8** nocapture readnone) local_unnamed_addr #1 {
-  tail call void @replace_multiply()
+  tail call void @replace__p_multiply()
   br label %3
 
 ; <label>:3:                                      ; preds = %12, %2
@@ -94,7 +94,7 @@ define i32 @main(i32, i8** nocapture readnone) local_unnamed_addr #1 {
   ret i32 0
 }
 
-define void @replace_multiply() {
+define void @replace__p_multiply() {
 entry:
   %0 = call i8* @init()
   %call_partitioned_functions = call i8* @call_partitioned_functions(i32 2, void (i8*)** getelementptr inbounds ([2 x void (i8*)*], [2 x void (i8*)*]* @funs, i32 0, i32 0), i8* %0)
@@ -108,7 +108,7 @@ declare i32 @printf(i8* nocapture readonly, ...) #2
 ; Function Attrs: nounwind
 declare i32 @putchar(i32) #3
 
-define void @multiply_0(i8*) {
+define void @_p_multiply_0(i8*) {
 entry:
   br label %l
 
@@ -180,7 +180,7 @@ l5:                                               ; preds = %l4
   ret void
 }
 
-define void @multiply_1(i8*) {
+define void @_p_multiply_1(i8*) {
 entry:
   br label %l
 

@@ -25,10 +25,10 @@ target triple = "x86_64-apple-macosx10.14.0"
 @comms_14 = global { i1, i1, i32 } zeroinitializer
 @return_struct = global { i32, i1, i32 } zeroinitializer
 @.str = dso_local constant [4 x i8] c"%d\0A\00", align 1
-@funs = global [2 x void (i8*)*] [void (i8*)* @fib_0, void (i8*)* @fib_1]
+@funs = global [2 x void (i8*)*] [void (i8*)* @_p_fib_0, void (i8*)* @_p_fib_1]
 
 ; Function Attrs: norecurse nounwind readnone ssp uwtable
-define i32 @fib(i32) local_unnamed_addr #0 {
+define i32 @_p_fib(i32) local_unnamed_addr #0 {
   %2 = icmp sgt i32 %0, 0, !partition !3, !start !3, !end !4
   br i1 %2, label %3, label %16
 
@@ -59,7 +59,7 @@ define i32 @main(i32, i8** nocapture readonly) local_unnamed_addr #1 {
   %3 = getelementptr inbounds i8*, i8** %1, i64 1
   %4 = load i8*, i8** %3, align 8, !tbaa !8
   %5 = tail call i32 @atoi(i8* %4)
-  %6 = tail call i32 @replace_fib(i32 %5)
+  %6 = tail call i32 @replace__p_fib(i32 %5)
   %7 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i64 0, i64 0), i32 %6)
   ret i32 0
 }
@@ -67,7 +67,7 @@ define i32 @main(i32, i8** nocapture readonly) local_unnamed_addr #1 {
 ; Function Attrs: nounwind readonly
 declare i32 @atoi(i8* nocapture) #2
 
-define i32 @replace_fib(i32) {
+define i32 @replace__p_fib(i32) {
 entry:
   %1 = call i8* @init()
   %call_partitioned_functions = call i8* @call_partitioned_functions(i32 2, void (i8*)** getelementptr inbounds ([2 x void (i8*)*], [2 x void (i8*)*]* @funs, i32 0, i32 0), i8* %1)
@@ -89,7 +89,7 @@ entry:
 ; Function Attrs: nounwind
 declare i32 @printf(i8* nocapture readonly, ...) #3
 
-define void @fib_0(i8*) {
+define void @_p_fib_0(i8*) {
 entry:
   %argument = call i8* bitcast (i8* (i32, i64, i8*)* @receive_argument to i8* (i64, i64, i8*)*)(i64 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i64), i64 ptrtoint ({ i32, i1, i32 }* @arg_0 to i64), i8* %0), !reason !12
   %bitcast = bitcast i8* %argument to i32*, !reason !12
@@ -171,7 +171,7 @@ l2:                                               ; preds = %l1, %entry
   ret void
 }
 
-define void @fib_1(i8*) {
+define void @_p_fib_1(i8*) {
 entry:
   %argument = call i8* bitcast (i8* (i32, i64, i8*)* @receive_argument to i8* (i64, i64, i8*)*)(i64 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i64), i64 ptrtoint ({ i32, i1, i32 }* @arg_7 to i64), i8* %0), !reason !12
   %bitcast14 = bitcast i8* %argument to i32*, !reason !12

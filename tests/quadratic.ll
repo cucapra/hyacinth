@@ -22,10 +22,10 @@ target triple = "x86_64-apple-macosx10.14.0"
 @return_struct = global { double, i1, i32 } zeroinitializer
 @.str.1 = dso_local constant [22 x i8] c"quadratic result: %f\0A\00", align 1
 @str = dso_local constant [14 x i8] c"starting main\00", align 1
-@funs = global [2 x void (i8*)*] [void (i8*)* @quadratic_0, void (i8*)* @quadratic_1]
+@funs = global [2 x void (i8*)*] [void (i8*)* @_p_quadratic_0, void (i8*)* @_p_quadratic_1]
 
 ; Function Attrs: nounwind ssp uwtable
-define double @quadratic(double, double, double) local_unnamed_addr #0 {
+define double @_p_quadratic(double, double, double) local_unnamed_addr #0 {
   %4 = fmul double %1, %1, !partition !3, !start !4, !end !5
   %5 = fmul double %0, 4.000000e+00, !partition !3, !start !6, !end !7
   %6 = fmul double %5, %2, !partition !3, !start !8, !end !9
@@ -70,7 +70,7 @@ define i32 @main(i32, i8** nocapture readonly) local_unnamed_addr #0 {
   %13 = load i8*, i8** %12, align 8, !tbaa !23
   %14 = tail call i32 @atoi(i8* %13)
   %15 = sitofp i32 %14 to double
-  %16 = tail call double @replace_quadratic(double %7, double %11, double %15)
+  %16 = tail call double @replace__p_quadratic(double %7, double %11, double %15)
   %17 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([22 x i8], [22 x i8]* @.str.1, i64 0, i64 0), double %16)
   ret i32 0
 }
@@ -81,7 +81,7 @@ declare i32 @puts(i8* nocapture readonly) #3
 ; Function Attrs: nounwind readonly
 declare i32 @atoi(i8* nocapture) #4
 
-define double @replace_quadratic(double, double, double) {
+define double @replace__p_quadratic(double, double, double) {
 entry:
   %3 = call i8* @init()
   %call_partitioned_functions = call i8* @call_partitioned_functions(i32 2, void (i8*)** getelementptr inbounds ([2 x void (i8*)*], [2 x void (i8*)*]* @funs, i32 0, i32 0), i8* %3)
@@ -107,7 +107,7 @@ entry:
 ; Function Attrs: nounwind
 declare i32 @printf(i8* nocapture readonly, ...) #5
 
-define void @quadratic_0(i8*) {
+define void @_p_quadratic_0(i8*) {
 entry:
   %receive = call i8* bitcast (i8* (i32, i32, i64, i8*)* @receive to i8* (i64, i32, i64, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i32 1, i64 ptrtoint ({ double, i1, i32 }* @comms_3 to i64), i8* %0), !reason !29
   %bitcast = bitcast i8* %receive to double*, !reason !29
@@ -154,7 +154,7 @@ entry:
   ret void
 }
 
-define void @quadratic_1(i8*) {
+define void @_p_quadratic_1(i8*) {
 entry:
   %argument4 = call i8* bitcast (i8* (i32, i64, i8*)* @receive_argument to i8* (i64, i64, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i64 ptrtoint ({ double, i1, i32 }* @arg_2 to i64), i8* %0), !reason !27
   %bitcast5 = bitcast i8* %argument4 to double*, !reason !27

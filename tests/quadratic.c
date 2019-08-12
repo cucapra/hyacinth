@@ -5,7 +5,7 @@
 #include <math.h>
 #include <unistd.h>
 
-double quadratic(double a, double b, double c) {
+double _p_quadratic(double a, double b, double c) {
     double s = b * b - 4 * a * c;
     double d = 2 * a;
     sleep(1);
@@ -26,6 +26,6 @@ int main(int argc, char **argv) {
     double a = (double)atoi(argv[1]);
     double b = (double)atoi(argv[2]);
     double c = (double)atoi(argv[3]);
-    printf("quadratic result: %f\n", quadratic(a, b, c));
+    printf("quadratic result: %f\n", _p_quadratic(a, b, c));
     return 0;
 }

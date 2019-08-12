@@ -7,7 +7,7 @@ target triple = "x86_64-apple-macosx10.14.0"
 @str = private unnamed_addr constant [14 x i8] c"starting main\00", align 1
 
 ; Function Attrs: nounwind ssp uwtable
-define double @quadratic(double, double, double) local_unnamed_addr #0 {
+define double @_p_quadratic(double, double, double) local_unnamed_addr #0 {
   %4 = fmul double %1, %1, !partition !3, !start !4, !end !5
   %5 = fmul double %0, 4.000000e+00, !partition !3, !start !6, !end !7
   %6 = fmul double %5, %2, !partition !3, !start !8, !end !9
@@ -52,7 +52,7 @@ define i32 @main(i32, i8** nocapture readonly) local_unnamed_addr #0 {
   %13 = load i8*, i8** %12, align 8, !tbaa !23
   %14 = tail call i32 @atoi(i8* %13)
   %15 = sitofp i32 %14 to double
-  %16 = tail call double @quadratic(double %7, double %11, double %15)
+  %16 = tail call double @_p_quadratic(double %7, double %11, double %15)
   %17 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([22 x i8], [22 x i8]* @.str.1, i64 0, i64 0), double %16)
   ret i32 0
 }

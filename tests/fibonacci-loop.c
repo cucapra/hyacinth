@@ -5,7 +5,7 @@
 #include <math.h>
 #include <unistd.h>
 
-int fib(int n) {
+int _p_fib(int n) {
     int result = 0;
     int first = 0;
     int second = 1;
@@ -23,7 +23,7 @@ int fib(int n) {
 }
 
 int main(int argc, char **argv) {
-    int r = fib(atoi(argv[1]));
+    int r = _p_fib(atoi(argv[1]));
     printf("%d\n", r);
     return 0;
 }

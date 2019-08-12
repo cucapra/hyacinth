@@ -8,7 +8,7 @@ target triple = "x86_64-apple-macosx10.14.0"
 @.str = private unnamed_addr constant [4 x i8] c"%f \00", align 1
 
 ; Function Attrs: nounwind ssp uwtable
-define void @multiply([3 x double]* nocapture readonly, [3 x double]* nocapture readonly, [3 x double]* nocapture, [3 x double]* nocapture, [3 x double]* nocapture, [3 x double]* nocapture) local_unnamed_addr #0 {
+define void @_p_multiply([3 x double]* nocapture readonly, [3 x double]* nocapture readonly, [3 x double]* nocapture, [3 x double]* nocapture, [3 x double]* nocapture, [3 x double]* nocapture) local_unnamed_addr #0 {
   br label %7
 
 ; <label>:7:                                      ; preds = %41, %6
@@ -114,7 +114,7 @@ define i32 @main(i32, i8** nocapture readnone) local_unnamed_addr #0 {
   %14 = getelementptr inbounds [3 x [3 x double]], [3 x [3 x double]]* %4, i64 0, i64 0
   %15 = getelementptr inbounds [3 x [3 x double]], [3 x [3 x double]]* %5, i64 0, i64 0
   %16 = getelementptr inbounds [3 x [3 x double]], [3 x [3 x double]]* %6, i64 0, i64 0
-  call void @multiply([3 x double]* nonnull %11, [3 x double]* nonnull %12, [3 x double]* nonnull %13, [3 x double]* nonnull %14, [3 x double]* nonnull %15, [3 x double]* nonnull %16)
+  call void @_p_multiply([3 x double]* nonnull %11, [3 x double]* nonnull %12, [3 x double]* nonnull %13, [3 x double]* nonnull %14, [3 x double]* nonnull %15, [3 x double]* nonnull %16)
   br label %17
 
 ; <label>:17:                                     ; preds = %26, %2
