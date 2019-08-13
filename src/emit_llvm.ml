@@ -622,8 +622,12 @@ let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
   declare_external_functions host_md mappings;
   let partitions = get_nonempty_partitions dfg in
 
+  let find_partition_opt v =
+    match ValueMap.find_opt v dfg with
+    | Some p -> Some p.partition
+    | None -> None
+  in
   clone_blocks_per_partition host_md partitions mappings;
-  let find_partition v = (ValueMap.find v dfg).partition in
 
   let add_instructions (v : llvalue) =
     (* print_endline ("Emitting LLVM for instruction: " ^ (string_of_llvalue v)); *)
@@ -631,7 +635,13 @@ let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
     let block = instr_parent v in
     let add_straightline () =
       let placement = ValueMap.find v dfg in
-      add_straightline_instructions v block placement find_partition partitions mappings host_md
+      let find_partition_default v' = match find_partition_opt v' with
+      | Some p' -> p'
+      | None ->
+        print_endline ("defaulting for: " ^ (string_of_llvalue v'));
+        placement.partition
+      in
+      add_straightline_instructions v block placement find_partition_default partitions mappings host_md
     in
     begin match (op : Opcode.t) with
     | Alloca -> add_alloca_instructions v mappings
@@ -651,6 +661,7 @@ let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
     List.iter (iter_instrs f) sorted
   in
 
+  let find_partition v = (ValueMap.find v dfg).partition in
   iter_included_functions (per_function add_instructions) host_md;
   let repair_phi = repair_phi_node find_partition mappings in
   iter_included_functions (per_function repair_phi) host_md;
