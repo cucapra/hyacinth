@@ -3,6 +3,7 @@ TIMEOUT := 2
 ROWS := 1
 COLS := 2
 TARGET := pthreads
+CLANG_LFLAGS := -lpthread -lm 
 
 ifeq ($(TARGET), bsg_manycore)
 	TARGET_FLAGS := -m32
@@ -41,7 +42,7 @@ test_save:
 	llvm-link -S $^ -o $@
 
 %.out: %.ll
-	clang -O1 $^ -o $@
+	clang $(CLANG_LFLAGS) -O1 $^ -o $@
 
 %.ll: %.c
 	clang -emit-llvm -Xclang -disable-lifetime-markers  $(TARGET_FLAGS) -O1 -S $< -o $@
