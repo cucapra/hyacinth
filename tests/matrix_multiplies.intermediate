@@ -1,103 +1,103 @@
 ; ModuleID = '<stdin>'
 source_filename = "tests/matrix_multiplies.c"
-target datalayout = "e-m:o-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-apple-macosx10.14.0"
+target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
 
 @__const.main.a = private unnamed_addr constant [3 x [3 x double]] [[3 x double] [double 1.000000e+00, double 1.000000e+00, double 1.000000e+00], [3 x double] [double 2.000000e+00, double 2.000000e+00, double 2.000000e+00], [3 x double] [double 3.000000e+00, double 3.000000e+00, double 3.000000e+00]], align 16
 @__const.main.b = private unnamed_addr constant [3 x [3 x double]] [[3 x double] [double 1.000000e+00, double 2.000000e+00, double 3.000000e+00], [3 x double] [double 1.000000e+00, double 2.000000e+00, double 3.000000e+00], [3 x double] [double 1.000000e+00, double 2.000000e+00, double 3.000000e+00]], align 16
 @.str = private unnamed_addr constant [4 x i8] c"%f \00", align 1
 
-; Function Attrs: nounwind ssp uwtable
-define void @_p_multiply([3 x double]* nocapture readonly, [3 x double]* nocapture readonly, [3 x double]* nocapture, [3 x double]* nocapture, [3 x double]* nocapture, [3 x double]* nocapture) local_unnamed_addr #0 {
+; Function Attrs: nounwind uwtable
+define dso_local void @_p_multiply([3 x double]* nocapture readonly, [3 x double]* nocapture readonly, [3 x double]* nocapture, [3 x double]* nocapture, [3 x double]* nocapture, [3 x double]* nocapture) local_unnamed_addr #0 {
   br label %7
 
 ; <label>:7:                                      ; preds = %41, %6
-  %8 = phi i64 [ 0, %6 ], [ %42, %41 ], !partition !3, !start !3, !end !3
+  %8 = phi i64 [ 0, %6 ], [ %42, %41 ], !partition !2, !start !2, !end !2
   br label %9
 
 ; <label>:9:                                      ; preds = %38, %7
-  %10 = phi i64 [ 0, %7 ], [ %39, %38 ], !partition !4, !start !5, !end !5
-  %11 = getelementptr inbounds [3 x double], [3 x double]* %2, i64 %8, i64 %10, !partition !3, !start !4, !end !6
-  store double 0.000000e+00, double* %11, align 8, !tbaa !7, !partition !3, !start !6, !end !5
-  %12 = getelementptr inbounds [3 x double], [3 x double]* %3, i64 %8, i64 %10, !partition !3, !start !5, !end !11
-  store double 0.000000e+00, double* %12, align 8, !tbaa !7, !partition !3, !start !11, !end !12
-  %13 = getelementptr inbounds [3 x double], [3 x double]* %4, i64 %8, i64 %10, !partition !4, !start !4, !end !6
-  store double 0.000000e+00, double* %13, align 8, !tbaa !7, !partition !4, !start !6, !end !5
+  %10 = phi i64 [ 0, %7 ], [ %39, %38 ], !partition !3, !start !4, !end !4
+  %11 = getelementptr inbounds [3 x double], [3 x double]* %2, i64 %8, i64 %10, !partition !2, !start !3, !end !5
+  store double 0.000000e+00, double* %11, align 8, !tbaa !6, !partition !2, !start !10, !end !11
+  %12 = getelementptr inbounds [3 x double], [3 x double]* %3, i64 %8, i64 %10, !partition !2, !start !5, !end !12
+  store double 0.000000e+00, double* %12, align 8, !tbaa !6, !partition !2, !start !12, !end !10
+  %13 = getelementptr inbounds [3 x double], [3 x double]* %4, i64 %8, i64 %10, !partition !3, !start !3, !end !5
+  store double 0.000000e+00, double* %13, align 8, !tbaa !6, !partition !3, !start !5, !end !4
   br label %14
 
 ; <label>:14:                                     ; preds = %14, %9
-  %15 = phi i64 [ 0, %9 ], [ %36, %14 ], !partition !3, !start !13, !end !13
-  %16 = getelementptr inbounds [3 x double], [3 x double]* %0, i64 %8, i64 %15, !partition !4, !start !14, !end !12
-  %17 = load double, double* %16, align 8, !tbaa !7, !partition !4, !start !15, !end !16
-  %18 = getelementptr inbounds [3 x double], [3 x double]* %1, i64 %15, i64 %10, !partition !4, !start !3, !end !13
-  %19 = load double, double* %18, align 8, !tbaa !7, !partition !4, !start !17, !end !18
-  %20 = fmul double %17, %19, !partition !3, !start !19, !end !20
-  %21 = tail call double @llvm.sqrt.f64(double %20), !partition !4, !start !18, !end !21
-  %22 = load double, double* %11, align 8, !tbaa !7, !partition !3, !start !22, !end !11
-  %23 = fadd double %22, %21, !partition !3, !start !16, !end !23
-  store double %23, double* %11, align 8, !tbaa !7, !partition !3, !start !14, !end !22
-  %24 = load double, double* %16, align 8, !tbaa !7, !partition !4, !start !12, !end !15
-  %25 = tail call double @llvm.sqrt.f64(double %24), !partition !3, !start !3, !end !13
-  %26 = load double, double* %18, align 8, !tbaa !7, !partition !4, !start !24, !end !23
-  %27 = fmul double %25, %26, !partition !3, !start !6, !end !14
-  %28 = load double, double* %12, align 8, !tbaa !7, !partition !3, !start !11, !end !12
-  %29 = fadd double %28, %27, !partition !3, !start !12, !end !16
-  store double %29, double* %12, align 8, !tbaa !7, !partition !3, !start !20, !end !25
-  %30 = load double, double* %16, align 8, !tbaa !7, !partition !4, !start !23, !end !26
-  %31 = load double, double* %18, align 8, !tbaa !7, !partition !4, !start !26, !end !17
-  %32 = tail call double @llvm.sqrt.f64(double %31), !partition !3, !start !23, !end !18
-  %33 = fmul double %30, %32, !partition !3, !start !18, !end !27
-  %34 = load double, double* %13, align 8, !tbaa !7, !partition !4, !start !16, !end !24
-  %35 = fadd double %34, %33, !partition !3, !start !27, !end !19
-  store double %35, double* %13, align 8, !tbaa !7, !partition !4, !start !20, !end !25
-  %36 = add nuw nsw i64 %15, 1, !partition !4, !start !21, !end !20
-  %37 = icmp eq i64 %36, 3, !partition !4, !start !13, !end !14
+  %15 = phi i64 [ 0, %9 ], [ %36, %14 ], !partition !2, !start !13, !end !13
+  %16 = getelementptr inbounds [3 x double], [3 x double]* %0, i64 %8, i64 %15, !partition !3, !start !11, !end !14
+  %17 = load double, double* %16, align 8, !tbaa !6, !partition !3, !start !15, !end !16
+  %18 = getelementptr inbounds [3 x double], [3 x double]* %1, i64 %15, i64 %10, !partition !3, !start !17, !end !18
+  %19 = load double, double* %18, align 8, !tbaa !6, !partition !3, !start !10, !end !11
+  %20 = fmul double %17, %19, !partition !2, !start !13, !end !15
+  %21 = tail call double @sqrt(double %20) #3, !partition !3, !start !14, !end !19
+  %22 = load double, double* %11, align 8, !tbaa !6, !partition !2, !start !4, !end !18
+  %23 = fadd double %21, %22, !partition !2, !start !2, !end !20
+  store double %23, double* %11, align 8, !tbaa !6, !partition !2, !start !18, !end !12
+  %24 = load double, double* %16, align 8, !tbaa !6, !partition !3, !start !16, !end !21
+  %25 = tail call double @sqrt(double %24) #3, !partition !2, !start !20, !end !4
+  %26 = load double, double* %18, align 8, !tbaa !6, !partition !3, !start !18, !end !12
+  %27 = fmul double %25, %26, !partition !2, !start !22, !end !23
+  %28 = load double, double* %12, align 8, !tbaa !6, !partition !2, !start !24, !end !22
+  %29 = fadd double %28, %27, !partition !2, !start !16, !end !24
+  store double %29, double* %12, align 8, !tbaa !6, !partition !2, !start !15, !end !16
+  %30 = load double, double* %16, align 8, !tbaa !6, !partition !3, !start !19, !end !15
+  %31 = load double, double* %18, align 8, !tbaa !6, !partition !3, !start !12, !end !10
+  %32 = tail call double @sqrt(double %31) #3, !partition !2, !start !25, !end !13
+  %33 = fmul double %30, %32, !partition !2, !start !11, !end !25
+  %34 = load double, double* %13, align 8, !tbaa !6, !partition !3, !start !23, !end !26
+  %35 = fadd double %34, %33, !partition !2, !start !12, !end !11
+  store double %35, double* %13, align 8, !tbaa !6, !partition !3, !start !21, !end !24
+  %36 = add nuw nsw i64 %15, 1, !partition !3, !start !2, !end !17
+  %37 = icmp eq i64 %36, 3, !partition !3, !start !24, !end !23
   br i1 %37, label %38, label %14
 
 ; <label>:38:                                     ; preds = %14
-  %39 = add nuw nsw i64 %10, 1, !partition !3, !start !3, !end !13
-  %40 = icmp eq i64 %39, 3, !partition !4, !start !3, !end !13
+  %39 = add nuw nsw i64 %10, 1, !partition !2, !start !2, !end !17
+  %40 = icmp eq i64 %39, 3, !partition !3, !start !2, !end !17
   br i1 %40, label %41, label %9
 
 ; <label>:41:                                     ; preds = %38
-  %42 = add nuw nsw i64 %8, 1, !partition !3, !start !4, !end !6
-  %43 = icmp eq i64 %42, 3, !partition !4, !start !3, !end !13
+  %42 = add nuw nsw i64 %8, 1, !partition !2, !start !3, !end !5
+  %43 = icmp eq i64 %42, 3, !partition !3, !start !2, !end !17
   br i1 %43, label %44, label %7
 
 ; <label>:44:                                     ; preds = %41, %59
-  %45 = phi i64 [ %60, %59 ], [ 0, %41 ], !partition !3, !start !3, !end !3
+  %45 = phi i64 [ %60, %59 ], [ 0, %41 ], !partition !2, !start !2, !end !2
   br label %46
 
 ; <label>:46:                                     ; preds = %46, %44
-  %47 = phi i64 [ 0, %44 ], [ %57, %46 ], !partition !4, !start !26, !end !26
-  %48 = getelementptr inbounds [3 x double], [3 x double]* %2, i64 %45, i64 %47, !partition !3, !start !4, !end !6
-  %49 = load double, double* %48, align 8, !tbaa !7, !partition !3, !start !6, !end !5
-  %50 = getelementptr inbounds [3 x double], [3 x double]* %3, i64 %45, i64 %47, !partition !4, !start !13, !end !14
-  %51 = load double, double* %50, align 8, !tbaa !7, !partition !4, !start !23, !end !26
-  %52 = fadd double %49, %51, !partition !3, !start !22, !end !12
-  %53 = getelementptr inbounds [3 x double], [3 x double]* %4, i64 %45, i64 %47, !partition !4, !start !12, !end !24
-  %54 = load double, double* %53, align 8, !tbaa !7, !partition !4, !start !24, !end !23
-  %55 = fadd double %52, %54, !partition !3, !start !5, !end !22
-  %56 = getelementptr inbounds [3 x double], [3 x double]* %5, i64 %45, i64 %47, !partition !3, !start !12, !end !24
-  store double %55, double* %56, align 8, !tbaa !7, !partition !3, !start !24, !end !23
-  %57 = add nuw nsw i64 %47, 1, !partition !4, !start !14, !end !12
-  %58 = icmp eq i64 %57, 3, !partition !4, !start !3, !end !13
+  %47 = phi i64 [ 0, %44 ], [ %57, %46 ], !partition !2, !start !20, !end !20
+  %48 = getelementptr inbounds [3 x double], [3 x double]* %2, i64 %45, i64 %47, !partition !2, !start !20, !end !4
+  %49 = load double, double* %48, align 8, !tbaa !6, !partition !2, !start !25, !end !14
+  %50 = getelementptr inbounds [3 x double], [3 x double]* %3, i64 %45, i64 %47, !partition !3, !start !20, !end !4
+  %51 = load double, double* %50, align 8, !tbaa !6, !partition !3, !start !27, !end !13
+  %52 = fadd double %49, %51, !partition !2, !start !2, !end !20
+  %53 = getelementptr inbounds [3 x double], [3 x double]* %4, i64 %45, i64 %47, !partition !3, !start !10, !end !25
+  %54 = load double, double* %53, align 8, !tbaa !6, !partition !3, !start !25, !end !14
+  %55 = fadd double %52, %54, !partition !2, !start !14, !end !13
+  %56 = getelementptr inbounds [3 x double], [3 x double]* %5, i64 %45, i64 %47, !partition !3, !start !4, !end !10
+  store double %55, double* %56, align 8, !tbaa !6, !partition !3, !start !14, !end !27
+  %57 = add nuw nsw i64 %47, 1, !partition !2, !start !10, !end !25
+  %58 = icmp eq i64 %57, 3, !partition !2, !start !4, !end !10
   br i1 %58, label %59, label %46
 
 ; <label>:59:                                     ; preds = %46
-  %60 = add nuw nsw i64 %45, 1, !partition !3, !start !4, !end !6
-  %61 = icmp eq i64 %60, 3, !partition !4, !start !3, !end !13
+  %60 = add nuw nsw i64 %45, 1, !partition !2, !start !3, !end !5
+  %61 = icmp eq i64 %60, 3, !partition !3, !start !2, !end !17
   br i1 %61, label %62, label %44
 
 ; <label>:62:                                     ; preds = %59
-  ret void, !partition !3, !start !3, !end !4
+  ret void, !partition !2, !start !2, !end !3
 }
 
-; Function Attrs: nounwind readnone speculatable
-declare double @llvm.sqrt.f64(double) #1
+; Function Attrs: nounwind
+declare dso_local double @sqrt(double) local_unnamed_addr #1
 
-; Function Attrs: nounwind ssp uwtable
-define i32 @main(i32, i8** nocapture readnone) local_unnamed_addr #0 {
+; Function Attrs: nounwind uwtable
+define dso_local i32 @main(i32, i8** nocapture readnone) local_unnamed_addr #0 {
   %3 = alloca [3 x [3 x double]], align 16
   %4 = alloca [3 x [3 x double]], align 16
   %5 = alloca [3 x [3 x double]], align 16
@@ -124,7 +124,7 @@ define i32 @main(i32, i8** nocapture readnone) local_unnamed_addr #0 {
 ; <label>:19:                                     ; preds = %19, %17
   %20 = phi i64 [ 0, %17 ], [ %24, %19 ]
   %21 = getelementptr inbounds [3 x [3 x double]], [3 x [3 x double]]* %6, i64 0, i64 %18, i64 %20
-  %22 = load double, double* %21, align 8, !tbaa !7
+  %22 = load double, double* %21, align 8, !tbaa !6
   %23 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i64 0, i64 0), double %22)
   %24 = add nuw nsw i64 %20, 1
   %25 = icmp eq i64 %24, 3
@@ -144,45 +144,44 @@ define i32 @main(i32, i8** nocapture readnone) local_unnamed_addr #0 {
 declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture writeonly, i8* nocapture readonly, i64, i1) #2
 
 ; Function Attrs: nounwind
-declare i32 @printf(i8* nocapture readonly, ...) local_unnamed_addr #3
+declare dso_local i32 @printf(i8* nocapture readonly, ...) local_unnamed_addr #1
 
 ; Function Attrs: nounwind
-declare i32 @putchar(i32) local_unnamed_addr #4
+declare i32 @putchar(i32) local_unnamed_addr #3
 
-attributes #0 = { nounwind ssp uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "min-legal-vector-width"="0" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
-attributes #1 = { nounwind readnone speculatable }
+attributes #0 = { nounwind uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "min-legal-vector-width"="0" "no-frame-pointer-elim"="false" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+fxsr,+mmx,+sse,+sse2,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
+attributes #1 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="false" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+fxsr,+mmx,+sse,+sse2,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #2 = { argmemonly nounwind }
-attributes #3 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
-attributes #4 = { nounwind }
+attributes #3 = { nounwind }
 
-!llvm.module.flags = !{!0, !1}
-!llvm.ident = !{!2}
+!llvm.module.flags = !{!0}
+!llvm.ident = !{!1}
 
 !0 = !{i32 1, !"wchar_size", i32 4}
-!1 = !{i32 7, !"PIC Level", i32 2}
-!2 = !{!"clang version 8.0.1 (tags/RELEASE_801/final)"}
-!3 = !{!"0"}
-!4 = !{!"1"}
-!5 = !{!"5"}
-!6 = !{!"4"}
-!7 = !{!8, !8, i64 0}
-!8 = !{!"double", !9, i64 0}
-!9 = !{!"omnipotent char", !10, i64 0}
-!10 = !{!"Simple C/C++ TBAA"}
-!11 = !{!"8"}
-!12 = !{!"9"}
-!13 = !{!"3"}
-!14 = !{!"6"}
-!15 = !{!"10"}
-!16 = !{!"11"}
-!17 = !{!"15"}
-!18 = !{!"16"}
-!19 = !{!"20"}
-!20 = !{!"22"}
-!21 = !{!"19"}
-!22 = !{!"7"}
-!23 = !{!"13"}
-!24 = !{!"12"}
-!25 = !{!"23"}
-!26 = !{!"14"}
-!27 = !{!"18"}
+!1 = !{!"clang version 8.0.0-3~ubuntu18.04.1 (tags/RELEASE_800/final)"}
+!2 = !{!"0"}
+!3 = !{!"1"}
+!4 = !{!"5"}
+!5 = !{!"4"}
+!6 = !{!7, !7, i64 0}
+!7 = !{!"double", !8, i64 0}
+!8 = !{!"omnipotent char", !9, i64 0}
+!9 = !{!"Simple C/C++ TBAA"}
+!10 = !{!"8"}
+!11 = !{!"9"}
+!12 = !{!"7"}
+!13 = !{!"14"}
+!14 = !{!"12"}
+!15 = !{!"16"}
+!16 = !{!"17"}
+!17 = !{!"3"}
+!18 = !{!"6"}
+!19 = !{!"15"}
+!20 = !{!"2"}
+!21 = !{!"18"}
+!22 = !{!"20"}
+!23 = !{!"22"}
+!24 = !{!"19"}
+!25 = !{!"11"}
+!26 = !{!"23"}
+!27 = !{!"13"}

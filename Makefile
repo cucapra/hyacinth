@@ -1,4 +1,5 @@
-SSAC := dune exec ssac --
+SHELL := /bin/bash
+SSAC := ssac
 TIMEOUT := 2
 ROWS := 1
 COLS := 2
@@ -6,7 +7,9 @@ TARGET := pthreads
 CLANG_LFLAGS := -lpthread -lm 
 
 ifeq ($(TARGET), bsg_manycore)
-	TARGET_FLAGS := -m32
+	CFLAGS := -m32
+	LDFLAGS := -m32
+	TARGET_FLAGS := -m64 --target=x86_64-redhat-linux-gnu  
 endif
 
 .PHONY: build install clean test test_save bsg_communication
@@ -35,7 +38,7 @@ test_save:
 	-turnt --save tests/*.c
 	make clean
 
-%_comms.ll %_host.ll %_cores.ll %.dot: %.bc install
+%_comms.ll %_host.ll %_cores.ll %.dot: %.bc
 	cat $< | $(SSAC) -t $(TIMEOUT) -r $(ROWS) -c $(COLS) -target $(TARGET) -o $*
 
 %_partitioned.ll: %_comms.ll  %_host.ll %_cores.ll src/pthreads/communication.ll
