@@ -6,6 +6,7 @@ let anon_fun (arg : string) : unit =
     print_endline ("Warning: no argument expected, ignoring: " ^ arg)
 
 let debug : bool ref = ref false
+let intermediate : bool ref = ref false
 let direct_man_distance : bool ref = ref false
 let rows : int ref = ref 2
 let columns : int ref = ref 2
@@ -17,6 +18,7 @@ let usage = "SSA-Spatial Compiler\n"
 let spec_list : (Arg.key * Arg.spec * Arg.doc) list =
   [
     ("-d", Arg.Set debug, "Prints debugging for constraint generation");
+    ("-i", Arg.Set intermediate, "Expect intermediate annotations for partitioning");
     ("-m", Arg.Set direct_man_distance, "Computes Manhattan distance directly rather than via a lookup table");
     ("-r", Arg.Set_int rows, "Number of rows in the spatial configuration");
     ("-c", Arg.Set_int columns, "Number of columns in the spatial configuration");
@@ -37,11 +39,16 @@ let _ =
     }
   in
   let md, instrs_per_block = Llvm_in.parse_llvm () in
-  print_endline ("\nPartitioning for spatial layout with " ^ (string_of_int !rows)
-    ^ " rows, " ^ (string_of_int !columns) ^ " columns, "
-    ^ (string_of_int !timeout) ^"s timeout");
-  let fold_solve acc instrs = Partition.solve_dfg acc instrs config in
-  let partitions = List.fold_left fold_solve ValueMap.empty instrs_per_block in
+  let partitions = if !intermediate then
+      Intermediate_llvm.consume_intermediate_llvm instrs_per_block
+    else begin
+      print_endline ("\nPartitioning for spatial layout with " ^ (string_of_int !rows)
+        ^ " rows, " ^ (string_of_int !columns) ^ " columns, "
+        ^ (string_of_int !timeout) ^"s timeout");
+      let fold_solve acc instrs = Partition.solve_dfg acc instrs config in
+      List.fold_left fold_solve ValueMap.empty instrs_per_block
+    end
+  in
   Visualize.visualize_dfg partitions (!out_filename ^ ".dot");
 
   Intermediate_llvm.emit_intermediate_llvm !out_filename md partitions;

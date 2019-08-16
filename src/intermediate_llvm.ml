@@ -17,7 +17,7 @@ let get_metadata_int (v : llvalue) (key : string) : int option =
   let kind = mdkind_id context key in
   match (metadata v kind) with
   | Some m ->
-    begin match (get_mdstring m) with
+    begin match (get_mdstring (Array.get (get_mdnode_operands m) 0)) with
     | Some s -> clear_metadata v kind; Some (int_of_string s)
     | None -> failwith ("Expected metadata string for key: " ^ key)
     end
