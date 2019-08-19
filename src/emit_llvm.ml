@@ -475,6 +475,7 @@ let add_alloca_instructions v mappings =
   let global = define_global "alloca" (const_null (element_type ty)) cores_module in
   if (!target = BSGManycore) then set_section ".dram" global;
   set_volatile true global;
+  set_alignment (alignment v) global;
   add_instr mappings v global
 
 let add_load_store_synchronization v p _block mappings =
@@ -637,9 +638,7 @@ let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
       let placement = ValueMap.find v dfg in
       let find_partition_default v' = match find_partition_opt v' with
       | Some p' -> p'
-      | None ->
-        print_endline ("defaulting for: " ^ (string_of_llvalue v'));
-        placement.partition
+      | None -> placement.partition
       in
       add_straightline_instructions v block placement find_partition_default partitions mappings host_md
     in
