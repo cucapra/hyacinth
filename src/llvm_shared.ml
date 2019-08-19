@@ -25,6 +25,15 @@ let iter_operands (f : llvalue -> unit) (instr : llvalue) =
 let map_operands f (instr : llvalue) =
   List.map f (included_operands instr)
 
+let function_from_call (instr : llvalue) : llvalue =
+  match instr_opcode instr with
+  | Call ->
+    (* The called-function is the last operand in the call instruction *)
+    let arity = num_operands instr in
+    operand instr (arity - 1)
+  | _ ->
+    failwith ("Expected call instruction, got " ^ (string_of_llvalue instr))
+
 let rec print_type llty : string =
   let ty = classify_type llty in
   match ty with

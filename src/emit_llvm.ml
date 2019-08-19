@@ -2,6 +2,7 @@ open Partition
 open Emit_utils
 open Llvm
 open Llvm_shared
+open Llvm_analysis
 
 let context = global_context ()
 let void_type = void_type context
@@ -439,6 +440,7 @@ let clone_blocks_per_partition host_md partitions mappings =
     let new_name = (value_name fn) ^ "_" ^ (string_of_int partition) in
     let new_fun = define_function new_name fun_type cores_module in
     declare_function new_name fun_type host_md |> ignore;
+    set_linkage External new_fun;
 
     iter_blocks (per_block partition fn new_fun) fn
   in
@@ -520,6 +522,14 @@ let add_straightline_instructions v block placement find_partition partitions ma
     add_instr mappings v clone;
     replace_operands clone block p new_builder find_partition mappings host_md;
     insert_into_builder clone "" new_builder
+
+let insert_called_function_if_needed f =
+  (* TODO: check for memory writes/side effects, deep clone*)
+  let partitioned = include_function f in
+  let ext_defined = is_declaration f in
+  if (not partitioned && not ext_defined) then
+    failwith ("Partitioned function references unavailable function: " ^
+      (string_of_llvalue f))
 
 let replace_fun mappings host_md old_fun (_, ctx, new_fun_set) =
   let old_name = value_name old_fun in
@@ -644,12 +654,9 @@ let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
     in
     begin match (op : Opcode.t) with
     | Alloca -> add_alloca_instructions v mappings
-    (*
-    | Load | Store ->
-      let placement = ValueMap.find v dfg in
-      add_load_store_synchronization v placement.partition block mappings;
+    | Call ->
+      insert_called_function_if_needed (function_from_call v);
       add_straightline ()
-    *)
     | Br -> () (* To be repaired later *)
     | _ -> add_straightline ()
     end
@@ -681,4 +688,8 @@ let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
 
   print_module (filename ^ "_cores.ll") cores_module;
   print_module (filename ^ "_host.ll") host_md;
-  print_module (filename ^ "_comms.ll") comms_module
+  print_module (filename ^ "_comms.ll") comms_module;
+
+  match verify_module cores_module with
+  | Some _s -> ()
+  | None -> ()

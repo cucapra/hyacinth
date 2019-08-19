@@ -166,10 +166,7 @@ let constrain_per_operand (s : solver) (a : assignments) (operand : llvalue) pt 
     assert_ s (equals pt term_0)
   (* Instructions *)
   | Instruction _ ->
-    begin match instr_opcode operand with
-    | Alloca | Load | Store -> assert_ s (equals pt term_0)
-    | _ -> constrain_per_instr_operand ()
-    end
+    constrain_per_instr_operand ()
   (* External operands? *)
   | Function ->
     ()
@@ -184,6 +181,10 @@ let constrain_per_instruction (s : solver) (a : assignments) current : unit =
   (* The ending time must be after the starting time plus the op time *)
   let op_cost_term = int_to_term (opcode_cost opcode) in
   assert_ s (equals (add t1 op_cost_term) t2);
+
+  match instr_opcode value with
+  | Alloca | Load | Store | PHI -> assert_ s (equals pt term_0);
+  | _ -> ();
 
   (* The starting time must be after the ending time of each incoming node *)
   let f (v : llvalue) = constrain_per_operand s a v pt t1 in
