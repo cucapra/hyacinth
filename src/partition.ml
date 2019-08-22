@@ -183,7 +183,7 @@ let constrain_per_instruction (s : solver) (a : assignments) current : unit =
   assert_ s (equals (add t1 op_cost_term) t2);
 
   match instr_opcode value with
-  | Alloca | Load | Store | PHI -> assert_ s (equals pt term_0);
+  | Alloca | Load | Store -> assert_ s (equals pt term_0);
   | _ -> ();
 
   (* The starting time must be after the ending time of each incoming node *)

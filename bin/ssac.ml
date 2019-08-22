@@ -17,7 +17,7 @@ let target_string : string ref = ref "pthreads"
 let usage = "SSA-Spatial Compiler\n"
 let spec_list : (Arg.key * Arg.spec * Arg.doc) list =
   [
-    ("-d", Arg.Set debug, "Prints debugging for constraint generation");
+    ("-d", Arg.Set debug, "Prints verbose debug printing");
     ("-i", Arg.Set intermediate, "Expect intermediate annotations for partitioning");
     ("-m", Arg.Set direct_man_distance, "Computes Manhattan distance directly rather than via a lookup table");
     ("-r", Arg.Set_int rows, "Number of rows in the spatial configuration");
@@ -54,5 +54,5 @@ let _ =
   Intermediate_llvm.emit_intermediate_llvm !out_filename md partitions;
 
   let target = Emit_utils.target_of_string !target_string in
-  Emit_llvm.emit_llvm target !out_filename partitions md
+  Emit_llvm.emit_llvm target !out_filename partitions md !debug
 

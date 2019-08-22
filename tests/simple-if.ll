@@ -55,9 +55,9 @@ declare i32 @atoi(i8* nocapture) #3
 
 define void @replace__p_if_f(i32) {
 entry:
+  %send_alloca = alloca i32, !reason !10
   %1 = call i8* @init()
   %call_partitioned_functions = call i8* @call_partitioned_functions(i32 2, void (i8*)** getelementptr inbounds ([2 x void (i8*)*], [2 x void (i8*)*]* @funs, i32 0, i32 0), i8* %1)
-  %send_alloca = alloca i32, !reason !10
   store i32 %0, i32* %send_alloca, !reason !10
   %send_cast = bitcast i32* %send_alloca to i8*, !reason !10
   call void bitcast (void (i8*, i32, i32, i64, i8*)* @send_argument to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast, i64 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i64), i32 0, i64 ptrtoint ({ i32, i1, i32 }* @arg_0 to i64), i8* %1), !reason !10
@@ -67,12 +67,12 @@ entry:
 
 define void @_p_if_f_0(i8*) {
 entry:
+  %send_alloca = alloca i1, !reason !11
   %argument = call i8* bitcast (i8* (i32, i64, i8*)* @receive_argument to i8* (i64, i64, i8*)*)(i64 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i64), i64 ptrtoint ({ i32, i1, i32 }* @arg_0 to i64), i8* %0), !reason !10
   %bitcast = bitcast i8* %argument to i32*, !reason !10
   %receive_load = load i32, i32* %bitcast, !reason !10
   call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i32, i1, i32 }* @arg_0 to i64), i64 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i64), i8* %0), !reason !10
   %1 = icmp slt i32 %receive_load, 5, !partition !3, !start !3, !end !4
-  %send_alloca = alloca i1, !reason !11
   store i1 %1, i1* %send_alloca, !reason !11
   %send_cast = bitcast i1* %send_alloca to i8*, !reason !11
   call void bitcast (void (i8*, i32, i32, i64, i8*)* @send to void (i8*, i64, i32, i64, i8*)*)(i8* %send_cast, i64 ptrtoint (i1* getelementptr (i1, i1* null, i32 1) to i64), i32 1, i64 ptrtoint ({ i1, i1, i32 }* @comms_1 to i64), i8* %0), !reason !11

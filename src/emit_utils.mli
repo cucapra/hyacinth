@@ -13,11 +13,11 @@ val target_of_string : string -> target
 val init_mappings : unit -> mappings
 
 val add_instr : mappings -> llvalue -> llvalue -> unit
-val get_instr :  mappings -> llvalue -> llvalue
-val get_instr_opt :  mappings -> llvalue -> (llvalue option)
+val get_instr : mappings -> llvalue -> llvalue
+val get_instr_opt : mappings -> llvalue -> (llvalue option)
 
 val add_arg : mappings -> int -> llvalue -> llvalue -> unit
-val get_arg_opt :  mappings -> int -> llvalue -> llvalue option
+val get_arg_opt : mappings -> int -> llvalue -> llvalue option
 
 val add_block : mappings -> int -> llbasicblock -> llbasicblock -> unit
 val get_block : mappings -> int -> llbasicblock -> llbasicblock

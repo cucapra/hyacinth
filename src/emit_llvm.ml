@@ -31,7 +31,10 @@ let address_name = "address_for_symbol"
 let start_execution_name = "start_device_execution"
 let end_execution_name = "end_device_execution"
 let device_execute_name = "device_execute"
+let print_int_name = "print_int"
+let debug = ref false
 let comms_id = ref 0
+let i = ref 0
 let target = ref PThreads
 
 let target_ptr_type () =
@@ -58,6 +61,18 @@ let builder_and_fun partition block mappings =
   let new_builder = builder_at_end context new_block in
   let new_fun = block_parent new_block in
   (new_builder, new_fun)
+
+let add_debug_call builder =
+  let print_int = lookup_function_in print_int_name cores_module in
+  build_call print_int [| const_i32 !i |] "" builder |> ignore;
+  i := !i + 1
+
+let add_debug_calls v partitions mappings =
+  let per_partition p =
+    let builder, _ = builder_and_fun p (instr_parent v) mappings in
+    add_debug_call builder
+  in
+  List.iter per_partition partitions
 
 let new_addr_with_name name ty : llvalue =
   (* Allocate memory for this communication and a ready flag based on type *)
@@ -104,17 +119,29 @@ let call_partitioned_funs builder md ctx new_fun_set =
   let args = [| const_i32 funs_len; gep; ctx |] in
   build_call call_partitioned args call_partitioned_name builder
 
+
+let function_for_value value =
+  match classify_value value with
+  | Argument -> param_parent value
+  | _ -> block_parent (instr_parent value)
+
 let value_to_value_ptr value reason builder =
   let ty = (type_of value) in
   let value_ptr, to_replace = match classify_type ty with
   | TypeKind.Double | TypeKind.Integer | TypeKind.Pointer ->
-    let alloca = build_alloca ty "send_alloca" builder in
+
+    (* alloca instruction need to be in the entry block, use the beginning *)
+    let value_fun = function_for_value value in
+    let fun_begin = instr_begin (entry_block value_fun) in
+    let entry_builder = builder_at context fun_begin in
+    let alloca = build_alloca ty "send_alloca" entry_builder in
+
+    (* store/cast in the current builder *)
     let store = build_store value alloca builder in
     let bitcast = build_bitcast alloca void_pt_type "send_cast" builder in
     List.iter (set_metadata_string reason) [alloca; store; bitcast];
     bitcast, store
   | _ ->
-    print_endline ("should bitcast send for: " ^ (string_of_lltype ty) ^ ", " ^  string_of_llvalue value);
     value, value
   in
   let size = size_of_ty ty in
@@ -127,10 +154,10 @@ let call_send_variant variant value reason (to_partition : int) id builder ctx =
   let args = [| value_ptr; size; destination; id; ctx |] in
   let send = build_call send args "" builder in
   set_metadata_string reason send;
+  if !debug then add_debug_call builder;
   to_replace
 
 let call_send_return value reason builder ctx =
-
   let value_ptr, size, to_replace = value_to_value_ptr value reason builder in
   let send = lookup_function_in send_return_name cores_module in
   let args = [| value_ptr; size; ctx |] in
@@ -157,6 +184,7 @@ let call_receive_variant variant variant_module name reason (ty : lltype) from_p
   | None -> ()
   end;
   List.iter (set_metadata_string reason) [value; bitcast; load];
+  if !debug then add_debug_call builder;
   load
 
 let call_receive name reason (ty : lltype) (from_partition : int) id builder ctx =
@@ -229,7 +257,9 @@ let declare_external_functions host_md mappings =
     declare_function address_name address_t host_md |> ignore;
     let execute_t = function_type void_type [| |] in
     declare_function start_execution_name execute_t host_md |> ignore;
-    declare_function end_execution_name execute_t host_md |> ignore
+    declare_function end_execution_name execute_t host_md |> ignore;
+    let print_int_t = function_type void_type [| ptr_ty |] in
+    declare_function print_int_name print_int_t cores_module |> ignore;
   end;
 
   let declare_function (f : llvalue) =
@@ -252,6 +282,7 @@ let declare_external_functions host_md mappings =
   in
   iter_globals define_global host_md
 
+(* Construct/find the new and replace/host builder and function *)
 let builders_from_block block p mappings host_md =
   let new_builder, new_fun = builder_and_fun p block mappings in
   let parent = block_parent block in
@@ -261,6 +292,7 @@ let builders_from_block block p mappings host_md =
     add_value vs new_fun;
     (b, c)
   | None ->
+    (* clone function to new function *)
     let fun_type = element_type (type_of parent) in
     let replace_name = "replace_" ^ (value_name parent) in
     let part_fun = define_function replace_name fun_type host_md in
@@ -268,6 +300,12 @@ let builders_from_block block p mappings host_md =
     let builder = builder_at context fun_begin in
     let ctx = call_init builder host_md in
     add_fun mappings parent builder ctx new_fun;
+
+    (* map function args to clone args *)
+    let old_args = params parent in
+    let new_args = params part_fun in
+    Array.iter2 (add_instr mappings) old_args new_args;
+
     (builder, ctx)
   in
 
@@ -295,20 +333,7 @@ let replace_operand idx inst block partition builder find_partition mappings hos
   let op = operand inst idx in
   match (get_instr_opt mappings op) with
   | Some new_op ->
-    (* If the operand is a global, check whether it can write to memory *)
-    (* If the operand is on a different partition, insert send/receive *)
-    let op_partition = find_partition op in
-    if (partition != op_partition) && not (is_alloca op) then
-      let op_builder, op_fun = builder_and_fun op_partition block mappings in
-      let id = new_comms_addr (type_of new_op) in
-      let ctx = param op_fun 0 in
-      let receive = call_receive receive_name "replace mapped op" (type_of new_op) op_partition id builder ctx in
-      call_send_variant send_name new_op "replace mapped op" partition id op_builder ctx |> ignore;
-      set_operand inst idx receive
-    else
-      set_operand inst idx new_op
-  | None ->
-    (* If the operand is an argument, insert send/receive from host *)
+    (* If the value is an argument, send/receive as needed *)
     begin match (classify_value op) with
     | Argument ->
       begin match (get_arg_opt mappings partition op) with
@@ -324,16 +349,30 @@ let replace_operand idx inst block partition builder find_partition mappings hos
           let entry_builder = builder_at context (instr_begin entry) in
           let ctx = param new_fun 0 in
           if (op != ctx) then (
+            let replace_op = get_instr mappings op in
             let addr, name = new_arg_addr_name (type_of op) in
             let host_addr = host_argument_address replace_builder addr name r_ctx host_md in
             let call = call_receive_arg "argument" "replace argument" (type_of op) addr entry_builder ctx in
-            call_send_variant send_arg_name op "replace argument" partition host_addr replace_builder r_ctx |> ignore;
+            call_send_variant send_arg_name replace_op "replace argument" partition host_addr replace_builder r_ctx |> ignore;
             add_arg mappings partition op call;
             set_operand inst idx call)
         end
       end
-    | _ -> ()
+    | _ -> (* Non-argument value *)
+    (* If the operand is a global, check whether it can write to memory *)
+    (* If the operand is on a different partition, insert send/receive *)
+    let op_partition = find_partition op in
+    if (partition != op_partition) && not (is_alloca op) then
+      let op_builder, op_fun = builder_and_fun op_partition block mappings in
+      let id = new_comms_addr (type_of new_op) in
+      let ctx = param op_fun 0 in
+      let receive = call_receive receive_name "replace mapped op" (type_of new_op) op_partition id builder ctx in
+      call_send_variant send_name new_op "replace mapped op" partition id op_builder ctx |> ignore;
+      set_operand inst idx receive
+    else
+      set_operand inst idx new_op
     end
+  | None -> (* do nothing for literal/constant values *) ()
 
 let replace_operands inst block partition builder find_partition mappings host_md =
   let replace_op idx =
@@ -506,11 +545,11 @@ let add_straightline_instructions v block placement find_partition partitions ma
     there may be multiple returns per function, so we'll insert the receive
     once, later. *)
     if (num_operands v) > 0 then begin
-      let ret = operand v 0 in
+      let clone = instr_clone v in
+      replace_operands clone block p new_builder find_partition mappings host_md;
+      let ret = operand clone 0 in
       let call = call_send_return ret "return" new_builder ctx in
-      set_metadata_string "return" call;
-      let before = builder_before context call in
-      replace_operands call block p before find_partition mappings host_md;
+      set_metadata_string "return" call
     end;
     (* Insert void return at this block for all partitions *)
     List.iter (insert_ret_void block mappings) partitions
@@ -531,15 +570,18 @@ let insert_called_function_if_needed f =
     failwith ("Partitioned function references unavailable function: " ^
       (string_of_llvalue f))
 
+let rec find_init position =
+  match position with
+  | Before v ->
+    if (instr_opcode v == Call) then instr_succ v else find_init (instr_succ v)
+  | At_end _ -> failwith "builder should be after init"
+
 let replace_fun mappings host_md old_fun (_, ctx, new_fun_set) =
   let old_name = value_name old_fun in
   let new_fun = lookup_function_in ("replace_" ^ old_name) host_md in
   let return_t = return_type (element_type (type_of old_fun)) in
   replace_all_uses_with old_fun new_fun;
-  let after_init = match instr_begin (entry_block new_fun) with
-  | Before v -> instr_succ v
-  | At_end _ -> failwith "builder should be after init"
-  in
+  let after_init = find_init (instr_begin (entry_block new_fun)) in
 
   let builder = builder_at context after_init in
   let end_builder = builder_at_end context (entry_block new_fun) in
@@ -625,9 +667,10 @@ let set_target_specific_data_layout host_md =
     in
     iter_globals set cores_module
 
-let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
+let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) db =
   print_endline "\nStarting to emit LLVM";
   target := tg;
+  debug := db;
 
   let mappings = init_mappings () in
   declare_external_functions host_md mappings;
@@ -641,7 +684,6 @@ let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
   clone_blocks_per_partition host_md partitions mappings;
 
   let add_instructions (v : llvalue) =
-    (* print_endline ("Emitting LLVM for instruction: " ^ (string_of_llvalue v)); *)
     let op = instr_opcode v in
     let block = instr_parent v in
     let add_straightline () =
@@ -659,7 +701,12 @@ let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) =
       add_straightline ()
     | Br -> () (* To be repaired later *)
     | _ -> add_straightline ()
+    end;
+   if !debug then begin match (op : Opcode.t) with
+    | Ret | PHI -> ()
+    | _ -> add_debug_calls v partitions mappings
     end
+
   in
   let per_function f fn =
     let blocks = fold_left_blocks (fun bs b -> b::bs) [] fn in
