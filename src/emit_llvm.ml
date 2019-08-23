@@ -125,6 +125,15 @@ let function_for_value value =
   | Argument -> param_parent value
   | _ -> block_parent (instr_parent value)
 
+(* Insert alloca's in order at the beginning of the entry block*)
+let rec find_with_opcode_test (opcode_test : Opcode.t -> bool)  position =
+  match position with
+  | Before v ->
+    if (opcode_test (instr_opcode v))
+      then position
+      else find_with_opcode_test opcode_test (instr_succ v)
+  | At_end _ -> position
+
 let value_to_value_ptr value reason builder =
   let ty = (type_of value) in
   let value_ptr, to_replace = match classify_type ty with
@@ -132,13 +141,19 @@ let value_to_value_ptr value reason builder =
 
     (* alloca instruction need to be in the entry block, use the beginning *)
     let value_fun = function_for_value value in
-    let fun_begin = instr_begin (entry_block value_fun) in
-    let entry_builder = builder_at context fun_begin in
-    let alloca = build_alloca ty "send_alloca" entry_builder in
+    let entry_begin = instr_begin (entry_block value_fun) in
+    let insert_at = find_with_opcode_test ((!=) Opcode.Alloca) entry_begin in
+    let alloca_builder = builder_at context insert_at in
+    let alloca = build_alloca ty "send_alloca" alloca_builder in
 
-    (* store/cast in the current builder *)
+    (* bitcasts can also happen once in entry*)
+    let o_test o = (o != Opcode.Alloca) && (o != Opcode.BitCast) in
+    let cast_at = find_with_opcode_test o_test insert_at in
+    let cast_builder = builder_at context cast_at in
+    let bitcast = build_bitcast alloca void_pt_type "send_cast" cast_builder in
+
+    (* store in the current builder *)
     let store = build_store value alloca builder in
-    let bitcast = build_bitcast alloca void_pt_type "send_cast" builder in
     List.iter (set_metadata_string reason) [alloca; store; bitcast];
     bitcast, store
   | _ ->
@@ -259,7 +274,7 @@ let declare_external_functions host_md mappings =
     declare_function start_execution_name execute_t host_md |> ignore;
     declare_function end_execution_name execute_t host_md |> ignore;
     let print_int_t = function_type void_type [| ptr_ty |] in
-    declare_function print_int_name print_int_t cores_module |> ignore;
+    declare_function print_int_name print_int_t cores_module |> ignore
   end;
 
   let declare_function (f : llvalue) =
@@ -714,7 +729,10 @@ let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) db =
     List.iter (iter_instrs f) sorted
   in
 
-  let find_partition v = (ValueMap.find v dfg).partition in
+  let find_partition v = match (ValueMap.find_opt v dfg) with
+  | Some p -> p.partition
+  | None -> failwith (string_of_llvalue v)
+  in
   iter_included_functions (per_function add_instructions) host_md;
   let repair_phi = repair_phi_node find_partition mappings in
   iter_included_functions (per_function repair_phi) host_md;
