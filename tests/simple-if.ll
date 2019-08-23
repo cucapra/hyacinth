@@ -71,7 +71,6 @@ entry:
   %argument = call i8* bitcast (i8* (i32, i64, i8*)* @receive_argument to i8* (i64, i64, i8*)*)(i64 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i64), i64 ptrtoint ({ i32, i1, i32 }* @arg_0 to i64), i8* %0), !reason !10
   %bitcast = bitcast i8* %argument to i32*, !reason !10
   %receive_load = load i32, i32* %bitcast, !reason !10
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ i32, i1, i32 }* @arg_0 to i64), i64 ptrtoint (i32* getelementptr (i32, i32* null, i32 1) to i64), i8* %0), !reason !10
   %1 = icmp slt i32 %receive_load, 5, !partition !3, !start !3, !end !4
   store i1 %1, i1* %send_alloca, !reason !11
   %send_cast = bitcast i1* %send_alloca to i8*, !reason !11

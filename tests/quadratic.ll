@@ -165,15 +165,12 @@ entry:
   %argument4 = call i8* bitcast (i8* (i32, i64, i8*)* @receive_argument to i8* (i64, i64, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i64 ptrtoint ({ double, i1, i32 }* @arg_2 to i64), i8* %0), !reason !27
   %bitcast5 = bitcast i8* %argument4 to double*, !reason !27
   %receive_load6 = load double, double* %bitcast5, !reason !27
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ double, i1, i32 }* @arg_2 to i64), i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i8* %0), !reason !27
   %argument1 = call i8* bitcast (i8* (i32, i64, i8*)* @receive_argument to i8* (i64, i64, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i64 ptrtoint ({ double, i1, i32 }* @arg_1 to i64), i8* %0), !reason !27
   %bitcast2 = bitcast i8* %argument1 to double*, !reason !27
   %receive_load3 = load double, double* %bitcast2, !reason !27
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ double, i1, i32 }* @arg_1 to i64), i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i8* %0), !reason !27
   %argument = call i8* bitcast (i8* (i32, i64, i8*)* @receive_argument to i8* (i64, i64, i8*)*)(i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i64 ptrtoint ({ double, i1, i32 }* @arg_0 to i64), i8* %0), !reason !27
   %bitcast = bitcast i8* %argument to double*, !reason !27
   %receive_load = load double, double* %bitcast, !reason !27
-  call void bitcast (void (i64, i32, i8*)* @free_comms to void (i64, i64, i8*)*)(i64 ptrtoint ({ double, i1, i32 }* @arg_0 to i64), i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i8* %0), !reason !27
   %1 = fmul double %receive_load, %receive_load, !partition !3, !start !4, !end !5
   %2 = fmul double %receive_load3, 4.000000e+00, !partition !3, !start !6, !end !7
   %3 = fmul double %2, %receive_load6, !partition !3, !start !8, !end !9

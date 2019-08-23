@@ -176,12 +176,12 @@ let call_receive_variant variant variant_module name reason (ty : lltype) from_p
   let value = build_call receive args name builder in
   let bitcast = build_bitcast value (pointer_type ty) "bitcast" builder in
   let load = build_load bitcast "receive_load" builder in
-  begin match id with
-  | Some i ->
+  begin match (from_partition, id) with
+  | Some _, Some i ->
     let free = lookup_function_in free_name cores_module in
     let call_free = build_call free [| i; size; ctx |] "" builder in
     set_metadata_string reason call_free
-  | None -> ()
+  | _ -> ()
   end;
   List.iter (set_metadata_string reason) [value; bitcast; load];
   if !debug then add_debug_call builder;
