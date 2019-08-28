@@ -344,6 +344,28 @@ let host_argument_address builder addr name ctx host_md =
   | PThreads -> addr
   | BSGManycore -> lookup_address builder name ctx host_md
 
+let receive_arg_from_host old_arg block partition mappings host_md =
+  match (get_arg_opt mappings partition old_arg) with
+  | Some new_arg -> new_arg
+  | None ->
+    begin match (!target, classify_type (type_of old_arg)) with
+    | (BSGManycore, Pointer) ->
+      failwith "Pointer arguments for BSGManycore target not implemented yet"
+    | _ ->
+      (* Send argument from host to device SRAM, receive in the entry block *)
+      let _, new_fun, replace_builder, r_ctx = builders_from_block block partition mappings host_md in
+      let entry = entry_block new_fun in
+      let entry_builder = builder_at context (instr_begin entry) in
+      let ctx = param new_fun 0 in
+      let replace_op = get_instr mappings old_arg in
+      let addr, name = new_arg_addr_name (type_of old_arg) in
+      let host_addr = host_argument_address replace_builder addr name r_ctx host_md in
+      let call = call_receive_arg "argument" "replace argument" (type_of old_arg) addr entry_builder ctx in
+      call_send_variant send_arg_name replace_op "replace argument" partition host_addr replace_builder r_ctx |> ignore;
+      add_arg mappings partition old_arg call;
+      call
+    end
+
 let replace_operand idx inst block partition builder find_partition mappings host_md =
   let op = operand inst idx in
   match (get_instr_opt mappings op) with
@@ -351,28 +373,8 @@ let replace_operand idx inst block partition builder find_partition mappings hos
     (* If the value is an argument, send/receive as needed *)
     begin match (classify_value op) with
     | Argument ->
-      begin match (get_arg_opt mappings partition op) with
-      | Some new_arg -> set_operand inst idx new_arg
-      | None ->
-        begin match (!target, classify_type (type_of op)) with
-        | (BSGManycore, Pointer) ->
-          failwith "Pointer arguments for BSGManycore target not implemented yet"
-        | _ ->
-          (* Send argument from host to device SRAM *)
-          let _, new_fun, replace_builder, r_ctx = builders_from_block block partition mappings host_md in
-          let entry = entry_block new_fun in
-          let entry_builder = builder_at context (instr_begin entry) in
-          let ctx = param new_fun 0 in
-          if (op != ctx) then (
-            let replace_op = get_instr mappings op in
-            let addr, name = new_arg_addr_name (type_of op) in
-            let host_addr = host_argument_address replace_builder addr name r_ctx host_md in
-            let call = call_receive_arg "argument" "replace argument" (type_of op) addr entry_builder ctx in
-            call_send_variant send_arg_name replace_op "replace argument" partition host_addr replace_builder r_ctx |> ignore;
-            add_arg mappings partition op call;
-            set_operand inst idx call)
-        end
-      end
+      let new_arg = receive_arg_from_host op block partition mappings host_md in
+      set_operand inst idx new_arg
     | _ -> (* Non-argument value *)
     (* If the operand is a global, check whether it can write to memory *)
     (* If the operand is on a different partition, insert send/receive *)
@@ -397,26 +399,34 @@ let replace_operands inst block partition builder find_partition mappings host_m
   let arity_range = Core.List.range 0 arity in
   List.iter replace_op arity_range
 
-let repair_phi_node find_partition mappings phi : unit =
+let repair_phi_node find_partition mappings host_md phi : unit =
   let map_incoming partition (v, block) =
     let prev_block = get_block mappings partition block in
     match (get_instr_opt mappings v) with
     | Some new_val ->
-      let op_partition = find_partition v in
-      (* If the operand is on a different partition, insert send/receive
-         on the SOURCE block, not the current block *)
-      if partition != op_partition then begin
-        let op_block = get_block mappings op_partition block in
-        let op_builder = builder_at_end context op_block in
-        let prev_block_builder = builder_at_end context prev_block in
-        let id = new_comms_addr (type_of new_val) in
-        let ctx = param (block_parent op_block) 0 in
-        call_send_variant send_name new_val "repair_phi" partition id op_builder ctx |> ignore;
-        let receive = call_receive "repair_phi" receive_name (type_of new_val) op_partition id prev_block_builder ctx in
-        (receive, prev_block)
+      begin match classify_value v with
+      | Argument ->
+        (* If the operand is an argument, look it up or fetch on the previous
+         block *)
+        let new_arg = receive_arg_from_host v block partition mappings host_md in
+        (new_arg, prev_block)
+      | _ ->
+        let op_partition = find_partition v in
+        (* If the operand is on a different partition, insert send/receive
+           on the SOURCE block, not the current block *)
+        if partition != op_partition then begin
+          let op_block = get_block mappings op_partition block in
+          let op_builder = builder_at_end context op_block in
+          let prev_block_builder = builder_at_end context prev_block in
+          let id = new_comms_addr (type_of new_val) in
+          let ctx = param (block_parent op_block) 0 in
+          call_send_variant send_name new_val "repair_phi" partition id op_builder ctx |> ignore;
+          let receive = call_receive "repair_phi" receive_name (type_of new_val) op_partition id prev_block_builder ctx in
+          (receive, prev_block)
+        end
+        else
+          (new_val, prev_block)
       end
-      else
-        (new_val, prev_block)
     | None ->
       (v, prev_block)
   in
@@ -734,7 +744,7 @@ let emit_llvm tg filename (dfg : placement ValueMap.t) (host_md : llmodule) db =
   | None -> failwith (string_of_llvalue v)
   in
   iter_included_functions (per_function add_instructions) host_md;
-  let repair_phi = repair_phi_node find_partition mappings in
+  let repair_phi = repair_phi_node find_partition mappings host_md in
   iter_included_functions (per_function repair_phi) host_md;
 
   let repair_branch = repair_branch find_partition mappings partitions host_md in
