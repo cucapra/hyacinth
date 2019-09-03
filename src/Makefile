@@ -1,4 +1,4 @@
-MAIN=ssac
+MAIN=hyac
 
 OBJS = ast.cmo lexer.cmo parser.cmo
 

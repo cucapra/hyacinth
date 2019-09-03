@@ -1,4 +1,4 @@
 (executable
- (name ssac)
- (public_name ssac)
- (libraries ssacompiler))
+ (name hyac)
+ (public_name hyac)
+ (libraries hyacinth))

@@ -1,4 +1,4 @@
-SSAC := dune exec ssac --
+HYAC := dune exec hyac --
 TIMEOUT := 2
 ROWS := 1
 COLS := 2
@@ -38,7 +38,7 @@ test_save:
 	make clean
 
 %_comms.ll %_host.ll %_cores.ll %.dot: %.bc
-	cat $< | $(SSAC) -t $(TIMEOUT) -r $(ROWS) -c $(COLS) -target $(TARGET) $(SSAC_EXTRA_FLAGS) -o $*
+	cat $< | $(HYAC) -t $(TIMEOUT) -r $(ROWS) -c $(COLS) -target $(TARGET) $(HYAC_EXTRA_FLAGS) -o $*
 
 %_partitioned.ll: %_comms.ll  %_host.ll %_cores.ll src/pthreads/communication.ll
 	llvm-link -S $^ -o $@

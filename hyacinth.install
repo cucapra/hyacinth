@@ -1,0 +1,11 @@
+lib: [
+  "_build/install/default/lib/hyacinth/META"
+  "_build/install/default/lib/hyacinth/dune-package"
+  "_build/install/default/lib/hyacinth/opam"
+]
+bin: [
+  "_build/install/default/bin/hyac"
+]
+doc: [
+  "_build/install/default/doc/hyacinth/README.md"
+]

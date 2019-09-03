@@ -1,4 +1,4 @@
-open Ssacompiler
+open Hyacinth
 open Partition
 
 let program_file : string option ref = ref None
@@ -11,10 +11,10 @@ let direct_man_distance : bool ref = ref false
 let rows : int ref = ref 2
 let columns : int ref = ref 2
 let timeout : int ref = ref 100000
-let out_filename : string ref = ref "ssac-output"
+let out_filename : string ref = ref "hyac-output"
 let target_string : string ref = ref "pthreads"
 
-let usage = "SSA-Spatial Compiler\n"
+let usage = "Hyacinth Compiler\n"
 let spec_list : (Arg.key * Arg.spec * Arg.doc) list =
   [
     ("-d", Arg.Set debug, "Prints verbose debug printing");

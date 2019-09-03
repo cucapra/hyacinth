@@ -1,4 +1,4 @@
-SSAC Compiler
+Hyacinth Compiler
 =====
 
 Note: this project is under active development, and this documentation may not be fully up-to-date.
@@ -65,7 +65,7 @@ Then:
 Building & Running
 -----
 
-Run the following from the top-level directory to install the compiler's `ssac` executable onto your path:
+Run the following from the top-level directory to install the compiler's `hyac` executable onto your path:
 
     $ eval $(opam env)
     $ make install
@@ -74,9 +74,9 @@ Assuming you have a file `hello.c`, to simulate partitioning the file:
 
     $ make hello_partitioned.out
 
-The `ssac` executable supports the following arguments:
+The `hyac` executable supports the following arguments:
 
-    $ SSA-Spatial Compiler
+    $ Hyacinth Compiler
     $ 
     $   -d Prints debugging for constraint generation
     $   -m Computes Manhattan distance directly rather than via a lookup table
@@ -88,14 +88,14 @@ The `ssac` executable supports the following arguments:
     $   -help  Display this list of options
     $   --help  Display this list of options
 
-SSAC also produces a dot final for visualizing the final partitioning. To view the result as a png:
+Hyacinth also produces a dot final for visualizing the final partitioning. To view the result as a png:
 
     $ make hello.png
     
 Testing
 -----
 
-SSAC uses [Turnt][] for testing, which compares both the emitted LLVM IR files and the results of executing the emitted partitioning. 
+Hyacinth uses [Turnt][] for testing, which compares both the emitted LLVM IR files and the results of executing the emitted partitioning. 
 
 To run all tests:
 
