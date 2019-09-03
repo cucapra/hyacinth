@@ -57,3 +57,14 @@ test_save:
 
 bsg_communication:
 	make src/bsg_manycore/bsg_communication.o
+
+CXX := g++
+LLVM_BIN_PATH 	:= /usr/local/opt/llvm/bin
+
+LLVM_CXXFLAGS := `$(LLVM_BIN_PATH)/llvm-config --cxxflags`
+LLVM_LDFLAGS := `$(LLVM_BIN_PATH)/llvm-config --ldflags --libs --system-libs`
+
+BUILDDIR := build
+
+$(BUILDDIR)/consume_module: src/consume_module.cpp
+	$(CXX) $(pkg-config --cflags --libs z3) $(CXXFLAGS) $(LLVM_CXXFLAGS) $^ $(LLVM_LDFLAGS) -o $@
