@@ -27,6 +27,7 @@ clean:
 	rm -f {.,src,examples/*}/*.{ll,bc,out,dot,png}
 	rm -f tests/*{.bc,.out,.dot,.png,_partitioned.ll,_host.ll,_cores.ll,_comms.ll,_intermediate.ll}
 	rm -f tests/output
+	rm -rf hyacpp
 	dune clean
 
 test:
@@ -66,5 +67,7 @@ LLVM_LDFLAGS := `$(LLVM_BIN_PATH)/llvm-config --ldflags --libs --system-libs`
 
 BUILDDIR := build
 
-$(BUILDDIR)/consume_module: src/consume_module.cpp
-	$(CXX) $(pkg-config --cflags --libs z3) $(CXXFLAGS) $(LLVM_CXXFLAGS) $^ $(LLVM_LDFLAGS) -o $@
+CPP_FILES := src/LLVMSupport/*.cpp 
+
+hyacpp: $(CPP_FILES)
+	$(CXX) $(pkg-config --cflags --libs z3) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CPP_FILES) $(LLVM_LDFLAGS) -o hyacpp
