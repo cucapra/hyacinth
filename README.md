@@ -5,7 +5,7 @@ Note: this project is under active development, and this documentation may not b
 
 -----
 
-This is a compiler that partitions a program's [LLVM][] intermediate representation across a spatial architecture of cores, minimizing the estimated idealized cycle count.
+This is a compiler that partitions functions' [LLVM][] intermediate representation across a spatial architecture of cores, minimizing the estimated idealized cycle count.
 
 Installing Dependencies
 ------
