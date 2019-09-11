@@ -13,17 +13,17 @@ define void @_p_if_f(i32) local_unnamed_addr #0 {
   br i1 %2, label %3, label %5
 
 ; <label>:3:                                      ; preds = %1
-  %4 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i64 0, i64 0)), !partition !3, !start !3, !end !4
+  %4 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str.3, i64 0, i64 0)), !partition !3, !start !3, !end !5
   br label %7
 
 ; <label>:5:                                      ; preds = %1
-  %6 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i64 0, i64 0)), !partition !3, !start !3, !end !4
+  %6 = tail call i32 @puts(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @str, i64 0, i64 0)), !partition !3, !start !3, !end !5
   br label %7
 
 ; <label>:7:                                      ; preds = %5, %3
-  %8 = phi i32 [ 0, %3 ], [ 1, %5 ], !partition !3, !start !4, !end !4
-  %9 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.2, i64 0, i64 0), i32 %8), !partition !3, !start !3, !end !4
-  ret void, !partition !5, !start !3, !end !5
+  %8 = phi i32 [ 0, %3 ], [ 1, %5 ], !partition !3, !start !3, !end !3
+  %9 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.2, i64 0, i64 0), i32 %8), !partition !3, !start !3, !end !3
+  ret void, !partition !3, !start !3, !end !3
 }
 
 ; Function Attrs: nounwind
@@ -56,8 +56,8 @@ attributes #3 = { nounwind }
 !1 = !{i32 7, !"PIC Level", i32 2}
 !2 = !{!"clang version 8.0.1 (tags/RELEASE_801/final)"}
 !3 = !{!"0"}
-!4 = !{!"3"}
-!5 = !{!"1"}
+!4 = !{!"1"}
+!5 = !{!"30"}
 !6 = !{!7, !7, i64 0}
 !7 = !{!"any pointer", !8, i64 0}
 !8 = !{!"omnipotent char", !9, i64 0}

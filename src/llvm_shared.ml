@@ -58,7 +58,7 @@ let rec print_type llty : string =
 let opcode_cost (opcode : Opcode.t) : int =
   match opcode with
   (* Operations with negligible cost *)
-  | Br | PHI | Ret | BitCast | Trunc | ZExt-> 0
+  | Br | PHI | Ret | BitCast | Trunc | ZExt -> 0
 
   (* Operations with small costs, based on LLVM's CostModel *)
   | FMul -> 2
