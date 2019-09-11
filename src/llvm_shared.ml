@@ -57,20 +57,19 @@ let rec print_type llty : string =
 
 let opcode_cost (opcode : Opcode.t) : int =
   match opcode with
-  | Alloca -> 1
-  | Load -> 1
-  | Store -> 1
+  (* Operations with negligible cost *)
+  | Br | PHI | Ret | BitCast | Trunc | ZExt -> 0
+
+  (* Operations with small costs, based on LLVM's CostModel *)
   | FMul -> 2
   | FSub -> 2
-  | FDiv -> 3
-  | FAdd -> 2
-  | FCmp -> 1
-  | PHI -> 0
-  | Ret -> 1
-  | Call -> 3
-  | Br -> 1
-  | Select -> 1
-  | _ -> 3
+
+  (* Operations with large costs, based on LLVM's CostModel *)
+  | FDiv -> 30
+  | Call -> 30
+
+  (* Operations with cost 1 or unknown, based on LLVM's CostModel *)
+  | _ -> 1
 
 let pretty_opcode (opcode : Opcode.t) : string =
   match opcode with

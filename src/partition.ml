@@ -144,7 +144,7 @@ let constrain_per_operand (s : solver) (a : assignments) (operand : llvalue) pt 
     (* Otherwise, the starting time must be after the incoming ending time
       plus the communication cost *)
     | _ ->
-      let partition_comms_term = time_for_comms pt op_end_t in
+      let partition_comms_term = time_for_comms pt op_pt in
       assert_ s (gte t1 (add op_end_t partition_comms_term))
   in
   match (classify_value operand) with
