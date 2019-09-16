@@ -6,50 +6,40 @@ target triple = "x86_64-apple-macosx10.14.0"
 @.str.1 = private unnamed_addr constant [22 x i8] c"quadratic result: %f\0A\00", align 1
 @str = private unnamed_addr constant [14 x i8] c"starting main\00", align 1
 
-; Function Attrs: nounwind ssp uwtable
+; Function Attrs: nounwind readnone ssp uwtable
 define double @_p_quadratic(double, double, double) local_unnamed_addr #0 {
   %4 = fmul double %1, %1, !partition !3, !start !4, !end !5
-  %5 = fmul double %0, 4.000000e+00, !partition !3, !start !6, !end !7
-  %6 = fmul double %5, %2, !partition !3, !start !8, !end !9
-  %7 = fsub double %4, %6, !partition !3, !start !10, !end !11
-  %8 = fmul double %0, 2.000000e+00, !partition !3, !start !9, !end !12
-  %9 = tail call i32 @"\01_sleep"(i32 1) #5, !partition !3, !start !13, !end !14
-  %10 = tail call i32 @"\01_sleep"(i32 1) #5, !partition !3, !start !15, !end !16
-  %11 = tail call i32 @"\01_sleep"(i32 1) #5, !partition !4, !start !17, !end !18
-  %12 = tail call i32 @"\01_sleep"(i32 1) #5, !partition !4, !start !19, !end !17
-  %13 = tail call i32 @"\01_sleep"(i32 1) #5, !partition !3, !start !20, !end !21
-  %14 = tail call i32 @"\01_sleep"(i32 1) #5, !partition !4, !start !4, !end !19
-  %15 = tail call i32 @"\01_sleep"(i32 1) #5, !partition !4, !start !22, !end !23
-  %16 = tail call i32 @"\01_sleep"(i32 1) #5, !partition !4, !start !24, !end !22
-  %17 = fsub double -0.000000e+00, %1, !partition !3, !start !12, !end !10
-  %18 = tail call double @llvm.sqrt.f64(double %7), !partition !3, !start !25, !end !26
-  %19 = fsub double %18, %1, !partition !3, !start !27, !end !28
-  %20 = fdiv double %19, %8, !partition !3, !start !29, !end !30
-  %21 = fsub double %17, %18, !partition !3, !start !30, !end !15
-  %22 = fdiv double %21, %8, !partition !4, !start !18, !end !24
-  %23 = fcmp une double %20, 0.000000e+00, !partition !3, !start !16, !end !31
-  %24 = select i1 %23, double %20, double %22, !partition !3, !start !14, !end !20
-  ret double %24, !partition !4, !start !22, !end !22
+  %5 = fmul double %0, 4.000000e+00, !partition !4, !start !3, !end !6
+  %6 = fmul double %5, %2, !partition !4, !start !5, !end !7
+  %7 = fsub double %4, %6, !partition !3, !start !8, !end !9
+  %8 = fmul double %0, 2.000000e+00, !partition !4, !start !10, !end !11
+  %9 = fsub double -0.000000e+00, %1, !partition !4, !start !7, !end !12
+  %10 = tail call double @llvm.sqrt.f64(double %7), !partition !4, !start !13, !end !14
+  %11 = fsub double %10, %1, !partition !3, !start !10, !end !11
+  %12 = fdiv double %11, %8, !partition !4, !start !15, !end !16
+  %13 = fsub double %9, %10, !partition !3, !start !11, !end !17
+  %14 = fdiv double %13, %8, !partition !3, !start !18, !end !19
+  %15 = fcmp une double %12, 0.000000e+00, !partition !4, !start !20, !end !19
+  %16 = select i1 %15, double %12, double %14, !partition !4, !start !21, !end !22
+  ret double %16, !partition !4, !start !23, !end !23
 }
 
-declare i32 @"\01_sleep"(i32) local_unnamed_addr #1
-
 ; Function Attrs: nounwind readnone speculatable
-declare double @llvm.sqrt.f64(double) #2
+declare double @llvm.sqrt.f64(double) #1
 
 ; Function Attrs: nounwind ssp uwtable
-define i32 @main(i32, i8** nocapture readonly) local_unnamed_addr #0 {
+define i32 @main(i32, i8** nocapture readonly) local_unnamed_addr #2 {
   %3 = tail call i32 @puts(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @str, i64 0, i64 0))
   %4 = getelementptr inbounds i8*, i8** %1, i64 1
-  %5 = load i8*, i8** %4, align 8, !tbaa !32
+  %5 = load i8*, i8** %4, align 8, !tbaa !24
   %6 = tail call i32 @atoi(i8* %5)
   %7 = sitofp i32 %6 to double
   %8 = getelementptr inbounds i8*, i8** %1, i64 2
-  %9 = load i8*, i8** %8, align 8, !tbaa !32
+  %9 = load i8*, i8** %8, align 8, !tbaa !24
   %10 = tail call i32 @atoi(i8* %9)
   %11 = sitofp i32 %10 to double
   %12 = getelementptr inbounds i8*, i8** %1, i64 3
-  %13 = load i8*, i8** %12, align 8, !tbaa !32
+  %13 = load i8*, i8** %12, align 8, !tbaa !24
   %14 = tail call i32 @atoi(i8* %13)
   %15 = sitofp i32 %14 to double
   %16 = tail call double @_p_quadratic(double %7, double %11, double %15)
@@ -66,9 +56,9 @@ declare i32 @atoi(i8* nocapture) local_unnamed_addr #4
 ; Function Attrs: nounwind
 declare i32 @puts(i8* nocapture readonly) local_unnamed_addr #5
 
-attributes #0 = { nounwind ssp uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "min-legal-vector-width"="0" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
-attributes #1 = { "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
-attributes #2 = { nounwind readnone speculatable }
+attributes #0 = { nounwind readnone ssp uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "min-legal-vector-width"="0" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
+attributes #1 = { nounwind readnone speculatable }
+attributes #2 = { nounwind ssp uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "min-legal-vector-width"="0" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #3 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #4 = { nounwind readonly "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #5 = { nounwind }
@@ -79,36 +69,28 @@ attributes #5 = { nounwind }
 !0 = !{i32 1, !"wchar_size", i32 4}
 !1 = !{i32 7, !"PIC Level", i32 2}
 !2 = !{!"clang version 8.0.1 (tags/RELEASE_801/final)"}
-!3 = !{!"1"}
-!4 = !{!"0"}
-!5 = !{!"2"}
-!6 = !{!"6"}
-!7 = !{!"8"}
-!8 = !{!"9"}
-!9 = !{!"11"}
-!10 = !{!"15"}
-!11 = !{!"17"}
-!12 = !{!"13"}
-!13 = !{!"118"}
-!14 = !{!"148"}
-!15 = !{!"84"}
-!16 = !{!"114"}
-!17 = !{!"60"}
-!18 = !{!"90"}
-!19 = !{!"30"}
-!20 = !{!"149"}
-!21 = !{!"179"}
-!22 = !{!"150"}
-!23 = !{!"180"}
-!24 = !{!"120"}
-!25 = !{!"18"}
-!26 = !{!"48"}
-!27 = !{!"49"}
-!28 = !{!"51"}
-!29 = !{!"52"}
-!30 = !{!"82"}
-!31 = !{!"115"}
-!32 = !{!33, !33, i64 0}
-!33 = !{!"any pointer", !34, i64 0}
-!34 = !{!"omnipotent char", !35, i64 0}
-!35 = !{!"Simple C/C++ TBAA"}
+!3 = !{!"0"}
+!4 = !{!"1"}
+!5 = !{!"3"}
+!6 = !{!"2"}
+!7 = !{!"5"}
+!8 = !{!"6"}
+!9 = !{!"8"}
+!10 = !{!"40"}
+!11 = !{!"42"}
+!12 = !{!"7"}
+!13 = !{!"9"}
+!14 = !{!"39"}
+!15 = !{!"43"}
+!16 = !{!"73"}
+!17 = !{!"44"}
+!18 = !{!"45"}
+!19 = !{!"75"}
+!20 = !{!"74"}
+!21 = !{!"76"}
+!22 = !{!"77"}
+!23 = !{!"78"}
+!24 = !{!25, !25, i64 0}
+!25 = !{!"any pointer", !26, i64 0}
+!26 = !{!"omnipotent char", !27, i64 0}
+!27 = !{!"Simple C/C++ TBAA"}

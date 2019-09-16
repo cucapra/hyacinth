@@ -8,14 +8,6 @@
 double _p_quadratic(double a, double b, double c) {
     double s = b * b - 4 * a * c;
     double d = 2 * a;
-    sleep(1);
-    sleep(1);
-    sleep(1);
-    sleep(1);
-    sleep(1);
-    sleep(1);
-    sleep(1);
-    sleep(1);
     double r1 = (-b + sqrt(s)) / d;
     double r2 = (-b - sqrt(s)) / d;
     return r1 ?: r2; 

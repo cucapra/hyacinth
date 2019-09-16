@@ -162,9 +162,9 @@ let value_to_value_ptr value reason builder =
   let size = size_of_ty ty in
   (value_ptr, size, to_replace)
 
-let call_send_variant variant value reason (to_partition : int) id builder ctx =
+let call_send_variant variant value reason (to_partition : int) id builder ctx md =
   let value_ptr, size, to_replace = value_to_value_ptr value reason builder in
-  let send = lookup_function_in variant cores_module in
+  let send = lookup_function_in variant md in
   let destination = const_i32 to_partition in
   let args = [| value_ptr; size; destination; id; ctx |] in
   let send = build_call send args "" builder in
@@ -230,40 +230,43 @@ let broadcast_value value from_partition branches block block_map builder ctx =
   List.iter insert_comms branches
 
 let declare_external_functions host_md mappings =
+
+  let declare_external name ty md =
+    let f = declare_function name ty md in
+    set_linkage External_weak f
+  in
   (* TODO: we should be able to import external functions from a header *)
   (* declare init, send*, receive*, replace, join *)
   let ptr_ty = target_ptr_type () in
   let send_t = function_type void_type [| void_pt_type; ptr_ty; int_type; ptr_ty; void_pt_type |] in
-  declare_function send_name send_t cores_module |> ignore;
+  declare_external send_name send_t cores_module;
   let receive_t = function_type void_pt_type [| ptr_ty; int_type; ptr_ty; void_pt_type |] in
-  declare_function receive_name receive_t cores_module |> ignore;
+  declare_external receive_name receive_t cores_module;
   let send_arg_t = function_type void_type [| void_pt_type; ptr_ty; int_type; ptr_ty; void_pt_type |] in
-  declare_function send_arg_name send_arg_t host_md |> ignore;
+  declare_external send_arg_name send_arg_t host_md;
   let free_t = function_type void_type [| ptr_ty; ptr_ty; void_pt_type |] in
-  declare_function free_name free_t cores_module |> ignore;
-  let send_arg_t = function_type void_type [| void_pt_type; ptr_ty; int_type; ptr_ty; void_pt_type |] in
-  declare_function send_arg_name send_arg_t cores_module |> ignore;
+  declare_external free_name free_t cores_module;
   let receive_arg_t = function_type void_pt_type [| ptr_ty; ptr_ty; void_pt_type |] in
-  declare_function receive_arg_name receive_arg_t cores_module |> ignore;
-  declare_function receive_arg_name receive_arg_t host_md |> ignore;
+  declare_external receive_arg_name receive_arg_t cores_module;
+  declare_external receive_arg_name receive_arg_t host_md;
   let retrieve_global_t = function_type void_type [| void_pt_type; ptr_ty; ptr_ty; void_pt_type |] in
-  declare_function retrieve_global_name retrieve_global_t host_md |> ignore;
+  declare_external retrieve_global_name retrieve_global_t host_md;
   let send_token_t = function_type void_type [| int_type; ptr_ty; void_pt_type |] in
-  declare_function send_token_name send_token_t cores_module |> ignore;
+  declare_external send_token_name send_token_t cores_module;
   let receive_token_t = function_type void_pt_type [| ptr_ty; void_pt_type |] in
-  declare_function receive_token_name receive_token_t cores_module |> ignore;
+  declare_external receive_token_name receive_token_t cores_module;
   let send_return_t = function_type void_type [| void_pt_type; ptr_ty; void_pt_type |] in
-  declare_function send_return_name send_return_t cores_module |> ignore;
+  declare_external send_return_name send_return_t cores_module;
   let receive_return_t = function_type void_pt_type [| ptr_ty; void_pt_type |] in
-  declare_function receive_return_name receive_return_t host_md |> ignore;
+  declare_external receive_return_name receive_return_t host_md;
   let init_t = function_type void_pt_type [||] in
-  declare_function init_name init_t host_md |> ignore;
+  declare_external init_name init_t host_md;
   let call_partitioned_funs_t = pointer_type (pointer_type (function_type void_type [| void_pt_type |])) in
   let call_partitioned_t = function_type void_pt_type [| int_type; call_partitioned_funs_t; void_pt_type |] in
-  declare_function call_partitioned_name call_partitioned_t cores_module |> ignore;
-  declare_function call_partitioned_name call_partitioned_t host_md |> ignore;
+  declare_external call_partitioned_name call_partitioned_t cores_module;
+  declare_external call_partitioned_name call_partitioned_t host_md;
   let join_t = function_type void_type [| int_type; void_pt_type |] in
-  declare_function join_name join_t host_md |> ignore;
+  declare_external join_name join_t host_md;
 
   begin match !target with
   | PThreads -> ()
@@ -361,7 +364,7 @@ let receive_arg_from_host old_arg block partition mappings host_md =
       let addr, name = new_arg_addr_name (type_of old_arg) in
       let host_addr = host_argument_address replace_builder addr name r_ctx host_md in
       let call = call_receive_arg "argument" "replace argument" (type_of old_arg) addr entry_builder ctx in
-      call_send_variant send_arg_name replace_op "replace argument" partition host_addr replace_builder r_ctx |> ignore;
+      call_send_variant send_arg_name replace_op "replace argument" partition host_addr replace_builder r_ctx host_md |> ignore;
       add_arg mappings partition old_arg call;
       call
     end
@@ -381,10 +384,12 @@ let replace_operand idx inst block partition builder find_partition mappings hos
     let op_partition = find_partition op in
     if (partition != op_partition) && not (is_alloca op) then
       let op_builder, op_fun = builder_and_fun op_partition block mappings in
+      let _, cur_fun = builder_and_fun partition block mappings in
       let id = new_comms_addr (type_of new_op) in
-      let ctx = param op_fun 0 in
+      let ctx = param cur_fun 0 in
+      let op_ctx = param op_fun 0 in
       let receive = call_receive receive_name "replace mapped op" (type_of new_op) op_partition id builder ctx in
-      call_send_variant send_name new_op "replace mapped op" partition id op_builder ctx |> ignore;
+      call_send_variant send_name new_op "replace mapped op" partition id op_builder op_ctx cores_module |> ignore;
       set_operand inst idx receive
     else
       set_operand inst idx new_op
@@ -420,7 +425,7 @@ let repair_phi_node find_partition mappings host_md phi : unit =
           let prev_block_builder = builder_at_end context prev_block in
           let id = new_comms_addr (type_of new_val) in
           let ctx = param (block_parent op_block) 0 in
-          call_send_variant send_name new_val "repair_phi" partition id op_builder ctx |> ignore;
+          call_send_variant send_name new_val "repair_phi" partition id op_builder ctx cores_module |> ignore;
           let receive = call_receive "repair_phi" receive_name (type_of new_val) op_partition id prev_block_builder ctx in
           (receive, prev_block)
         end
@@ -503,8 +508,9 @@ let clone_blocks_per_partition host_md partitions mappings =
     let fun_type = function_type void_type [| void_pt_type |] in
     let new_name = (value_name fn) ^ "_" ^ (string_of_int partition) in
     let new_fun = define_function new_name fun_type cores_module in
-    declare_function new_name fun_type host_md |> ignore;
+    let decl = declare_function new_name fun_type host_md in
     set_linkage External new_fun;
+    set_linkage External_weak decl;
 
     iter_blocks (per_block partition fn new_fun) fn
   in
