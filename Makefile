@@ -59,7 +59,8 @@ test_save:
 bsg_communication:
 	make src/bsg_manycore/bsg_communication.o
 
-CXX := g++
+CXX := clang++
+CXXFLAGS := $(CXXFLAGS) -ferror-limit=1
 LLVM_BIN_PATH 	:= /usr/local/opt/llvm/bin
 
 LLVM_CXXFLAGS := `$(LLVM_BIN_PATH)/llvm-config --cxxflags`
@@ -70,4 +71,4 @@ BUILDDIR := build
 CPP_FILES := src/LLVMSupport/*.cpp 
 
 hyacpp: $(CPP_FILES)
-	$(CXX) $(pkg-config --cflags --libs z3) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CPP_FILES) $(LLVM_LDFLAGS) -o hyacpp
+	$(CXX) -lz3 $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CPP_FILES) $(LLVM_LDFLAGS) -o hyacpp

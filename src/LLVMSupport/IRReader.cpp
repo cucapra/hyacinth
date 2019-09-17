@@ -1,42 +1,53 @@
-#include "llvm/IR/Module.h"
-#include "llvm/IRReader/IRReader.h"
-#include "llvm/Support/SourceMgr.h"
-#include "llvm/Support/raw_ostream.h"
+#include <llvm/IR/Module.h>
+#include <llvm/IRReader/IRReader.h>
+#include <llvm/Support/SourceMgr.h>
+#include <llvm/Support/raw_ostream.h>
 
+#include <iostream>
+#include <iterator> 
+#include <list> 
+#include <map>
 #include <z3.h>
 
-#include <list> 
-#include <iterator> 
-#include <map>
+#include "SMTConstraintGenerator.hpp"
 
-using namespace std; 
 using namespace llvm;
+using namespace std;
+using namespace SMTConstraints;
 
-bool includeInstruction(Instruction *I) {
-  return (I->getOpcode() != Instruction::Br);
+bool includeInstruction(Instruction *i) {
+  return (i->getOpcode() != Instruction::Br);
+}
+
+bool isPrefix(string prefix, string s) {
+  return prefix == s.substr(0, prefix.size());
 }
 
 // TODO: sort based on label
-bool includeFunction(Function *I) {
-  return true;
+bool includeFunction(Function *f) {
+  if (f->getName() == "main") {
+    return false;
+  }
+
+  return isPrefix("_p_", f->getName());
 }
 
-vector<vector<Instruction *>> moduleToBlockLists(Module &InputModule) {
-  vector<vector<Instruction *>> InstrsPerBlock;
-  for (Function &F : InputModule) {
-    if (!includeFunction(&F)) continue;
+vector<vector<Instruction *>> moduleToBlocksLists(Module &inputModule) {
+  vector<vector<Instruction *>> instrsPerBlock;
+  for (Function &f : inputModule) {
+    if (!includeFunction(&f)) continue;
 
-    for (BasicBlock &B : F) {
-      vector<Instruction *> Instrs;
-      InstrsPerBlock.push_back(Instrs);
-      for (Instruction &I : B) {
-        if (!includeInstruction(&I)) continue;
+    for (BasicBlock &b : f) {
+      vector<Instruction *> instrs;
+      instrsPerBlock.push_back(instrs);
+      for (Instruction &i : b) {
+        if (!includeInstruction(&i)) continue;
 
-        Instrs.push_back(&I);
+        instrs.push_back(&i);
       }
     }
   }
-  return InstrsPerBlock;
+  return instrsPerBlock;
 }
 
 int main(int argc, char **argv) {
@@ -48,13 +59,23 @@ int main(int argc, char **argv) {
   // Parse the input IR file into a module
   SMDiagnostic err;
   LLVMContext context;
-  std::unique_ptr<Module> InputModule = parseIRFile(argv[1], err, context);
-  if (!InputModule) {
+  std::unique_ptr<Module> inputModule = parseIRFile(argv[1], err, context);
+  if (!inputModule) {
     err.print(argv[0], errs());
     return 1;
   }
 
-  auto l = moduleToBlockLists(*InputModule);
+  vector<vector<Instruction *>> blocksLists = moduleToBlocksLists(*inputModule);
+
+  auto generator = SMTConstraints::SMTConstraintGenerator();
+  SMTConstraints::ConcretePlacementMap placements;
+
+  for (vector<Instruction *> blocks : blocksLists) {
+    placements = generator.partitionInstructionsInBlock(placements, blocks);
+    
+    
+    cout << "." << endl;
+  }
 
   return 0;
 }
