@@ -39,12 +39,11 @@ vector<vector<Instruction *>> moduleToBlocksLists(Module &inputModule) {
 
     for (BasicBlock &b : f) {
       vector<Instruction *> instrs;
-      instrsPerBlock.push_back(instrs);
       for (Instruction &i : b) {
         if (!includeInstruction(&i)) continue;
-
         instrs.push_back(&i);
       }
+      instrsPerBlock.push_back(instrs);
     }
   }
   return instrsPerBlock;
@@ -67,14 +66,14 @@ int main(int argc, char **argv) {
 
   vector<vector<Instruction *>> blocksLists = moduleToBlocksLists(*inputModule);
 
-  auto generator = SMTConstraints::SMTConstraintGenerator();
+  SMTConstraints::SMTConstraintGenerator generator;
+  // auto generator = SMTConstraints::SMTConstraintGenerator(); // this does a copy!
+
+
   SMTConstraints::ConcretePlacementMap placements;
 
   for (vector<Instruction *> blocks : blocksLists) {
     placements = generator.partitionInstructionsInBlock(placements, blocks);
-    
-    
-    cout << "." << endl;
   }
 
   return 0;
