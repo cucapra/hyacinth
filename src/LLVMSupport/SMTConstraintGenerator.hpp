@@ -8,21 +8,21 @@
 namespace SMTConstraints {
 
 template <typename T> class InstructionPlacement {
-  T Partition;
-  T StartTime;
-  T EndTime;
-  // static_assert(std::is_same<T,int>::value || std::is_same<T,expr>::value, 
-  //   "Expected int or expr");
-
 public:
-  InstructionPlacement(T P, T S, T E) : Partition(P), StartTime(S), EndTime(E) {
+  T partition;
+  T startTime;
+  T endTime;
+  static_assert(std::is_same<T,int>::value || std::is_same<T,z3::expr>::value, 
+    "Expected int or expr");
+
+  InstructionPlacement(T p, T s, T e) : partition(p), startTime(s), endTime(e) {
   }
 };
 
 using ConcretePlacement = InstructionPlacement<int>;
 using SymbolicPlacement = InstructionPlacement<z3::expr>;
-using ConcretePlacementMap = std::map<llvm::Value *, ConcretePlacement>;
-using SymbolicPlacementMap = std::map<llvm::Value *, SymbolicPlacement>;
+using ConcretePlacementMap = std::map<llvm::Instruction *, ConcretePlacement>;
+using SymbolicPlacementMap = std::map<llvm::Instruction *, SymbolicPlacement>;
 
 class SMTConstraintGenerator {
 
@@ -44,8 +44,6 @@ private:
 public:
 
   SMTConstraintGenerator();
-
-  void constructSymbolicPlacements(llvm::Instruction *i);
 
   ConcretePlacementMap 
     partitionInstructionsInBlock(ConcretePlacementMap previous,

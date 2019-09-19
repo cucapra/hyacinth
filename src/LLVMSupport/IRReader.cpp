@@ -2,6 +2,7 @@
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm-c/Core.h>
 
 #include <iostream>
 #include <iterator> 
@@ -75,6 +76,10 @@ int main(int argc, char **argv) {
   for (vector<Instruction *> blocks : blocksLists) {
     placements = generator.partitionInstructionsInBlock(placements, blocks);
   }
+
+  char* message;
+  // inputModule->dump();
+  LLVMPrintModuleToFile(wrap(inputModule.get()), "output.ll", &message);
 
   return 0;
 }

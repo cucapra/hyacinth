@@ -60,7 +60,7 @@ bsg_communication:
 	make src/bsg_manycore/bsg_communication.o
 
 CXX := clang++
-CXXFLAGS := $(CXXFLAGS) -ferror-limit=1 -std=c++17
+CXXFLAGS := $(CXXFLAGS) -ferror-limit=1 -std=c++17 -fvisibility-inlines-hidden -Wall -Werror -Wextra -Wno-unused-parameter
 LLVM_BIN_PATH 	:= /usr/local/opt/llvm/bin
 
 LLVM_CXXFLAGS := `$(LLVM_BIN_PATH)/llvm-config --cxxflags`
