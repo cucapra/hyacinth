@@ -39,6 +39,12 @@ private:
   // In progress symbolic placements for instructions in the current block
   SymbolicPlacementMap symbolicPlacements;
 
+  // Communication cost mapping
+  z3::func_decl *communicationCosts;
+
+  // Constraint to optimize
+  z3::expr latestTime;
+
   class Internals;
 
 public:

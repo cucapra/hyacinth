@@ -78,8 +78,9 @@ int main(int argc, char **argv) {
   }
 
   char* message;
-  // inputModule->dump();
-  LLVMPrintModuleToFile(wrap(inputModule.get()), "output.ll", &message);
+  string outputName = inputModule->getModuleIdentifier() + "_intermediate.ll";
+  LLVMPrintModuleToFile(wrap(inputModule.get()), outputName.c_str(), &message);
+  errs() << message;
 
   return 0;
 }

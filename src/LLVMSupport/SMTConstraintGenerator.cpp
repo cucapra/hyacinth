@@ -19,7 +19,9 @@ using namespace std;
 using namespace z3;
 
 // TODO: parameterize/make config object
-#define SIZE 4
+#define ROWS 2
+#define COLS 2
+#define SIZE ROWS * COLS
 
 namespace SMTConstraints {
 
@@ -56,7 +58,7 @@ public:
 
   static void constrainOverlappingTimes(SMTConstraintGenerator *g,
     SymbolicPlacement placement) {
-    for (const auto &p: g->symbolicPlacements) {
+    for (const auto &p : g->symbolicPlacements) {
 
       InstructionPlacement<z3::expr> other = p.second;
 
@@ -64,6 +66,68 @@ public:
       expr before = placement.endTime <= other.startTime;
       expr after = placement.startTime >= other.endTime;
       g->solver.add(implies(samePartition, before || after));
+    }
+  }
+
+  static void constrainInstructionOperand(SMTConstraintGenerator *g, 
+    Instruction *i, Instruction *operand) {
+
+    const auto &currentPlacement = g->symbolicPlacements.at(i);
+
+    // Find the placement of this operand, which may be from a previous
+    // block's partitioning
+    expr *opPartition = nullptr;
+    expr *opEndTime = nullptr;
+
+    const auto &placement = g->symbolicPlacements.find(operand);
+    if (placement != g->symbolicPlacements.end()) {
+      // Current, symbolic placement
+      opPartition = &(placement->second.partition);
+      opEndTime = &(placement->second.endTime);
+    } else {
+      // Concrete placement from previous partitioning
+      const auto &previous = g->previousPlacements.at(operand);
+      expr partition = g->context.int_val(previous.partition);
+      expr endTime = g->context.int_val(previous.endTime);
+      opPartition = &partition;
+      opEndTime = &endTime;
+    }
+
+    // For now, pointers cannot be sent across paritions
+    if (operand->getType()->isPointerTy()) {
+      g->solver.add(currentPlacement.partition == *opPartition);
+      g->solver.add(currentPlacement.startTime >= *opEndTime);
+      return;
+    } 
+
+    // Incorporate communication costs
+    int comms = costForCommunication(g, currentPlacement.partition,
+      *opPartition);
+    g->solver.add(currentPlacement.startTime >= *opEndTime + comms);
+  }
+
+  static void constrainOperand(SMTConstraintGenerator *g, Instruction *i, 
+    Value *operand) {
+
+    // No constraints for constants or arguments
+    if (isa<Constant>(operand) || isa<Argument>(operand)) {
+      return;
+    }
+
+    // For now, global accesses need to live on parition 0
+    if (isa<GlobalValue>(operand)) {
+      g->solver.add(g->symbolicPlacements.at(i).partition == 0);
+    }
+
+    // Incoming instructions require more complicated logic
+    if (isa<Instruction>(operand)) {
+      constrainInstructionOperand(g, i, (Instruction *)operand);
+    }
+  }
+
+  static void constrainInstruction(SMTConstraintGenerator *g, Instruction *i) {
+    for (const auto &operand : i->operands()) {
+      constrainOperand(g, i, operand);
     }
   }
 
@@ -77,9 +141,9 @@ public:
   }
 
   static void addMetadataInt(Instruction *i, string name, int n) {
-      LLVMContext &c = i->getContext();
-      MDNode *node = MDNode::get(c, MDString::get(c, to_string(n)));
-      i->setMetadata(name, node);
+    LLVMContext &c = i->getContext();
+    MDNode *node = MDNode::get(c, MDString::get(c, to_string(n)));
+    i->setMetadata(name, node);
   }
 
   static void addMetadata(SMTConstraintGenerator *g, model m) {
@@ -93,10 +157,60 @@ public:
       addMetadataInt(i, "end", getIntValue(g, m, placement.endTime));
     }
   }
+
+  static void buildCommunicationCostTable(SMTConstraintGenerator *g) {
+    z3::sort intSort = g->context.int_sort();
+
+    func_decl communicationCosts = z3::function("communicationCosts", intSort,
+      intSort, intSort);
+    for (int x = 0; x < ROWS; x++) {
+      for (int y = 0; y < COLS; y++) {
+        int cost = HyacinthCostModel::costForCommunication(x, y);
+        expr xExpr = g->context.int_val(x);
+        expr yExpr = g->context.int_val(y);
+        g->solver.add(communicationCosts(xExpr, yExpr) == cost);
+      }
+    }
+    g->communicationCosts = &communicationCosts;
+  }
+
+  static expr costForCommunication(SMTConstraintGenerator *g, expr partition1,
+    expr partition2) {
+
+    func_decl costs = *(g->communicationCosts);
+    return costs(partition1, partition2);
+  }
 };
 
-SMTConstraintGenerator::SMTConstraintGenerator() : solver(context) {
+SMTConstraintGenerator::SMTConstraintGenerator() : solver(context), 
+  latestTime(context.int_const("latestTime")) {
+  Internals::buildCommunicationCostTable(this);
 }
+
+/*
+void opt_example() {
+    context c;
+    optimize opt(c);
+    params p(c);
+    p.set("priority",c.str_symbol("pareto"));
+    opt.set(p);
+    expr x = c.int_const("x");
+    expr y = c.int_const("y");
+    opt.add(10 >= x && x >= 0);
+    opt.add(10 >= y && y >= 0);
+    opt.add(x + y <= 11);
+    optimize::handle h1 = opt.maximize(x);
+    optimize::handle h2 = opt.maximize(y);
+    while (true) {
+        if (sat == opt.check()) {
+            std::cout << x << ": " << opt.lower(h1) << " " << y << ": " << opt.lower(h2) << "\n";
+        }
+        else {
+            break;
+        }
+    }
+}
+*/
 
 // Use SMT constraints to partition the current block's instructions, 
 // referencing the previous placement mappings as needed.
@@ -111,19 +225,26 @@ ConcretePlacementMap SMTConstraintGenerator::partitionInstructionsInBlock(
     n++;
   }
 
+  // optimize optimize(context);
+  // cout << optimize << endl;
+  // optimize.minimize(latestTime);
+
   switch (solver.check()) {
     case unsat:   
       cout << "unsat\n"; 
-      return;
+      break;
     case unknown:
       cout << "unknown\n";
-      return;
+      break;
     case sat:
       cout << "sat\n";
       break;
   }
 
+  // Solve! TODO: replace with iterative solve loop
   model m = solver.get_model();
+
+  // Add partitioning as metadata to the IR
   Internals::addMetadata(this, m);
 
   // Clear symbolic placements
