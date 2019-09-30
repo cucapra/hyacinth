@@ -43,7 +43,7 @@ To take in [LLVM][] bitcode as input, install both the distribution and the OCam
 
 On OSX:
 
-    $ brew install llvm
+    $ brew install llvm@8
 
 On Linux:
 
@@ -52,6 +52,12 @@ On Linux:
 Then:
 
     $ opam install llvm
+    
+You can add this LLVM installation and the installed libraries to your path with:
+
+    $ export PATH="/usr/local/opt/llvm@8/bin:$PATH"
+    $ export LDFLAGS="-L/usr/local/opt/llvm/lib"
+    $ export CPPFLAGS="-I/usr/local/opt/llvm/include"
 
 [opam]: https://opam.ocaml.org
 [binary installation script]: https://opam.ocaml.org/doc/Install.html#Binary-distribution
