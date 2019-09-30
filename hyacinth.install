@@ -7,5 +7,6 @@ bin: [
   "_build/install/default/bin/hyac"
 ]
 doc: [
+  "_build/install/default/doc/hyacinth/LICENSE"
   "_build/install/default/doc/hyacinth/README.md"
 ]

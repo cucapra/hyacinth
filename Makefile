@@ -27,6 +27,7 @@ clean:
 	rm -f {.,src,examples/*}/*.{ll,bc,out,dot,png}
 	rm -f tests/*{.bc,.out,.dot,.png,_partitioned.ll,_host.ll,_cores.ll,_comms.ll,_intermediate.ll}
 	rm -f tests/output
+	rm -rf hyacpp
 	dune clean
 
 test:
@@ -57,3 +58,20 @@ test_save:
 
 bsg_communication:
 	make src/bsg_manycore/bsg_communication.o
+
+CXX := clang++
+CXXFLAGS := $(CXXFLAGS) -ferror-limit=1 -std=c++1z -lc++experimental -fvisibility-inlines-hidden -Wall -Werror -Wextra -Wno-unused-parameter
+LLVM_BIN_PATH 	:= /usr/local/opt/llvm/bin
+
+LDFLAGS += -L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib
+CPPFLAGS += -I/usr/local/opt/llvm/include -I/usr/local/opt/llvm/include/c++/v1/
+
+LLVM_CXXFLAGS := `$(LLVM_BIN_PATH)/llvm-config --cxxflags`
+LLVM_LDFLAGS := `$(LLVM_BIN_PATH)/llvm-config --ldflags --libs --system-libs`
+
+BUILDDIR := build
+
+CPP_FILES := src/LLVMSupport/*.cpp 
+
+hyacpp: $(CPP_FILES)
+	$(CXX) -lz3 $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CPP_FILES) $(LLVM_LDFLAGS) -o hyacpp

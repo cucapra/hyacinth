@@ -5,37 +5,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-// --- Communication buffer number of elements ---
+#include <bsg_manycore.h>
+#include <bsg_set_tile_x_y.h>
+#include <bsg_cuda_lite_runtime.h>
 
-// NUM_COMMS should be defined from the compiler/Makefile
-#ifndef NUM_COMMS
-#define NUM_COMMS 100
-#endif // NUM_COMMS
+#include <stdint.h>
 
-#ifndef COMMS_BUFFER_SIZE
-#define COMMS_BUFFER_SIZE NUM_COMMS * sizeof(long long)
-#endif // NUM_COMMS
+// Set up the completion barrier.
+#define BSG_TILE_GROUP_X_DIM bsg_tiles_X
+#define BSG_TILE_GROUP_Y_DIM bsg_tiles_Y
+#include "bsg_tile_group_barrier.h"
+INIT_TILE_GROUP_BARRIER(r_barrier, c_barrier, 0, bsg_tiles_X - 1, 0,
+    bsg_tiles_Y - 1);
 
-// --- Communication buffer ---
-// Data and metadata should be kept on the *receiving* tile's memory
-volatile char comms_buffer[COMMS_BUFFER_SIZE];
-
-// --- Communication buffer metadata ---
-// Communication data for the ID is ready to be read
-volatile int32_t comms_ready[NUM_COMMS];
-// Start index into the data buffer
-volatile int32_t comms_start_idx[NUM_COMMS];
-// Size of the value for this communication
-volatile int32_t comms_size[NUM_COMMS];
-
-// Treat the communication buffer as a linear buffer for now
-volatile int32_t comms_buffer_start = 0;
-
-// Return value(s). Note this attribute specifies that this is shared DRAM memory
-volatile char global_return[COMMS_BUFFER_SIZE]  __attribute__((section(".dram")));
+extern volatile char return_struct;
 
 void copy(char *dest, char *src, unsigned len) {
-    while (len) {
+    while (len > 0) {
         *dest = *src;
         dest++;
         src++;
@@ -43,63 +29,105 @@ void copy(char *dest, char *src, unsigned len) {
     }
 }
 
-void send(void *value, int size, int to_core, int id, void *context) {
+void print_int(int32_t i) {
+    bsg_print_int(i);
+}
+
+void print_addr(void *a) {
+    bsg_print_int(a);
+    bsg_print_int(*(int32_t *)a);
+}
+
+void send(void *value, int32_t size, int32_t to_core, int32_t addr, void *context) {
+    // HB memory operations require word-aligned pointers, *not* byte-aligned!
+    // The struct layout is:
+    //   { 
+    //     value   [size bytes],
+    //     ready   [1 byte],
+    //     padding [4 bytes],
+    //.   }
+    int size_with_ready = size + 1;
+    int aligned_size = (size_with_ready + 3) / 4 * 4;
+
     // Construct coordinates
     int to_x = bsg_id_to_x(to_core);
     int to_y = bsg_id_to_y(to_core);
 
-    // Grab the start of the communication buffer for the recepient
-    int start_idx;
-    bsg_remote_load(to_x, to_y, &comms_buffer_start, start_idx);
+    // Make sure we aren't overwriting the old value.
+    // Ready may not be word aligned, but we need to read the whole word.
+    // Read it into our *local* struct for convenience
+    int ready_addr = addr + size;
+    int ready_word_addr = ready_addr / 4 * 4;
+    do {
+         bsg_remote_load(to_x, to_y, ready_word_addr, *(int *)ready_word_addr);
+    } while (*(char *)ready_addr);
 
-    // Increment the recepient's buffer start by the size
-    bsg_remote_store(to_x, to_y, &comms_buffer_start, start_idx + size);
+    // Reset our local value
+    *(int *)ready_word_addr = 0;
 
-    // Set the communication buffer metadata on the recepient for this ID
-    bsg_remote_store(to_x, to_y, &comms_start_idx[id], start_idx);
-    bsg_remote_store(to_x, to_y, &comms_size[id], size);
+    // Copy the new value and ready flag to our *local* version of the struct
+    copy((char *)addr, value, size);
 
-    // Write the actual value into the communication buffer on the recepient
-    char *buffer_value_ptr = (void *)bsg_remote_ptr(to_x, to_y, 
-        &comms_buffer[start_idx]);    
-    copy(buffer_value_ptr, value, size);
+    *(char *)ready_addr = 1;
 
-    // Finally, write out to the recepient that this value is ready
-    bsg_remote_store(to_x, to_y, &comms_ready[id], 1);
+    // Write our local struct to the *remote* destination struct
+    void *remote = bsg_remote_ptr(to_x, to_y, addr);
+
+    copy(remote, (char *)addr, aligned_size);
 }
 
-void send_return(void *value, int size, void *context) {
-    copy(global_return, value, size);
+void send_return(void *value, int32_t size, void *context) {
+    copy((char *)&return_struct, value, size);
 }
 
-void *_receive_shared(int size, int id, void *context) {
+void *_receive_shared(int32_t size, int32_t addr, void *context) {
     // Wait patiently until the value is ready
-    bsg_wait_while(!comms_ready[id]);
+    bsg_wait_while(!*((volatile char *)addr + size));
 
-    // Metdata should already be written by sender
-    int start_idx = comms_start_idx[id];
-    int actual_size = comms_size[id];
+    // Return this address 
+    return (void *)addr;
+}
 
-    // Sanity check sizes match
-    if (actual_size != size) {
-        // TODO: error on device
+void *receive(int32_t size, int32_t from_core, int32_t addr, void *context) {
+    // Return this address 
+    return _receive_shared(size, addr, context);
+}
+
+void free_comms(int32_t addr, int size, void *context) {
+    // Reset our location struct's ready flag to 0
+    volatile char *ready_ptr = (volatile char *)addr + size;
+    *ready_ptr = '\0';
+}
+
+void *receive_argument(int32_t size, int32_t addr, void *context) {
+    // Argument reads should not be destructive
+    return _receive_shared(size, addr, context);;
+}
+
+void send_token(int to_core, int addr, void *context) {
+}
+
+void receive_token(int addr, void *context) {
+}
+
+void *call_partitioned_functions(int num_functions, void (**function_pts)(void *), void *context) {
+    bsg_set_tile_x_y();
+    int num_tiles = bsg_num_tiles;
+    int tile_id = bsg_x_y_to_id(bsg_x, bsg_y);  
+
+    // TODO: this will misplace tiles if IDs are skipped
+    if (tile_id < num_functions) {
+        function_pts[tile_id](0);
     }
 
-    // Return this address into the buffer
-    return &comms_buffer[start_idx];
+    bsg_tile_group_barrier(&r_barrier, &c_barrier);
+    return NULL;
 }
 
-void *receive(int size, int from_core, int id, void *context) {
-    void *value = _receive_shared(size, id, context);
-
-    // Regular reads should be destructive: the value is no longer ready
-    comms_ready[id] = 0;
-
-    // Return this address into the buffer
-    return value;
-}
-
-void *receive_argument(int size, int id, void *context) {
-    // Argument reads should not be destructive
-    return _receive_shared(size, id, context);;   
+// This program is a complete executable, so it needs a main. Our main just
+// needs to call this function to wait for instructions (i.e., to call the
+// function above).
+int main() {
+   __wait_until_valid_func();
+   return 0;
 }
