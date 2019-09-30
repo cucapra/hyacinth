@@ -8,6 +8,7 @@
 #include <iterator> 
 #include <list> 
 #include <map>
+#include <optional>
 #include <string>
 
 #include "CostModel.hpp"
@@ -20,7 +21,7 @@ using namespace z3;
 
 // TODO: parameterize/make config object
 #define ROWS 2
-#define COLS 2
+#define COLS 1
 #define SIZE ROWS * COLS
 
 namespace SMTConstraints {
@@ -44,6 +45,8 @@ public:
     g->solver.add(partition < SIZE);
     g->solver.add(0 <= startTime);
     g->solver.add(startTime <= endTime);
+
+    g->solver.add(endTime <= g->latestTime);
 
     // Assert cost model constraint: end time = start time + cost
     int cost = HyacinthCostModel::costForInstruction(i);
@@ -79,6 +82,7 @@ public:
     expr *opPartition = nullptr;
     expr *opEndTime = nullptr;
 
+
     const auto &placement = g->symbolicPlacements.find(operand);
     if (placement != g->symbolicPlacements.end()) {
       // Current, symbolic placement
@@ -86,9 +90,13 @@ public:
       opEndTime = &(placement->second.endTime);
     } else {
       // Concrete placement from previous partitioning
-      const auto &previous = g->previousPlacements.at(operand);
-      expr partition = g->context.int_val(previous.partition);
-      expr endTime = g->context.int_val(previous.endTime);
+      const auto &previous = g->previousPlacements.find(operand);
+      if (previous == g->previousPlacements.end()) {
+        errs() << "No previous placement for: " << operand << "\n";
+      } 
+
+      expr partition = g->context.int_val(previous->second.partition);
+      expr endTime = g->context.int_val(0);
       opPartition = &partition;
       opEndTime = &endTime;
     }
@@ -103,7 +111,9 @@ public:
     // Incorporate communication costs
     int comms = costForCommunication(g, currentPlacement.partition,
       *opPartition);
+
     g->solver.add(currentPlacement.startTime >= *opEndTime + comms);
+
   }
 
   static void constrainOperand(SMTConstraintGenerator *g, Instruction *i, 
@@ -117,12 +127,16 @@ public:
     // For now, global accesses need to live on parition 0
     if (isa<GlobalValue>(operand)) {
       g->solver.add(g->symbolicPlacements.at(i).partition == 0);
+      return;
     }
 
     // Incoming instructions require more complicated logic
     if (isa<Instruction>(operand)) {
       constrainInstructionOperand(g, i, (Instruction *)operand);
+      return;
     }
+    
+    errs() << "unexpected operand:" << *operand << "\n";
   }
 
   static void constrainInstruction(SMTConstraintGenerator *g, Instruction *i) {
@@ -146,77 +160,80 @@ public:
     i->setMetadata(name, node);
   }
 
-  static void addMetadata(SMTConstraintGenerator *g, model m) {
-    for (const auto &p : g->symbolicPlacements) {
+  static void addConcretePlacements(SMTConstraintGenerator *g, 
+    Optional<model> m) {
 
-      Instruction *i = p.first;
-      InstructionPlacement<expr> placement = p.second;
+    int time = 0;
+    for (const auto &pair : g->symbolicPlacements) {
+      int p, s, e;
+      Instruction *i = pair.first;
 
-      addMetadataInt(i, "partition", getIntValue(g, m, placement.partition));
-      addMetadataInt(i, "start", getIntValue(g, m, placement.startTime));
-      addMetadataInt(i, "end", getIntValue(g, m, placement.endTime));
+      if (m.hasValue()) {
+        // Symbolic placements found, take concrete values from the model
+        InstructionPlacement<expr> placement = pair.second;
+        p = getIntValue(g, m.getValue(), placement.partition);
+        s = getIntValue(g, m.getValue(), placement.startTime);
+        e = getIntValue(g, m.getValue(), placement.endTime);
+      } else {
+        // Parititioning failed, for now, assign all to partition 0
+        p = 0;
+
+        // For now, recompute the time
+        int cost = HyacinthCostModel::costForInstruction(i);
+        s = time;
+        e = time + cost;
+        time = e;
+      }
+
+      // Add to concrete placement map 
+      ConcretePlacement placement = InstructionPlacement<int>(p, s, e); 
+      g->previousPlacements.insert(make_pair(i, placement));
+
+      // Add metadata to the original LLVM module
+      addMetadataInt(i, "partition", p);
+      addMetadataInt(i, "start", s);
+      addMetadataInt(i, "end", e);
     }
   }
 
   static void buildCommunicationCostTable(SMTConstraintGenerator *g) {
-    z3::sort intSort = g->context.int_sort();
-
-    func_decl communicationCosts = z3::function("communicationCosts", intSort,
-      intSort, intSort);
     for (int x = 0; x < ROWS; x++) {
       for (int y = 0; y < COLS; y++) {
         int cost = HyacinthCostModel::costForCommunication(x, y);
         expr xExpr = g->context.int_val(x);
         expr yExpr = g->context.int_val(y);
-        g->solver.add(communicationCosts(xExpr, yExpr) == cost);
+        g->solver.add(g->communicationCosts(xExpr, yExpr) == cost);
       }
     }
-    g->communicationCosts = &communicationCosts;
   }
 
   static expr costForCommunication(SMTConstraintGenerator *g, expr partition1,
     expr partition2) {
 
-    func_decl costs = *(g->communicationCosts);
+    func_decl costs = g->communicationCosts;
     return costs(partition1, partition2);
+  }
+
+  static void resetSolverState(SMTConstraintGenerator *g) {
+    g->solver.pop();
+    g->symbolicPlacements.clear();
   }
 };
 
 SMTConstraintGenerator::SMTConstraintGenerator() : solver(context), 
-  latestTime(context.int_const("latestTime")) {
+  latestTime(context.int_const("latestTime")),
+  communicationCosts(z3::function("communicationCosts", context.int_sort(), 
+    context.int_sort(), context.int_sort())) {
+
   Internals::buildCommunicationCostTable(this);
 }
 
-/*
-void opt_example() {
-    context c;
-    optimize opt(c);
-    params p(c);
-    p.set("priority",c.str_symbol("pareto"));
-    opt.set(p);
-    expr x = c.int_const("x");
-    expr y = c.int_const("y");
-    opt.add(10 >= x && x >= 0);
-    opt.add(10 >= y && y >= 0);
-    opt.add(x + y <= 11);
-    optimize::handle h1 = opt.maximize(x);
-    optimize::handle h2 = opt.maximize(y);
-    while (true) {
-        if (sat == opt.check()) {
-            std::cout << x << ": " << opt.lower(h1) << " " << y << ": " << opt.lower(h2) << "\n";
-        }
-        else {
-            break;
-        }
-    }
-}
-*/
-
 // Use SMT constraints to partition the current block's instructions, 
 // referencing the previous placement mappings as needed.
-ConcretePlacementMap SMTConstraintGenerator::partitionInstructionsInBlock(
-  ConcretePlacementMap previous,
-  vector<Instruction *> instructions) {
+void SMTConstraintGenerator::
+partitionInstructionsInBlock(vector<Instruction *> instructions) {
+
+  solver.push();
 
   // Create symbolic placements for each instruction
   int n = 0;
@@ -225,10 +242,13 @@ ConcretePlacementMap SMTConstraintGenerator::partitionInstructionsInBlock(
     n++;
   }
 
-  // optimize optimize(context);
-  // cout << optimize << endl;
-  // optimize.minimize(latestTime);
+  for (Instruction *i : instructions) {
+    Internals::constrainInstruction(this, i);
+  }
 
+  solver.add(latestTime < 100);
+
+  bool success = false;
   switch (solver.check()) {
     case unsat:   
       cout << "unsat\n"; 
@@ -238,20 +258,24 @@ ConcretePlacementMap SMTConstraintGenerator::partitionInstructionsInBlock(
       break;
     case sat:
       cout << "sat\n";
+      success = true;
       break;
   }
 
-  // Solve! TODO: replace with iterative solve loop
-  model m = solver.get_model();
+  Optional<model> mod;
+  if (success) {
+    // Solve! TODO: replace with iterative solve loop
+    model m = solver.get_model();
+    mod.emplace(m);
 
-  // Add partitioning as metadata to the IR
-  Internals::addMetadata(this, m);
+    cout << "latest time: " << m.eval(latestTime) << "\n";
+  } 
+  Internals::addConcretePlacements(this, mod);
 
-  // Clear symbolic placements
-  symbolicPlacements.clear();
-  solver.reset();
+  // Reset block-local solver state
+  Internals::resetSolverState(this);
 
-  return previous;
+  return;
 }
 
 }

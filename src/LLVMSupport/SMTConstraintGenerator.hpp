@@ -39,11 +39,11 @@ private:
   // In progress symbolic placements for instructions in the current block
   SymbolicPlacementMap symbolicPlacements;
 
-  // Communication cost mapping
-  z3::func_decl *communicationCosts;
-
   // Constraint to optimize
   z3::expr latestTime;
+
+  // Communication cost mapping
+  z3::func_decl communicationCosts;
 
   class Internals;
 
@@ -51,9 +51,7 @@ public:
 
   SMTConstraintGenerator();
 
-  ConcretePlacementMap 
-    partitionInstructionsInBlock(ConcretePlacementMap previous,
-    std::vector<llvm::Instruction *> instructions);
+  void partitionInstructionsInBlock(std::vector<llvm::Instruction *> instructions);
 };
 
 }

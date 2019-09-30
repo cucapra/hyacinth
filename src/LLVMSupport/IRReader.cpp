@@ -70,11 +70,12 @@ int main(int argc, char **argv) {
   SMTConstraints::SMTConstraintGenerator generator;
   // auto generator = SMTConstraints::SMTConstraintGenerator(); // this does a copy!
 
-
-  SMTConstraints::ConcretePlacementMap placements;
-
-  for (vector<Instruction *> blocks : blocksLists) {
-    placements = generator.partitionInstructionsInBlock(placements, blocks);
+  for (vector<Instruction *> block : blocksLists) {
+    errs() << "Partitioning:\n";
+    for (Instruction *i : block) {
+      errs() << *i << "\n";
+    }
+    generator.partitionInstructionsInBlock(block);
   }
 
   char* message;
