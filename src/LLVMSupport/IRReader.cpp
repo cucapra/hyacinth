@@ -71,15 +71,13 @@ int main(int argc, char **argv) {
   // auto generator = SMTConstraints::SMTConstraintGenerator(); // this does a copy!
 
   for (vector<Instruction *> block : blocksLists) {
-    errs() << "Partitioning:\n";
-    for (Instruction *i : block) {
-      errs() << *i << "\n";
-    }
+    errs() << "Partitioning block\n";
     generator.partitionInstructionsInBlock(block);
   }
 
   char* message;
-  string outputName = inputModule->getModuleIdentifier() + "_intermediate.ll";
+  // inputModule->getModuleIdentifier()
+  string outputName = "hyacpp_intermediate.ll";
   LLVMPrintModuleToFile(wrap(inputModule.get()), outputName.c_str(), &message);
   errs() << message;
 

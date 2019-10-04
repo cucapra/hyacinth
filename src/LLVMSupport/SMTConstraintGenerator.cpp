@@ -30,6 +30,68 @@ class SMTConstraintGenerator::Internals {
   // For internal helper functions
 
 public:
+
+
+  static Optional<model> incremementalPartitioning(SMTConstraintGenerator *g, 
+    vector<Instruction *> instructions) {
+
+    Optional<model> bestModel;
+    int goal = sumTotalTime(instructions);
+
+    // Check for blocks with no significant costs to partition
+    if (goal < 0) {
+        return bestModel;
+    }
+
+    // Incrememntalling attempt to solve with successively lower goals
+    while (true) {
+      cout << "Incremental partitioning for goal: " << goal << "\n";
+      auto m = attemptPartitioningForGoal(g, instructions, goal);
+
+      if (!m.hasValue()) {
+        break;
+      } 
+
+      // Some better model found, find our new goal (undercutting current best)
+      bestModel = m;
+      int bestLatestTime = getIntValue(g, m.getValue(), g->latestTime);
+      goal = bestLatestTime - 1;
+    }
+    return bestModel;
+  }
+
+  // Attempt to partition for a certain goal, return the model if successful
+  static Optional<model> attemptPartitioningForGoal(SMTConstraintGenerator *g, 
+    vector<Instruction *> instructions, int goal) {
+
+    g->solver.push();
+    g->solver.add(g->latestTime < goal);
+
+    bool success = false;
+    switch (g->solver.check()) {
+      case unsat:   
+        cout << "Unsat\n"; 
+        break;
+      case unknown:
+        cout << "Unknown/Timeout\n";
+        break;
+      case sat:
+        cout << "Sat\n";
+        success = true;
+        break;
+    }
+
+    Optional<model> mod;
+    if (success) {
+      // Solve! TODO: replace with iterative solve loop
+      model m = g->solver.get_model();
+      mod.emplace(m);
+    } 
+
+    g->solver.pop();
+    return mod;
+  }
+
   static void constructSymbolicPlacements(SMTConstraintGenerator *g, 
     Instruction *i, int n) {  
     // Create symbolic placements for each instruction
@@ -81,7 +143,6 @@ public:
     // block's partitioning
     expr *opPartition = nullptr;
     expr *opEndTime = nullptr;
-
 
     const auto &placement = g->symbolicPlacements.find(operand);
     if (placement != g->symbolicPlacements.end()) {
@@ -218,6 +279,15 @@ public:
     g->solver.pop();
     g->symbolicPlacements.clear();
   }
+
+  static int sumTotalTime(vector<Instruction *> instructions) {
+    int sum = 0;
+    for (Instruction *i : instructions) {
+      sum += HyacinthCostModel::costForInstruction(i);
+    }
+    return sum;
+  }
+
 };
 
 SMTConstraintGenerator::SMTConstraintGenerator() : solver(context), 
@@ -226,6 +296,10 @@ SMTConstraintGenerator::SMTConstraintGenerator() : solver(context),
     context.int_sort(), context.int_sort())) {
 
   Internals::buildCommunicationCostTable(this);
+
+  params p(context);
+  p.set(":timeout", 10000u);
+  solver.set(p);
 }
 
 // Use SMT constraints to partition the current block's instructions, 
@@ -246,36 +320,11 @@ partitionInstructionsInBlock(vector<Instruction *> instructions) {
     Internals::constrainInstruction(this, i);
   }
 
-  solver.add(latestTime < 100);
-
-  bool success = false;
-  switch (solver.check()) {
-    case unsat:   
-      cout << "unsat\n"; 
-      break;
-    case unknown:
-      cout << "unknown\n";
-      break;
-    case sat:
-      cout << "sat\n";
-      success = true;
-      break;
-  }
-
-  Optional<model> mod;
-  if (success) {
-    // Solve! TODO: replace with iterative solve loop
-    model m = solver.get_model();
-    mod.emplace(m);
-
-    cout << "latest time: " << m.eval(latestTime) << "\n";
-  } 
+  auto mod = Internals::incremementalPartitioning(this, instructions);
   Internals::addConcretePlacements(this, mod);
 
   // Reset block-local solver state
   Internals::resetSolverState(this);
-
-  return;
 }
 
 }
