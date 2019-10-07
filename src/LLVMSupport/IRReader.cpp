@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
   options.add_options()
     ("d,debug", "Enable debugging")
     ("o,out", "Output file name", 
-      cxxopts::value<std::string>()->default_value("hyacpp_intermediate"))
+      cxxopts::value<std::string>()->default_value("hyacpp_output"))
     ("r,rows", "Number of rows in the spatial configuration", 
       cxxopts::value<int>()->default_value("2"))
     ("c,columns", "Number of columns in the spatial configuration", 
@@ -78,6 +78,8 @@ int main(int argc, char **argv) {
   config.rows = result["r"].as<int>();
   config.columns = result["c"].as<int>();
   config.timeout = result["t"].as<int>();
+
+  string filename = result["o"].as<string>();
 
   // Parse the input IR file into a module
   SMDiagnostic err;
@@ -99,8 +101,7 @@ int main(int argc, char **argv) {
   }
 
   char* message;
-  // inputModule->getModuleIdentifier()
-  string outputName = "hyacpp_intermediate.ll";
+  string outputName = filename + "_intermediate.ll";
   LLVMPrintModuleToFile(wrap(inputModule.get()), outputName.c_str(), &message);
   errs() << message;
 

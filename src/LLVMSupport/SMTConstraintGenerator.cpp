@@ -19,11 +19,6 @@ using namespace llvm;
 using namespace std;
 using namespace z3;
 
-// TODO: parameterize/make config object
-#define ROWS 2
-#define COLS 1
-#define SIZE ROWS * COLS
-
 namespace SMTConstraints {
 
 class SMTConstraintGenerator::Internals {
@@ -103,7 +98,7 @@ public:
 
     // Assert basic time and placement constraints
     g->solver.add(0 <= partition);
-    g->solver.add(partition < SIZE);
+    g->solver.add(partition < g->config.rows * g->config.columns);
     g->solver.add(0 <= startTime);
     g->solver.add(startTime <= endTime);
 
@@ -257,8 +252,8 @@ public:
   }
 
   static void buildCommunicationCostTable(SMTConstraintGenerator *g) {
-    for (int x = 0; x < ROWS; x++) {
-      for (int y = 0; y < COLS; y++) {
+    for (int x = 0; x < g->config.rows; x++) {
+      for (int y = 0; y < g->config.columns; y++) {
         int cost = HyacinthCostModel::costForCommunication(x, y);
         expr xExpr = g->context.int_val(x);
         expr yExpr = g->context.int_val(y);
