@@ -9,6 +9,7 @@
 #include <list> 
 #include <map>
 #include <z3.h>
+#include <cxxopts.hpp>
 
 #include "SMTConstraintGenerator.hpp"
 
@@ -56,6 +57,28 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  // Parse command line options
+  cxxopts::Options options("hyacpp", "C++ partitioner for Hyacinth");
+  options.add_options()
+    ("d,debug", "Enable debugging")
+    ("o,out", "Output file name", 
+      cxxopts::value<std::string>()->default_value("hyacpp_intermediate"))
+    ("r,rows", "Number of rows in the spatial configuration", 
+      cxxopts::value<int>()->default_value("2"))
+    ("c,columns", "Number of columns in the spatial configuration", 
+      cxxopts::value<int>()->default_value("2"))
+    ("t,timeout", "Timeout for SMT solve calls, in seconds", 
+      cxxopts::value<int>()->default_value("100"))
+    ;
+
+  auto result = options.parse(argc, argv);
+
+  SMTConfig config;
+  config.debug = result["d"].as<bool>();
+  config.rows = result["r"].as<int>();
+  config.columns = result["c"].as<int>();
+  config.timeout = result["t"].as<int>();
+
   // Parse the input IR file into a module
   SMDiagnostic err;
   LLVMContext context;
@@ -67,7 +90,7 @@ int main(int argc, char **argv) {
 
   vector<vector<Instruction *>> blocksLists = moduleToBlocksLists(*inputModule);
 
-  SMTConstraints::SMTConstraintGenerator generator;
+  SMTConstraints::SMTConstraintGenerator generator(config);
   // auto generator = SMTConstraints::SMTConstraintGenerator(); // this does a copy!
 
   for (vector<Instruction *> block : blocksLists) {

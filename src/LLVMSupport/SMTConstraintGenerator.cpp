@@ -83,7 +83,6 @@ public:
 
     Optional<model> mod;
     if (success) {
-      // Solve! TODO: replace with iterative solve loop
       model m = g->solver.get_model();
       mod.emplace(m);
     } 
@@ -290,15 +289,17 @@ public:
 
 };
 
-SMTConstraintGenerator::SMTConstraintGenerator() : solver(context), 
+SMTConstraintGenerator::SMTConstraintGenerator(SMTConfig c) : solver(context), 
   latestTime(context.int_const("latestTime")),
   communicationCosts(z3::function("communicationCosts", context.int_sort(), 
     context.int_sort(), context.int_sort())) {
 
+  config = c;
+
   Internals::buildCommunicationCostTable(this);
 
   params p(context);
-  p.set(":timeout", 10000u);
+  p.set(":timeout", (unsigned)config.timeout);
   solver.set(p);
 }
 

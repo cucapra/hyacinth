@@ -7,6 +7,13 @@
 
 namespace SMTConstraints {
 
+struct SMTConfig {
+  bool debug;
+  int rows;
+  int columns;
+  int timeout;
+};
+
 template <typename T> class InstructionPlacement {
 public:
   T partition;
@@ -27,6 +34,9 @@ using SymbolicPlacementMap = std::map<llvm::Instruction *, SymbolicPlacement>;
 class SMTConstraintGenerator {
 
 private:
+  // Configuration
+  SMTConfig config;
+
   // Z3 context
   z3::context context;
 
@@ -49,7 +59,7 @@ private:
 
 public:
 
-  SMTConstraintGenerator();
+  SMTConstraintGenerator(SMTConfig config);
 
   void partitionInstructionsInBlock(std::vector<llvm::Instruction *> instructions);
 };
