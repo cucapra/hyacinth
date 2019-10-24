@@ -60,12 +60,12 @@ bsg_communication:
 	make src/bsg_manycore/bsg_communication.o
 
 CXX := clang++
-CXXFLAGS := $(CXXFLAGS) -std=c++17 -ferror-limit=1 -fvisibility-inlines-hidden -Wall -Werror -Wextra -Wno-unused-parameter -Wno-c++17-extensions
+CXXFLAGS := $(CXXFLAGS) -std=c++17 -ferror-limit=1 -fvisibility-inlines-hidden -Wall -Werror -Wextra -Wno-unused-parameter -Wno-c++17-extensions -I/usr/include/z3
 
 LDFLAGS += -L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib
 CPPFLAGS += -I/usr/local/opt/llvm/include -I/usr/local/opt/llvm/include/c++/v1/
 
-LLVM_CXXFLAGS := `llvm-config --cxxflags`
+LLVM_CXXFLAGS := `llvm-config --cxxflags` -fcxx-exceptions
 LLVM_LDFLAGS := `llvm-config --ldflags --libs --system-libs`
 
 BUILDDIR := build
