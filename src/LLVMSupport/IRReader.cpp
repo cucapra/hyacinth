@@ -9,9 +9,10 @@
 #include <list> 
 #include <map>
 #include <z3.h>
-#include <cxxopts.hpp>
 
+#include "cxxopts.hpp"
 #include "SMTConstraintGenerator.hpp"
+#include "ReversePostOrder.hpp"
 
 using namespace llvm;
 using namespace std;
