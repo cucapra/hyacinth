@@ -61,13 +61,12 @@ bsg_communication:
 
 CXX := clang++
 CXXFLAGS := $(CXXFLAGS) -std=c++17 -ferror-limit=1 -fvisibility-inlines-hidden -Wall -Werror -Wextra -Wno-unused-parameter -Wno-c++17-extensions
-LLVM_BIN_PATH 	:= /usr/local/opt/llvm/bin
 
 LDFLAGS += -L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib
 CPPFLAGS += -I/usr/local/opt/llvm/include -I/usr/local/opt/llvm/include/c++/v1/
 
-LLVM_CXXFLAGS := `$(LLVM_BIN_PATH)/llvm-config --cxxflags`
-LLVM_LDFLAGS := `$(LLVM_BIN_PATH)/llvm-config --ldflags --libs --system-libs`
+LLVM_CXXFLAGS := `llvm-config --cxxflags`
+LLVM_LDFLAGS := `llvm-config --ldflags --libs --system-libs`
 
 BUILDDIR := build
 
