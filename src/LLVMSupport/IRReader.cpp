@@ -92,6 +92,7 @@ int main(int argc, char **argv) {
   }
 
   vector<vector<Instruction *>> blocksLists = moduleToBlocksLists(*inputModule);
+  // blocksLists = ReversePostOrder::sortBasicBlocks(blocksLists);
 
   SMTConstraints::SMTConstraintGenerator generator(config);
   // auto generator = SMTConstraints::SMTConstraintGenerator(); // this does a copy!

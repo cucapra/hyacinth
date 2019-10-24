@@ -21,8 +21,8 @@ using namespace z3;
 
 namespace SMTConstraints {
 
-class SMTConstraintGenerator::Internals {
   // For internal helper functions
+class SMTConstraintGenerator::Internals {
 
 public:
 
