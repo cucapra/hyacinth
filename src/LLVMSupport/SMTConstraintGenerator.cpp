@@ -21,7 +21,7 @@ using namespace z3;
 
 namespace SMTConstraints {
 
-  // For internal helper functions
+// For internal helper functions
 class SMTConstraintGenerator::Internals {
 
 public:
@@ -34,7 +34,7 @@ public:
     int goal = sumTotalTime(instructions);
 
     // Check for blocks with no significant costs to partition
-    if (goal < 0) {
+    if (goal <= 0) {
         return bestModel;
     }
 
@@ -147,28 +147,29 @@ public:
       // Concrete placement from previous partitioning
       const auto &previous = g->previousPlacements.find(operand);
       if (previous == g->previousPlacements.end()) {
-        errs() << "No previous placement for: " << operand << "\n";
-      } 
+        errs() << "No previous placement for: " << *operand << "\n";
+      } else {
+        expr partition = g->context.int_val(previous->second.partition);
+        opPartition = &partition;
+      }
 
-      expr partition = g->context.int_val(previous->second.partition);
       expr endTime = g->context.int_val(0);
-      opPartition = &partition;
       opEndTime = &endTime;
     }
 
-    // For now, pointers cannot be sent across paritions
-    if (operand->getType()->isPointerTy()) {
+    // For now, pointers cannot be sent across partitions
+    if (operand->getType()->isPointerTy() && opPartition != nullptr) {
       g->solver.add(currentPlacement.partition == *opPartition);
       g->solver.add(currentPlacement.startTime >= *opEndTime);
       return;
     } 
 
     // Incorporate communication costs
-    int comms = costForCommunication(g, currentPlacement.partition,
-      *opPartition);
-
-    g->solver.add(currentPlacement.startTime >= *opEndTime + comms);
-
+    if (opPartition != nullptr) {
+      int comms = costForCommunication(g, currentPlacement.partition,
+        *opPartition);
+      g->solver.add(currentPlacement.startTime >= *opEndTime + comms);
+    }
   }
 
   static void constrainOperand(SMTConstraintGenerator *g, Instruction *i, 

@@ -40,9 +40,15 @@ vector<vector<Instruction *>> moduleToBlocksLists(Module &inputModule) {
   for (Function &f : inputModule) {
     if (!includeFunction(&f)) continue;
 
+    vector<BasicBlock *> blocks;
     for (BasicBlock &b : f) {
+      blocks.push_back(&b);
+    }
+    blocks = ReversePostOrder::sortBasicBlocks(blocks);
+
+    for (BasicBlock *b : blocks) {
       vector<Instruction *> instrs;
-      for (Instruction &i : b) {
+      for (Instruction &i : *b) {
         if (!includeInstruction(&i)) continue;
         instrs.push_back(&i);
       }
