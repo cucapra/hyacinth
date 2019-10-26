@@ -9,7 +9,6 @@
 #include <list>
 #include <map>
 #include <set>
-// #include <stack>
 #include <queue>
 #include <optional>
 #include <string>
@@ -39,7 +38,7 @@ public:
     cout << "Lower bound: " << lowerBound << "\n";
 
     // Check for blocks with no significant costs to partition
-    if (upperBound < 0) {
+    if (upperBound < lowerBound) {
         return bestModel;
     }
 
@@ -56,6 +55,47 @@ public:
       bestModel = m;
       int bestLatestTime = getIntValue(g, m.getValue(), g->latestTime);
       upperBound = bestLatestTime - 1;
+    }
+    return bestModel;
+  }
+
+  static Optional<model> binaryPartitioning(SMTConstraintGenerator *g,
+                                            vector<Instruction *> instructions) {
+
+    Optional<model> bestModel;
+    int upperBound = sumTotalTime(instructions);
+    int lowerBound = criticalPath(instructions);
+    cout << "Lower bound: " << lowerBound << "\n";
+    cout << "Upper bound: " << upperBound << "\n";
+
+    // Check for blocks with no significant costs to partition
+    if (upperBound < lowerBound) {
+      return bestModel;
+    }
+
+    // Incrememntalling attempt to solve with successively lower upperBounds
+    int current;
+    while (true) {
+      if (upperBound - lowerBound < 2) {
+        cout << "Done at: " << lowerBound << " < " << current << " < " << upperBound << "\n";
+        break;
+      }
+
+      current = lowerBound + ((upperBound - lowerBound) / 2);
+      cout << "Binary partitioning with: " << current << "\n";
+      auto m = attemptPartitioningForGoal(g, instructions, current);
+
+      // no model found, need to search larger values
+      if (!m.hasValue()) {
+        lowerBound = current;
+      } else {
+        // Some better model found, find our new upperBound (undercutting current best)
+        upperBound = current;
+        bestModel = m;
+        // int bestLatestTime = getIntValue(g, m.getValue(), g->latestTime);
+        // upperBound = bestLatestTime - 1;
+      }
+
     }
     return bestModel;
   }
@@ -374,7 +414,8 @@ partitionInstructionsInBlock(vector<Instruction *> instructions) {
     Internals::constrainInstruction(this, i);
   }
 
-  auto mod = Internals::incremementalPartitioning(this, instructions);
+  // auto mod = Internals::incremementalPartitioning(this, instructions);
+  auto mod = Internals::binaryPartitioning(this, instructions);
   Internals::addConcretePlacements(this, mod);
 
   // Reset block-local solver state
