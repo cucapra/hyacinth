@@ -5,9 +5,12 @@
 #include <llvm/Analysis/TargetTransformInfo.h>
 
 #include <iostream>
-#include <iterator> 
-#include <list> 
+#include <iterator>
+#include <list>
 #include <map>
+#include <set>
+// #include <stack>
+#include <queue>
 #include <optional>
 #include <string>
 
@@ -27,36 +30,38 @@ class SMTConstraintGenerator::Internals {
 public:
 
 
-  static Optional<model> incremementalPartitioning(SMTConstraintGenerator *g, 
+  static Optional<model> incremementalPartitioning(SMTConstraintGenerator *g,
     vector<Instruction *> instructions) {
 
     Optional<model> bestModel;
-    int goal = sumTotalTime(instructions);
+    int upperBound = sumTotalTime(instructions);
+    int lowerBound = criticalPath(instructions);
+    cout << "Lower bound: " << lowerBound << "\n";
 
     // Check for blocks with no significant costs to partition
-    if (goal <= 0) {
+    if (upperBound < 0) {
         return bestModel;
     }
 
-    // Incrememntalling attempt to solve with successively lower goals
+    // Incrememntalling attempt to solve with successively lower upperBounds
     while (true) {
-      cout << "Incremental partitioning for goal: " << goal << "\n";
-      auto m = attemptPartitioningForGoal(g, instructions, goal);
+      cout << "Incremental partitioning for upperBound: " << upperBound << "\n";
+      auto m = attemptPartitioningForGoal(g, instructions, upperBound);
 
       if (!m.hasValue()) {
         break;
-      } 
+      }
 
-      // Some better model found, find our new goal (undercutting current best)
+      // Some better model found, find our new upperBound (undercutting current best)
       bestModel = m;
       int bestLatestTime = getIntValue(g, m.getValue(), g->latestTime);
-      goal = bestLatestTime - 1;
+      upperBound = bestLatestTime - 1;
     }
     return bestModel;
   }
 
   // Attempt to partition for a certain goal, return the model if successful
-  static Optional<model> attemptPartitioningForGoal(SMTConstraintGenerator *g, 
+  static Optional<model> attemptPartitioningForGoal(SMTConstraintGenerator *g,
     vector<Instruction *> instructions, int goal) {
 
     g->solver.push();
@@ -64,8 +69,8 @@ public:
 
     bool success = false;
     switch (g->solver.check()) {
-      case unsat:   
-        cout << "Unsat\n"; 
+      case unsat:
+        cout << "Unsat\n";
         break;
       case unknown:
         cout << "Unknown/Timeout\n";
@@ -80,20 +85,20 @@ public:
     if (success) {
       model m = g->solver.get_model();
       mod.emplace(m);
-    } 
+    }
 
     g->solver.pop();
     return mod;
   }
 
-  static void constructSymbolicPlacements(SMTConstraintGenerator *g, 
-    Instruction *i, int n) {  
+  static void constructSymbolicPlacements(SMTConstraintGenerator *g,
+    Instruction *i, int n) {
     // Create symbolic placements for each instruction
     expr partition = g->context.int_const(("p" + to_string(n)).c_str());
     expr startTime = g->context.int_const(("s" + to_string(n)).c_str());
     expr endTime = g->context.int_const(("t" + to_string(n)).c_str());
 
-    SymbolicPlacement placement = InstructionPlacement<expr>(partition, 
+    SymbolicPlacement placement = InstructionPlacement<expr>(partition,
       startTime, endTime);
 
     // Assert basic time and placement constraints
@@ -128,7 +133,7 @@ public:
     }
   }
 
-  static void constrainInstructionOperand(SMTConstraintGenerator *g, 
+  static void constrainInstructionOperand(SMTConstraintGenerator *g,
     Instruction *i, Instruction *operand) {
 
     const auto &currentPlacement = g->symbolicPlacements.at(i);
@@ -162,7 +167,7 @@ public:
       g->solver.add(currentPlacement.partition == *opPartition);
       g->solver.add(currentPlacement.startTime >= *opEndTime);
       return;
-    } 
+    }
 
     // Incorporate communication costs
     if (opPartition != nullptr) {
@@ -172,7 +177,7 @@ public:
     }
   }
 
-  static void constrainOperand(SMTConstraintGenerator *g, Instruction *i, 
+  static void constrainOperand(SMTConstraintGenerator *g, Instruction *i,
     Value *operand) {
 
     // No constraints for constants or arguments
@@ -191,7 +196,7 @@ public:
       constrainInstructionOperand(g, i, (Instruction *)operand);
       return;
     }
-    
+
     errs() << "unexpected operand:" << *operand << "\n";
   }
 
@@ -205,7 +210,7 @@ public:
     int i = 0;
     bool success = Z3_get_numeral_int(g->context, m.eval(e), &i);
     if (!success) {
-      cerr << "Error getting integer from Z3 expression " << e << endl; 
+      cerr << "Error getting integer from Z3 expression " << e << endl;
     }
     return i;
   }
@@ -216,7 +221,7 @@ public:
     i->setMetadata(name, node);
   }
 
-  static void addConcretePlacements(SMTConstraintGenerator *g, 
+  static void addConcretePlacements(SMTConstraintGenerator *g,
     Optional<model> m) {
 
     int time = 0;
@@ -241,8 +246,8 @@ public:
         time = e;
       }
 
-      // Add to concrete placement map 
-      ConcretePlacement placement = InstructionPlacement<int>(p, s, e); 
+      // Add to concrete placement map
+      ConcretePlacement placement = InstructionPlacement<int>(p, s, e);
       g->previousPlacements.insert(make_pair(i, placement));
 
       // Add metadata to the original LLVM module
@@ -283,11 +288,63 @@ public:
     return sum;
   }
 
+  static int criticalPath(vector<Instruction *> instructions) {
+
+    set<Instruction *> instrSet(instructions.begin(), instructions.end());
+
+    // set telling whether we have visited a instruction
+    set<Instruction *> visited;
+
+    // map from instructions to path costs
+    map<Instruction *, int> pathCost;
+
+    // a stack of Instructions we need to visit
+    queue<Instruction *> stack;
+
+    // start the stack from the bottom of the list of instructions
+    Instruction *lastInstr = instructions.back();
+    stack.push(lastInstr);
+    pathCost[lastInstr] = HyacinthCostModel::costForInstruction(lastInstr);
+
+    while (!stack.empty()) {
+      Instruction *instr = stack.front();
+      stack.pop();
+
+      // visit instr
+      visited.insert(instr);
+      int cost = pathCost[instr];
+
+      for (const auto &op : instr->operands()) {
+        if (isa<Instruction>(op)) {
+          Instruction *opPtr = cast<Instruction>(op);
+          int opCost = cost + HyacinthCostModel::costForInstruction(opPtr);
+          // if we haven't visited the instruction and its in instrSet, add it to the stack
+          if (visited.find(opPtr) == visited.end()
+              && instrSet.find(opPtr) != visited.end()) {
+            stack.push(opPtr);
+            pathCost[opPtr] = opCost;
+          } else { // already visited, maybe we found a longer path
+            errs() << "op: " << *opPtr << "\n";
+            if (opCost > pathCost[opPtr]) pathCost[opPtr] = opCost;
+          }
+        }
+      }
+    }
+
+    // get max path
+    int maxCost = 0;
+    for (const auto &[instr, cost] : pathCost) {
+      if (cost > maxCost) maxCost = cost;
+    }
+
+    return maxCost;
+  }
+
 };
 
-SMTConstraintGenerator::SMTConstraintGenerator(SMTConfig c) : solver(context), 
+SMTConstraintGenerator::SMTConstraintGenerator(SMTConfig c) : solver(context),
   latestTime(context.int_const("latestTime")),
-  communicationCosts(z3::function("communicationCosts", context.int_sort(), 
+  communicationCosts(z3::function("communicationCosts", context.int_sort(),
     context.int_sort(), context.int_sort())) {
 
   config = c;
@@ -299,7 +356,7 @@ SMTConstraintGenerator::SMTConstraintGenerator(SMTConfig c) : solver(context),
   solver.set(p);
 }
 
-// Use SMT constraints to partition the current block's instructions, 
+// Use SMT constraints to partition the current block's instructions,
 // referencing the previous placement mappings as needed.
 void SMTConstraintGenerator::
 partitionInstructionsInBlock(vector<Instruction *> instructions) {
