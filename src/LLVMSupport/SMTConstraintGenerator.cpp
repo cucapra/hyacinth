@@ -36,13 +36,14 @@ public:
     int upperBound = sumTotalTime(instructions);
     int lowerBound = criticalPath(instructions);
     cout << "Lower bound: " << lowerBound << "\n";
+    cout << "Upper bound: " << upperBound << "\n";
 
     // Check for blocks with no significant costs to partition
-    if (upperBound < lowerBound) {
+    if (upperBound <= lowerBound) {
         return bestModel;
     }
 
-    // Incrememntalling attempt to solve with successively lower upperBounds
+    // Incrementally attempt to solve with successively lower upperBounds
     while (true) {
       cout << "Incremental partitioning for upperBound: " << upperBound << "\n";
       auto m = attemptPartitioningForGoal(g, instructions, upperBound);
@@ -51,7 +52,8 @@ public:
         break;
       }
 
-      // Some better model found, find our new upperBound (undercutting current best)
+      // Some better model found, find our new upper bound (undercutting current 
+      // best)
       bestModel = m;
       int bestLatestTime = getIntValue(g, m.getValue(), g->latestTime);
       upperBound = bestLatestTime - 1;
@@ -69,11 +71,12 @@ public:
     cout << "Upper bound: " << upperBound << "\n";
 
     // Check for blocks with no significant costs to partition
-    if (upperBound < lowerBound) {
+    if (upperBound <= lowerBound) {
       return bestModel;
     }
 
-    // Incrememntalling attempt to solve with successively lower upperBounds
+    // Incrementally attempt to solve with a binary search between lower and 
+    // upper bounds
     int current;
     while (true) {
       if (upperBound - lowerBound < 2) {
@@ -89,11 +92,10 @@ public:
       if (!m.hasValue()) {
         lowerBound = current;
       } else {
-        // Some better model found, find our new upperBound (undercutting current best)
+        // Some better model found, find our new upper bound (undercutting 
+        // current best)
         upperBound = current;
         bestModel = m;
-        // int bestLatestTime = getIntValue(g, m.getValue(), g->latestTime);
-        // upperBound = bestLatestTime - 1;
       }
 
     }
@@ -225,7 +227,7 @@ public:
       return;
     }
 
-    // For now, global accesses need to live on parition 0
+    // For now, global accesses need to live on partition 0
     if (isa<GlobalValue>(operand)) {
       g->solver.add(g->symbolicPlacements.at(i).partition == 0);
       return;
@@ -276,7 +278,7 @@ public:
         s = getIntValue(g, m.getValue(), placement.startTime);
         e = getIntValue(g, m.getValue(), placement.endTime);
       } else {
-        // Parititioning failed, for now, assign all to partition 0
+        // Partitioning failed, for now, assign all to partition 0
         p = 0;
 
         // For now, recompute the time
@@ -332,25 +334,25 @@ public:
 
     set<Instruction *> instrSet(instructions.begin(), instructions.end());
 
-    // set telling whether we have visited a instruction
+    // Set telling whether we have visited a instruction
     set<Instruction *> visited;
 
-    // map from instructions to path costs
+    // Map from instructions to path costs
     map<Instruction *, int> pathCost;
 
-    // a stack of Instructions we need to visit
+    // A stack of instructions we need to visit
     queue<Instruction *> stack;
 
-    // start the stack from the bottom of the list of instructions
-    Instruction *lastInstr = instructions.back();
-    stack.push(lastInstr);
-    pathCost[lastInstr] = HyacinthCostModel::costForInstruction(lastInstr);
-
+    // Start the stack from the "bottom" of each instruction
+    for (Instruction *i : instructions) {
+      stack.push(i);
+      pathCost[i] = HyacinthCostModel::costForInstruction(i);
+    }
     while (!stack.empty()) {
       Instruction *instr = stack.front();
       stack.pop();
 
-      // visit instr
+      // Visit instr
       visited.insert(instr);
       int cost = pathCost[instr];
 
@@ -358,12 +360,15 @@ public:
         if (isa<Instruction>(op)) {
           Instruction *opPtr = cast<Instruction>(op);
           int opCost = cost + HyacinthCostModel::costForInstruction(opPtr);
-          // if we haven't visited the instruction and its in instrSet, add it to the stack
+
+          // If we haven't visited the instruction and its in instrSet, add it 
+          // to the stack
           if (visited.find(opPtr) == visited.end()
               && instrSet.find(opPtr) != visited.end()) {
             stack.push(opPtr);
             pathCost[opPtr] = opCost;
-          } else { // already visited, maybe we found a longer path
+          } else {
+            // Already visited, maybe we found a longer path
             errs() << "op: " << *opPtr << "\n";
             if (opCost > pathCost[opPtr]) pathCost[opPtr] = opCost;
           }
