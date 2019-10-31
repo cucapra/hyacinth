@@ -10,6 +10,10 @@ This is a compiler that partitions functions' [LLVM][] intermediate representati
 Installing Dependencies
 ------
 
+The OCaml implementation assumes [Ocaml][] 4.08.1.
+
+    $ brew install ocaml
+
 We recommend installing dependencies via OCaml's [opam][] package manager.
 
 On OSX:
@@ -61,6 +65,7 @@ You can add this LLVM installation and the installed libraries to your path with
     
 (The exact path may differ based on your installation method.)
 
+[ocaml]: https://ocaml.org/
 [opam]: https://opam.ocaml.org
 [binary installation script]: https://opam.ocaml.org/doc/Install.html#Binary-distribution
 [dune]: https://github.com/ocaml/dune
