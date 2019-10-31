@@ -1,16 +1,16 @@
+#include <llvm/Analysis/TargetTransformInfo.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Analysis/TargetTransformInfo.h>
 
 #include <iostream>
 #include <iterator>
 #include <list>
 #include <map>
-#include <set>
-#include <queue>
 #include <optional>
+#include <set>
+#include <stack>
 #include <string>
 
 #include "CostModel.hpp"
@@ -32,7 +32,6 @@ public:
   static Optional<model> incremementalPartitioning(SMTConstraintGenerator *g,
     vector<Instruction *> instructions) {
 
-    Optional<model> bestModel;
     int upperBound = sumTotalTime(instructions);
     int lowerBound = criticalPath(instructions);
     cout << "Lower bound: " << lowerBound << "\n";
@@ -40,12 +39,26 @@ public:
 
     // Check for blocks with no significant costs to partition
     if (upperBound <= lowerBound) {
-        return bestModel;
+      return Optional<model>();
     }
+
+    switch (g->config.strategy) {
+      case binary:
+        return binarySearch(g, instructions, upperBound, lowerBound);
+      default:
+        return linearSearch(g, instructions, upperBound, lowerBound);
+    }
+  }
+
+  static Optional<model> linearSearch(SMTConstraintGenerator *g,
+                                      vector<Instruction *> instructions,
+                                      int upperBound,
+                                      int lowerBound) {
+    Optional<model> bestModel;
 
     // Incrementally attempt to solve with successively lower upperBounds
     while (true) {
-      cout << "Incremental partitioning for upperBound: " << upperBound << "\n";
+      cout << "Linear search with upperBound: " << upperBound << "\n";
       auto m = attemptPartitioningForGoal(g, instructions, upperBound);
 
       if (!m.hasValue()) {
@@ -61,23 +74,16 @@ public:
     return bestModel;
   }
 
-  static Optional<model> binaryPartitioning(SMTConstraintGenerator *g,
-                                            vector<Instruction *> instructions) {
+  static Optional<model> binarySearch(SMTConstraintGenerator *g,
+                                      vector<Instruction *> instructions,
+                                      int upperBound,
+                                      int lowerBound) {
 
     Optional<model> bestModel;
-    int upperBound = sumTotalTime(instructions);
-    int lowerBound = criticalPath(instructions);
-    cout << "Lower bound: " << lowerBound << "\n";
-    cout << "Upper bound: " << upperBound << "\n";
-
-    // Check for blocks with no significant costs to partition
-    if (upperBound <= lowerBound) {
-      return bestModel;
-    }
+    int current;
 
     // Incrementally attempt to solve with a binary search between lower and 
     // upper bounds
-    int current;
     while (true) {
       if (upperBound - lowerBound < 2) {
         cout << "Done at: " << lowerBound << " < " << current << " < " << upperBound << "\n";
@@ -85,7 +91,7 @@ public:
       }
 
       current = lowerBound + ((upperBound - lowerBound) / 2);
-      cout << "Binary partitioning with: " << current << "\n";
+      cout << "Binary search with: " << current << "\n";
       auto m = attemptPartitioningForGoal(g, instructions, current);
 
       // no model found, need to search larger values
@@ -341,7 +347,7 @@ public:
     map<Instruction *, int> pathCost;
 
     // A stack of instructions we need to visit
-    queue<Instruction *> stack;
+    stack<Instruction *> stack;
 
     // Start the stack from the "bottom" of each instruction
     for (Instruction *i : instructions) {
@@ -349,10 +355,10 @@ public:
       pathCost[i] = HyacinthCostModel::costForInstruction(i);
     }
     while (!stack.empty()) {
-      Instruction *instr = stack.front();
+      Instruction *instr = stack.top();
       stack.pop();
 
-      // Visit instr
+      // Visit
       visited.insert(instr);
       int cost = pathCost[instr];
 
@@ -369,14 +375,13 @@ public:
             pathCost[opPtr] = opCost;
           } else {
             // Already visited, maybe we found a longer path
-            errs() << "op: " << *opPtr << "\n";
             if (opCost > pathCost[opPtr]) pathCost[opPtr] = opCost;
           }
         }
       }
     }
 
-    // get max path
+    // Get maximum path
     int maxCost = 0;
     for (const auto &[instr, cost] : pathCost) {
       if (cost > maxCost) maxCost = cost;
@@ -419,8 +424,7 @@ partitionInstructionsInBlock(vector<Instruction *> instructions) {
     Internals::constrainInstruction(this, i);
   }
 
-  // auto mod = Internals::incremementalPartitioning(this, instructions);
-  auto mod = Internals::binaryPartitioning(this, instructions);
+  auto mod = Internals::incremementalPartitioning(this, instructions);
   Internals::addConcretePlacements(this, mod);
 
   // Reset block-local solver state

@@ -76,6 +76,8 @@ int main(int argc, char **argv) {
       cxxopts::value<int>()->default_value("2"))
     ("t,timeout", "Timeout for SMT solve calls, in seconds", 
       cxxopts::value<int>()->default_value("100"))
+    ("s,strategy", "Incremental solving search strategy", 
+      cxxopts::value<std::string>()->default_value("linear"))
     ;
 
   auto result = options.parse(argc, argv);
@@ -85,6 +87,9 @@ int main(int argc, char **argv) {
   config.rows = result["r"].as<int>();
   config.columns = result["c"].as<int>();
   config.timeout = result["t"].as<int>();
+
+  SMTConstraints::searchStrategies strategies;
+  config.strategy = strategies[result["s"].as<string>()];
 
   string filename = result["o"].as<string>();
 
