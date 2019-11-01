@@ -10,7 +10,6 @@
 #include <map>
 #include <optional>
 #include <set>
-#include <stack>
 #include <string>
 
 #include "CostModel.hpp"
@@ -34,8 +33,6 @@ public:
 
     int upperBound = sumTotalTime(instructions);
     int lowerBound = criticalPath(instructions);
-    cout << "Lower bound: " << lowerBound << "\n";
-    cout << "Upper bound: " << upperBound << "\n";
 
     // Check for blocks with no significant costs to partition
     if (upperBound <= lowerBound) {
@@ -55,21 +52,23 @@ public:
                                       int upperBound,
                                       int lowerBound) {
     Optional<model> bestModel;
+    int bestLatestTime = upperBound;
 
     // Incrementally attempt to solve with successively lower upperBounds
     while (true) {
-      cout << "Linear search with upperBound: " << upperBound << "\n";
+      cout << "Linear search with: [" << lowerBound << ", "  << upperBound << "]\n";
       auto m = attemptPartitioningForGoal(g, instructions, upperBound);
 
       if (!m.hasValue()) {
+        cout << "Linear search done at: " << bestLatestTime << "\n";
         break;
       }
 
-      // Some better model found, find our new upper bound (undercutting current 
+      // Some better model found, find our new upper bound (undercutting current
       // best)
       bestModel = m;
-      int bestLatestTime = getIntValue(g, m.getValue(), g->latestTime);
-      upperBound = bestLatestTime - 1;
+      bestLatestTime = getIntValue(g, m.getValue(), g->latestTime);
+      upperBound = bestLatestTime;
     }
     return bestModel;
   }
@@ -80,30 +79,31 @@ public:
                                       int lowerBound) {
 
     Optional<model> bestModel;
-    int current;
+    int bestLatestTime = upperBound;
 
-    // Incrementally attempt to solve with a binary search between lower and 
+    // Incrementally attempt to solve with a binary search between lower and
     // upper bounds
     while (true) {
-      if (upperBound - lowerBound < 2) {
-        cout << "Done at: " << lowerBound << " < " << current << " < " << upperBound << "\n";
-        break;
-      }
+      bestLatestTime = lowerBound + ((upperBound - lowerBound) / 2);
 
-      current = lowerBound + ((upperBound - lowerBound) / 2);
-      cout << "Binary search with: " << current << "\n";
-      auto m = attemptPartitioningForGoal(g, instructions, current);
+      cout << "Binary search with: [" << lowerBound << ", "  << upperBound << "]\n";
+      auto m = attemptPartitioningForGoal(g, instructions, bestLatestTime);
 
-      // no model found, need to search larger values
+      // No model found, need to search larger values
       if (!m.hasValue()) {
-        lowerBound = current;
+        lowerBound = bestLatestTime;
       } else {
-        // Some better model found, find our new upper bound (undercutting 
+        // Some better model found, find our new upper bound (undercutting
         // current best)
-        upperBound = current;
+        bestLatestTime = getIntValue(g, m.getValue(), g->latestTime);
+        upperBound = bestLatestTime;
         bestModel = m;
       }
 
+      if (upperBound - lowerBound < 2) {
+        cout << "Binary search done at: " << bestLatestTime << "\n";
+        break;
+      }
     }
     return bestModel;
   }
@@ -338,58 +338,37 @@ public:
 
   static int criticalPath(vector<Instruction *> instructions) {
 
-    set<Instruction *> instrSet(instructions.begin(), instructions.end());
-
-    // Set telling whether we have visited a instruction
-    set<Instruction *> visited;
-
     // Map from instructions to path costs
     map<Instruction *, int> pathCost;
 
-    // A stack of instructions we need to visit
-    stack<Instruction *> stack;
+    int longestPath = 0;
 
-    // Start the stack from the "bottom" of each instruction
     for (Instruction *i : instructions) {
-      stack.push(i);
-      pathCost[i] = HyacinthCostModel::costForInstruction(i);
-    }
-    while (!stack.empty()) {
-      Instruction *instr = stack.top();
-      stack.pop();
 
-      // Visit
-      visited.insert(instr);
-      int cost = pathCost[instr];
-
-      for (const auto &op : instr->operands()) {
+      int startCost = 0;
+      for (const auto &op : i->operands()) {
         if (isa<Instruction>(op)) {
           Instruction *opPtr = cast<Instruction>(op);
-          int opCost = cost + HyacinthCostModel::costForInstruction(opPtr);
 
-          // If we haven't visited the instruction and its in instrSet, add it 
-          // to the stack
-          if (visited.find(opPtr) == visited.end()
-              && instrSet.find(opPtr) != visited.end()) {
-            stack.push(opPtr);
-            pathCost[opPtr] = opCost;
-          } else {
-            // Already visited, maybe we found a longer path
-            if (opCost > pathCost[opPtr]) pathCost[opPtr] = opCost;
+          // Don't consider dependencies outside of this block
+          if (pathCost.find(opPtr) == pathCost.end()) {
+            continue;
+          }
+
+          if (pathCost[opPtr] > startCost) {
+            startCost = pathCost[opPtr];
           }
         }
       }
+      pathCost[i] = startCost + HyacinthCostModel::costForInstruction(i);
+      errs() << HyacinthCostModel::costForInstruction(i) << "\t" << pathCost[i] << "\ti: " << *i << "\n";
+      if (pathCost[i] > longestPath) {
+        longestPath = pathCost[i];
+      }
     }
 
-    // Get maximum path
-    int maxCost = 0;
-    for (const auto &[instr, cost] : pathCost) {
-      if (cost > maxCost) maxCost = cost;
-    }
-
-    return maxCost;
+    return longestPath;
   }
-
 };
 
 SMTConstraintGenerator::SMTConstraintGenerator(SMTConfig c) : solver(context),
