@@ -3,7 +3,7 @@ TIMEOUT := 2
 ROWS := 1
 COLS := 2
 TARGET := pthreads
-CLANG_LFLAGS := -lpthread -lm 
+CLANG_LFLAGS := -lpthread -lm
 
 ifeq ($(TARGET), bsg_manycore)
 	CFLAGS := -m32
@@ -24,7 +24,7 @@ install:
 	dune build && dune install
 
 clean:
-	rm -f {.,src,examples/*}/*.{ll,bc,out,dot,png}
+	rm -f {.,src}/*.{ll,bc,out,dot,png}
 	rm -f tests/*{.bc,.out,.dot,.png,_partitioned.ll,_host.ll,_cores.ll,_comms.ll,_intermediate.ll}
 	rm -f tests/output
 	rm -rf hyacpp
@@ -70,7 +70,7 @@ LLVM_LDFLAGS := `llvm-config --ldflags --libs --system-libs`
 
 BUILDDIR := build
 
-CPP_FILES := src/LLVMSupport/*.cpp 
+CPP_FILES := src/LLVMSupport/*.cpp
 
 hyacpp: $(CPP_FILES)
 	$(CXX) -lz3 $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CPP_FILES) $(LLVM_LDFLAGS) -o hyacpp
