@@ -7,7 +7,7 @@ using namespace std;
 
 namespace ReversePostOrder {
 
-void explore(vector<BasicBlock *> visited, set<BasicBlock *> path, 
+void explore(vector<BasicBlock *> visited, set<BasicBlock *> path,
     BasicBlock *node) {
 
     if (path.find(node) != path.end()

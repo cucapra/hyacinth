@@ -8,7 +8,6 @@
 #include <iterator>
 #include <list>
 #include <map>
-#include <optional>
 #include <set>
 #include <string>
 
@@ -36,6 +35,7 @@ public:
 
     // Check for blocks with no significant costs to partition
     if (upperBound <= lowerBound) {
+      cout << "Not searching because lower and upper bounds overlap: [" << lowerBound << ", "  << upperBound << "]\n";
       return Optional<model>();
     }
 
@@ -86,7 +86,7 @@ public:
     while (true) {
       bestLatestTime = lowerBound + ((upperBound - lowerBound) / 2);
 
-      cout << "Binary search with: [" << lowerBound << ", "  << upperBound << "]\n";
+      cout << "Binary search with: [" << lowerBound << ", "  << bestLatestTime << ", "  << upperBound << "]\n";
       auto m = attemptPartitioningForGoal(g, instructions, bestLatestTime);
 
       // No model found, need to search larger values

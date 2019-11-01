@@ -32,7 +32,7 @@ public:
   T partition;
   T startTime;
   T endTime;
-  static_assert(std::is_same<T,int>::value || std::is_same<T,z3::expr>::value, 
+  static_assert(std::is_same<T,int>::value || std::is_same<T,z3::expr>::value,
     "Expected int or expr");
 
   InstructionPlacement(T p, T s, T e) : partition(p), startTime(s), endTime(e) {
