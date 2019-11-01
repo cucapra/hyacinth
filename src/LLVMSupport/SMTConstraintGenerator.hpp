@@ -7,11 +7,24 @@
 
 namespace SMTConstraints {
 
+enum SearchStrategy { linear, binary };
+
+struct searchStrategies : public std::map<std::string, SearchStrategy>
+{
+    searchStrategies()
+    {
+        this->operator[]("linear") = linear;
+        this->operator[]("binary") = binary;
+    };
+    ~searchStrategies(){}
+};
+
 struct SMTConfig {
   bool debug;
   int rows;
   int columns;
   int timeout;
+  SearchStrategy strategy;
 };
 
 template <typename T> class InstructionPlacement {

@@ -5,8 +5,8 @@
 #include <llvm-c/Core.h>
 
 #include <iostream>
-#include <iterator> 
-#include <list> 
+#include <iterator>
+#include <list>
 #include <map>
 #include <z3.h>
 
@@ -68,14 +68,16 @@ int main(int argc, char **argv) {
   cxxopts::Options options("hyacpp", "C++ partitioner for Hyacinth");
   options.add_options()
     ("d,debug", "Enable debugging")
-    ("o,out", "Output file name", 
+    ("o,out", "Output file name",
       cxxopts::value<std::string>()->default_value("hyacpp_output"))
-    ("r,rows", "Number of rows in the spatial configuration", 
+    ("r,rows", "Number of rows in the spatial configuration",
       cxxopts::value<int>()->default_value("2"))
-    ("c,columns", "Number of columns in the spatial configuration", 
+    ("c,columns", "Number of columns in the spatial configuration",
       cxxopts::value<int>()->default_value("2"))
-    ("t,timeout", "Timeout for SMT solve calls, in seconds", 
-      cxxopts::value<int>()->default_value("100"))
+    ("t,timeout", "Timeout for SMT solve calls, in seconds",
+      cxxopts::value<int>()->default_value("1000000"))
+    ("s,strategy", "Incremental solving search strategy",
+      cxxopts::value<std::string>()->default_value("linear"))
     ;
 
   auto result = options.parse(argc, argv);
@@ -85,6 +87,9 @@ int main(int argc, char **argv) {
   config.rows = result["r"].as<int>();
   config.columns = result["c"].as<int>();
   config.timeout = result["t"].as<int>();
+
+  SMTConstraints::searchStrategies strategies;
+  config.strategy = strategies[result["s"].as<string>()];
 
   string filename = result["o"].as<string>();
 
