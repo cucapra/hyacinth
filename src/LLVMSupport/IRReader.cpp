@@ -1,3 +1,5 @@
+#include <llvm/ADT/PostOrderIterator.h>
+#include <llvm/IR/CFG.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
@@ -12,7 +14,6 @@
 
 #include "cxxopts.hpp"
 #include "SMTConstraintGenerator.hpp"
-#include "ReversePostOrder.hpp"
 
 using namespace llvm;
 using namespace std;
@@ -40,13 +41,8 @@ vector<vector<Instruction *>> moduleToBlocksLists(Module &inputModule) {
   for (Function &f : inputModule) {
     if (!includeFunction(&f)) continue;
 
-    vector<BasicBlock *> blocks;
-    for (BasicBlock &b : f) {
-      blocks.push_back(&b);
-    }
-    blocks = ReversePostOrder::sortBasicBlocks(blocks);
-
-    for (BasicBlock *b : blocks) {
+    ReversePostOrderTraversal<llvm::Function *> traversal(&f);
+    for (auto &b : traversal) {
       vector<Instruction *> instrs;
       for (Instruction &i : *b) {
         if (!includeInstruction(&i)) continue;
@@ -103,8 +99,6 @@ int main(int argc, char **argv) {
   }
 
   vector<vector<Instruction *>> blocksLists = moduleToBlocksLists(*inputModule);
-  // blocksLists = ReversePostOrder::sortBasicBlocks(blocksLists);
-
   SMTConstraints::SMTConstraintGenerator generator(config);
   // auto generator = SMTConstraints::SMTConstraintGenerator(); // this does a copy!
 

@@ -153,7 +153,6 @@ public:
     g->solver.add(0 <= partition);
     g->solver.add(partition < g->config.rows * g->config.columns);
     g->solver.add(0 <= startTime);
-    g->solver.add(startTime <= endTime);
 
     g->solver.add(endTime <= g->latestTime);
 
@@ -200,7 +199,9 @@ public:
       // Concrete placement from previous partitioning
       const auto &previous = g->previousPlacements.find(operand);
       if (previous == g->previousPlacements.end()) {
-        errs() << "No previous placement for: " << *operand << "\n";
+        if (i->getOpcode() != Instruction::PHI) {
+          errs() << "No previous placement for: " << *operand << "\n";
+        }
       } else {
         expr partition = g->context.int_val(previous->second.partition);
         opPartition = &partition;
@@ -361,7 +362,7 @@ public:
         }
       }
       pathCost[i] = startCost + HyacinthCostModel::costForInstruction(i);
-      errs() << HyacinthCostModel::costForInstruction(i) << "\t" << pathCost[i] << "\ti: " << *i << "\n";
+      // errs() << HyacinthCostModel::costForInstruction(i) << "\t" << pathCost[i] << "\ti: " << *i << "\n";
       if (pathCost[i] > longestPath) {
         longestPath = pathCost[i];
       }
