@@ -4,6 +4,7 @@
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/raw_ostream.h>
+#include "llvm/Transforms/Utils/Cloning.h"
 #include <llvm-c/Core.h>
 
 #include <iostream>
@@ -107,10 +108,15 @@ int main(int argc, char **argv) {
     generator.partitionInstructionsInBlock(block);
   }
 
+  // Write intermediate, partitioned module out
   char* message;
   string outputName = filename + "_intermediate.ll";
   LLVMPrintModuleToFile(wrap(inputModule.get()), outputName.c_str(), &message);
   errs() << message;
+
+  // Clone module for host and device
+  auto hostClone = CloneModule(*inputModule.get());
+  auto deviceClone = CloneModule(*inputModule.get());
 
   return 0;
 }

@@ -16,8 +16,8 @@ int _align_size(int size) {
 }
 
 int _load_symbol_to_eva(hb_mc_device_t *device, const char *symbol, hb_mc_eva_t *eva) {
-    return hb_mc_loader_symbol_to_eva(device->program->bin, device->program->bin_size, 
-        symbol, eva);     
+    return hb_mc_loader_symbol_to_eva(device->program->bin, device->program->bin_size,
+        symbol, eva);
 }
 
 void *init() {
@@ -44,7 +44,7 @@ void *init() {
         return 0;
     }
 
-    // Return a pointer to the device as the context 
+    // Return a pointer to the device as the context
     return &device;
 }
 
@@ -54,7 +54,7 @@ int32_t address_for_symbol(char *symbol, void *context) {
     hb_mc_device_t *device = (hb_mc_device_t *)context;
 
     hb_mc_eva_t eva;
-    int err = hb_mc_loader_symbol_to_eva(device->program->bin, 
+    int err = hb_mc_loader_symbol_to_eva(device->program->bin,
         device->program->bin_size, symbol, &eva);
     if (err) {
         fprintf(stderr, "hb_mc_loader_symbol_to_eva failed\n");
@@ -79,15 +79,15 @@ void send_argument(void *value, int32_t size, int32_t to_core, int32_t addr, voi
     // Context is the device
     hb_mc_device_t *device = (hb_mc_device_t *)context;
 
-    // Get the tile coordinate for each tile. Not that because the first row 
+    // Get the tile coordinate for each tile. Not that because the first row
     // is reserved for I/O, tile ID 0 corresponds to coordinate (0, 1) and
-    // so on. 
+    // so on.
     hb_mc_coordinate_t tile_coordinate = device->mesh->tiles[to_core].coord;
 
     // Write the local struct to the tile's copy of the struct
     hb_mc_eva_t tile_struct_eva = (hb_mc_eva_t)addr;
     int err = hb_mc_manycore_eva_write(device->mc, &default_map, &tile_coordinate,
-        &tile_struct_eva, local_struct, aligned_size); 
+        &tile_struct_eva, local_struct, aligned_size);
     if (err) {
         fprintf(stderr, "hb_mc_manycore_eva_write failed\n");
     }
@@ -105,7 +105,7 @@ void retrieve_global(void *global, int32_t size, int32_t addr, void *context) {
     hb_mc_coordinate_t host_coordinate = hb_mc_manycore_get_host_coordinate(device->mc);
     hb_mc_eva_t global_eva = (hb_mc_eva_t)addr;
     int err = hb_mc_manycore_eva_read(device->mc, &default_map, &host_coordinate,
-        &global_eva, aligned_space, aligned_size); 
+        &global_eva, aligned_space, aligned_size);
     if (err) {
         fprintf(stderr, "hb_mc_manycore_eva_read failed\n");
     }
@@ -126,17 +126,17 @@ void *receive_return(int32_t size, void *context) {
     hb_mc_device_t *device = (hb_mc_device_t *)context;
 
     // Lookup the return EVA in DRAM
-    hb_mc_eva_t global_return_eva; 
+    hb_mc_eva_t global_return_eva;
     err = _load_symbol_to_eva(device, "return_struct", &global_return_eva);
-    if (err != HB_MC_SUCCESS) { 
+    if (err != HB_MC_SUCCESS) {
         fprintf(stderr, "hb_mc_loader_symbol_to_eva failed\n");
         return NULL;
-    } 
+    }
 
     // EVA read the single return value
-    hb_mc_coordinate_t host_coordinate = hb_mc_manycore_get_host_coordinate(device->mc); 
+    hb_mc_coordinate_t host_coordinate = hb_mc_manycore_get_host_coordinate(device->mc);
     err = hb_mc_manycore_eva_read(device->mc, &default_map, &host_coordinate,
-        &global_return_eva, value, aligned_size); 
+        &global_return_eva, value, aligned_size);
     if (err) {
         fprintf(stderr, "hb_mc_device_memcpy to host failed\n");
         return NULL;

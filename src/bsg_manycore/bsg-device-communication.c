@@ -41,7 +41,7 @@ void print_addr(void *a) {
 void send(void *value, int32_t size, int32_t to_core, int32_t addr, void *context) {
     // HB memory operations require word-aligned pointers, *not* byte-aligned!
     // The struct layout is:
-    //   { 
+    //   {
     //     value   [size bytes],
     //     ready   [1 byte],
     //     padding [4 bytes],
@@ -84,12 +84,12 @@ void *_receive_shared(int32_t size, int32_t addr, void *context) {
     // Wait patiently until the value is ready
     bsg_wait_while(!*((volatile char *)addr + size));
 
-    // Return this address 
+    // Return this address
     return (void *)addr;
 }
 
 void *receive(int32_t size, int32_t from_core, int32_t addr, void *context) {
-    // Return this address 
+    // Return this address
     return _receive_shared(size, addr, context);
 }
 
@@ -113,7 +113,7 @@ void receive_token(int addr, void *context) {
 void *call_partitioned_functions(int num_functions, void (**function_pts)(void *), void *context) {
     bsg_set_tile_x_y();
     int num_tiles = bsg_num_tiles;
-    int tile_id = bsg_x_y_to_id(bsg_x, bsg_y);  
+    int tile_id = bsg_x_y_to_id(bsg_x, bsg_y);
 
     // TODO: this will misplace tiles if IDs are skipped
     if (tile_id < num_functions) {
