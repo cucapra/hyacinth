@@ -14,39 +14,24 @@
 #include <z3.h>
 
 #include "cxxopts.hpp"
+#include "CodeSelection.hpp"
+#include "ReplaceArguments.hpp"
 #include "SMTConstraintGenerator.hpp"
 
 using namespace llvm;
 using namespace std;
 using namespace SMTConstraints;
 
-bool includeInstruction(Instruction *i) {
-  return (i->getOpcode() != Instruction::Br);
-}
-
-bool isPrefix(string prefix, string s) {
-  return prefix == s.substr(0, prefix.size());
-}
-
-// TODO: sort based on label
-bool includeFunction(Function *f) {
-  if (f->getName() == "main") {
-    return false;
-  }
-
-  return isPrefix("_p_", f->getName());
-}
-
 vector<vector<Instruction *>> moduleToBlocksLists(Module &inputModule) {
   vector<vector<Instruction *>> instrsPerBlock;
   for (Function &f : inputModule) {
-    if (!includeFunction(&f)) continue;
+    if (!CodeSelection::includeFunction(&f)) continue;
 
     ReversePostOrderTraversal<llvm::Function *> traversal(&f);
     for (auto &b : traversal) {
       vector<Instruction *> instrs;
       for (Instruction &i : *b) {
-        if (!includeInstruction(&i)) continue;
+        if (!CodeSelection::includeInstruction(&i)) continue;
         instrs.push_back(&i);
       }
       instrsPerBlock.push_back(instrs);
@@ -115,8 +100,18 @@ int main(int argc, char **argv) {
   errs() << message;
 
   // Clone module for host and device
-  auto hostClone = CloneModule(*inputModule.get());
-  auto deviceClone = CloneModule(*inputModule.get());
+  auto hostClone = CloneModule(*inputModule);
+  auto deviceClone = CloneModule(*inputModule);
+
+  ReplaceArguments::ReplaceArgumentsPass replaceArgs(generator.previousPlacements,
+    hostClone.get(), deviceClone.get());
+  replaceArgs.replaceArguments();
+
+  // Write device module out
+  outputName = filename + "_device.ll";
+  LLVMPrintModuleToFile(wrap(deviceClone.get()), outputName.c_str(), &message);
+  errs() << message;
+
 
   return 0;
 }

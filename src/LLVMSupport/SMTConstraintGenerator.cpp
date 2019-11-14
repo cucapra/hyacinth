@@ -8,7 +8,6 @@
 #include <iterator>
 #include <list>
 #include <map>
-#include <set>
 #include <string>
 
 #include "CostModel.hpp"

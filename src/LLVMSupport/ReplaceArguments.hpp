@@ -13,6 +13,9 @@ private:
   // Concrete placements for instructions
   SMTConstraints::ConcretePlacementMap placements;
 
+  // All partitions
+  std::set<int> partitions;
+
   // Reference to the host module
   llvm::Module *hostMd;
 

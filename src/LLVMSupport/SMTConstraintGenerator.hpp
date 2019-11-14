@@ -56,9 +56,6 @@ private:
   // SMT Solver
   z3::solver solver;
 
-  // Existing placements for instructions external to the current block
-  ConcretePlacementMap previousPlacements;
-
   // In progress symbolic placements for instructions in the current block
   SymbolicPlacementMap symbolicPlacements;
 
@@ -71,6 +68,9 @@ private:
   class Internals;
 
 public:
+
+  // Existing placements for instructions external to the current block
+  ConcretePlacementMap previousPlacements;
 
   SMTConstraintGenerator(SMTConfig config);
 
