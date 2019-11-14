@@ -1,4 +1,4 @@
-#include <llvm/ADT/PostOrderIterator.h>
+#include "llvm/ADT/PostOrderIterator.h"
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IRReader/IRReader.h>
@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
     ("t,timeout", "Timeout for SMT solve calls, in seconds",
       cxxopts::value<int>()->default_value("1000000"))
     ("s,strategy", "Incremental solving search strategy",
-      cxxopts::value<std::string>()->default_value("linear"))
+      cxxopts::value<std::string>()->default_value("binary"))
     ;
 
   auto result = options.parse(argc, argv);

@@ -134,7 +134,9 @@ let constrain_per_operand (s : solver) (a : assignments) (operand : llvalue) pt 
       pt', t2'
     | _, Some placement ->
       int_to_term placement.partition, int_to_term placement.end_time
-    | _ -> failwith ("No placement for operand: " ^ (string_of_llvalue operand))
+    | _ ->
+      term_0, term_0 (* Stopgap for now, handled correctly in hyacpp *)
+      (* failwith ("No placement for operand: " ^ (string_of_llvalue operand)) *)
     in
     match (classify_type (type_of operand)) with
     (* For now, pointers can not be sent across partitions *)
