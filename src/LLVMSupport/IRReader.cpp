@@ -40,6 +40,20 @@ vector<vector<Instruction *>> moduleToBlocksLists(Module &inputModule) {
   return instrsPerBlock;
 }
 
+void declareFunctionsFromModule(string moduleName, Module *to) {
+  SMDiagnostic err;
+  std::unique_ptr<Module> from = parseIRFile(moduleName, err, to->getContext());
+  if (!from) {
+    err.print(moduleName.c_str(), errs());
+    return;
+  }
+
+  for (Function &f : *from) {
+    Function::Create(f.getFunctionType(), Function::ExternalLinkage,
+      f.getName(), to);
+  }
+}
+
 int main(int argc, char **argv) {
   if (argc < 2) {
     errs() << "Usage: " << argv[0] << " <IR file>\n";
@@ -97,11 +111,16 @@ int main(int argc, char **argv) {
   char* message;
   string outputName = filename + "_intermediate.ll";
   LLVMPrintModuleToFile(wrap(inputModule.get()), outputName.c_str(), &message);
-  errs() << message;
 
   // Clone module for host and device
   auto hostClone = CloneModule(*inputModule);
   auto deviceClone = CloneModule(*inputModule);
+
+  // Import communications code from headers
+  declareFunctionsFromModule("src/bsg_manycore/bsg-device-communication-skeleton.ll",
+    deviceClone.get());
+  declareFunctionsFromModule("src/bsg_manycore/bsg-host-communication-skeleton.ll",
+    hostClone.get());
 
   ReplaceArguments::ReplaceArgumentsPass replaceArgs(generator.previousPlacements,
     hostClone.get(), deviceClone.get());
@@ -110,8 +129,10 @@ int main(int argc, char **argv) {
   // Write device module out
   outputName = filename + "_device.ll";
   LLVMPrintModuleToFile(wrap(deviceClone.get()), outputName.c_str(), &message);
-  errs() << message;
 
+  // Write host module out
+  outputName = filename + "_host.ll";
+  LLVMPrintModuleToFile(wrap(hostClone.get()), outputName.c_str(), &message);
 
   return 0;
 }

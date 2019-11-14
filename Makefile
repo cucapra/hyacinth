@@ -56,8 +56,8 @@ test_save:
 %.png : %.dot
 	dot -Tpng $< > $@
 
-bsg_communication:
-	make src/bsg_manycore/bsg_communication.o
+BSG_COMMS_SKELETONS_SRC = $(wildcard src/bsg_manycore/*-skeleton.c)
+BSG_COMMS_SKELETONS = $(BSG_COMMS_SKELETONS_SRC:.c=.ll)
 
 CXX := clang++
 CXXFLAGS += -std=c++17 -ferror-limit=1 -fvisibility-inlines-hidden -Wall -Werror -Wextra -Wno-unused-parameter -Wno-c++17-extensions -I/usr/include/z3
@@ -72,5 +72,5 @@ BUILDDIR := build
 
 CPP_FILES := src/LLVMSupport/*.cpp
 
-hyacpp: $(CPP_FILES)
+hyacpp: $(CPP_FILES) $(BSG_COMMS_SKELETONS)
 	$(CXX) -lz3 $(CXXFLAGS) $(LLVM_CXXFLAGS) $(CPP_FILES) $(LLVM_LDFLAGS) -o hyacpp

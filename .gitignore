@@ -6,6 +6,7 @@ build
 *.dot
 *.ir
 *.bc
+*.ll
 {.,src}/*.{ll,bc,out,dot,png}
 tests/*{.bc,.out,.dot,.png,_partitioned.ll,_host.ll,_cores.ll,_comms.ll,_intermediate.ll}
 hyacpp
