@@ -122,8 +122,9 @@ int main(int argc, char **argv) {
   declareFunctionsFromModule("src/bsg_manycore/bsg-host-communication-skeleton.ll",
     hostClone.get());
 
+  Module *commsMd = new Module(filename + "_comms.ll", context);
   ReplaceArguments::ReplaceArgumentsPass replaceArgs(generator.previousPlacements,
-    hostClone.get(), deviceClone.get());
+    hostClone.get(), deviceClone.get(), commsMd);
   replaceArgs.replaceArguments();
 
   // Write device module out

@@ -22,12 +22,18 @@ private:
   // Reference to the device module
   llvm::Module *deviceMd;
 
+  // Reference to the communications module
+  llvm::Module *commsMd;
+
   class Internals;
 
 public:
 
+  // Index for argument communication numbering
+  int commsIdx;
+
   ReplaceArgumentsPass(SMTConstraints::ConcretePlacementMap placements,
-    llvm::Module *hostMd, llvm::Module *deviceMd);
+    llvm::Module *hostMd, llvm::Module *deviceMd, llvm::Module *commsMd);
 
   void replaceArguments();
 };
