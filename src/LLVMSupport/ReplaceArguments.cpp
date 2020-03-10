@@ -13,7 +13,6 @@ using namespace SMTConstraints;
 namespace ReplaceArguments {
 
 /*
-
 let new_addr_with_name name ty : llvalue =
   (* Allocate memory for this communication and a ready flag based on type *)
   let value = const_null ty in
@@ -39,14 +38,17 @@ let new_arg_addr_name ty : (llvalue * string) =
   let name = "arg_" ^ (string_of_int id) ^ "\x00" in
   let addr = new_addr_with_name name ty in
   (addr, name)
-
-
 */
 
 // For internal helper functions
 class ReplaceArgumentsPass::Internals {
 
 public:
+
+  static int getPartition(Instruction *I) {
+    auto &md = I->getMetadata("partition")->getOperand(0);
+    return stoi(cast<MDString>(md)->getString());
+  }
 
   static int newCommunicationID(ReplaceArgumentsPass *p) {
     int newID = p->commsIdx;
@@ -62,25 +64,26 @@ public:
     string name = "comms_" + to_string(id);
 
     // Allocate memory for this communication and a ready flag based on type
-    // Type *Constant::getNullValue
-    // StructType *t = StructType::create();
-    StructType *t = nullptr;
-    ArrayRef<Constant *> val;
-    Constant *s = ConstantStruct::get(t, val);
+    Type *boolType = IntegerType::get(p->commsMd->getContext(), 1);
+    Type *intType = IntegerType::get(p->commsMd->getContext(), 32);
+
+    Constant *value = Constant::getNullValue(ty);
+    Constant *ready = Constant::getNullValue(boolType);
+    Constant *padding = Constant::getNullValue(intType);
 
     // Define the struct of { value, ready_flag, padding } as a global
+    StructType *sTy = StructType::create({ty, boolType, intType});
+    Constant *s = ConstantStruct::get(sTy, value, ready, padding);
+
     GlobalVariable *addrStruct = new GlobalVariable(*(p->commsMd), ty, false,
         GlobalValue::CommonLinkage, s, name);
 
     // Return the pointer to this global
-    /*
-    auto buildGEP = [](ArrayRef<Value *> Srcs, Instruction *Inst) {
-      Type *Ty = cast<PointerType>(Srcs[0]->getType())->getElementType();
-      auto Indices = makeArrayRef(Srcs).drop_front(1);
-      return GetElementPtrInst::Create(Ty, Srcs[0], Indices, "G", Inst);
-    };
-    */
-    return pair<Value *, string>(addrStruct, name);
+    llvm::Type *i32Ty = llvm::IntegerType::getInt32Ty(p->commsMd->getContext());
+    llvm::Constant *idx = llvm::ConstantInt::get(i32Ty, 0/*value*/, true);
+    auto GEP = ConstantExpr::getGetElementPtr(sTy, addrStruct, idx);
+
+    return pair<Value *, string>(GEP, name);
   }
 
 };
@@ -98,7 +101,7 @@ void ReplaceArgumentsPass::replaceArguments() {
     partitions.insert(element.second.partition);
   }
 
-
+  // Clone functions as needed per partition
   for (Function &f : *deviceMd) {
     if (!CodeSelection::includeFunction(&f)) continue;
 
@@ -126,9 +129,23 @@ void ReplaceArgumentsPass::replaceArguments() {
 
       ValueToValueMapTy VMap;
 
-      // For now, replace all args with undefs.
+      // For each argument, check whether it is used in this partition; if so,
+      // replace with a call to receive args in the entry block
       for (Argument &a : f.args()) {
-        VMap[&a] = UndefValue::get(a.getType());
+
+        bool usedInPartition = std::any_of(a.users().begin(), a.users().end(),
+          [&partition](llvm::User *U) {
+          Instruction *UInst = dyn_cast<Instruction>(U);
+          return (UInst && Internals::getPartition(UInst) == partition);
+        });
+
+        if (usedInPartition) {
+          // TODO: call argumentAddressWithName(..)
+        } else {
+          // If this argument is never used in the partition, replace it with
+          // undef for now
+          VMap[&a] = UndefValue::get(a.getType());
+        }
       }
 
       SmallVector<ReturnInst *, 4> Returns;
