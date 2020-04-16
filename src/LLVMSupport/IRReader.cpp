@@ -135,5 +135,9 @@ int main(int argc, char **argv) {
   outputName = filename + "_host.ll";
   LLVMPrintModuleToFile(wrap(hostClone.get()), outputName.c_str(), &message);
 
+  // Write host module out
+  outputName = filename + "_comms.ll";
+  LLVMPrintModuleToFile(wrap(commsMd), outputName.c_str(), &message);
+
   return 0;
 }

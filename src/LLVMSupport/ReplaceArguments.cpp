@@ -56,7 +56,7 @@ public:
     return newID;
   }
 
-  static pair<Value *, string> argumentAddressWithName(ReplaceArgumentsPass *p,
+  static Value *argumentAddressWithName(ReplaceArgumentsPass *p,
     Type *ty) {
 
     // Claim a new communications id
@@ -75,7 +75,7 @@ public:
     StructType *sTy = StructType::create({ty, boolType, intType});
     Constant *s = ConstantStruct::get(sTy, value, ready, padding);
 
-    GlobalVariable *addrStruct = new GlobalVariable(*(p->commsMd), ty, false,
+    GlobalVariable *addrStruct = new GlobalVariable(*(p->commsMd), sTy, false,
         GlobalValue::CommonLinkage, s, name);
 
     // Return the pointer to this global
@@ -83,14 +83,14 @@ public:
     llvm::Constant *idx = llvm::ConstantInt::get(i32Ty, 0/*value*/, true);
     auto GEP = ConstantExpr::getGetElementPtr(sTy, addrStruct, idx);
 
-    return pair<Value *, string>(GEP, name);
+    return GEP;
   }
 
 };
 
 ReplaceArgumentsPass::ReplaceArgumentsPass(ConcretePlacementMap p, Module *hm,
   Module *dm, Module *cm) : placements(p), hostMd(hm), deviceMd(dm),
-  commsMd(cm) {}
+  commsMd(cm), commsIdx(0) {}
 
 // Replace arguments to partitioned functions with calls to receive from
 // device code
@@ -140,7 +140,9 @@ void ReplaceArgumentsPass::replaceArguments() {
         });
 
         if (usedInPartition) {
-          // TODO: call argumentAddressWithName(..)
+          auto comms = Internals::argumentAddressWithName(this, a.getType());
+          // TODO: should actually call receive w this addr
+          VMap[&a] = comms;
         } else {
           // If this argument is never used in the partition, replace it with
           // undef for now
