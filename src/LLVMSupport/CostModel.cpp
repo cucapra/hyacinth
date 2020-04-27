@@ -16,12 +16,16 @@ int HyacinthCostModel::costForInstruction(Instruction *i) {
       return 0;
 
     // Operations with slightly more expensive costs
+    case Instruction::FDiv:
+    case Instruction::SDiv:
+    case Instruction::UDiv:
+    case Instruction::Mul:
     case Instruction::FMul:
-    case Instruction::FSub:
-      return 2;
+    case Instruction::URem:
+    case Instruction::SRem:
+      return 4;
 
     // Operations with large costs
-    case Instruction::FDiv:
     case Instruction::Call:
       return 30;
 
