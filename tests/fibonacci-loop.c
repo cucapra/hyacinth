@@ -5,18 +5,24 @@
 #include <math.h>
 #include <unistd.h>
 
-float _p_fib(float a, float b, float d, float i, float e, float k) {
-
-    float c = a + b;
-    float f = d + e;
-    float h = sqrt(f);
-    float j = h + i;
-    float l = e + k;
-    return l;
+int _p_fib(int n) {
+    int result = 0;
+    int first = 0;
+    int second = 1;
+    for (int i = 0; i < n; i++) {
+        if (i <= 1) {
+            result = i;
+        } else {
+            result = first + second;
+            first = second;
+            second = result;
+        }
+    }
+    return result;
 }
 
 int main(int argc, char **argv) {
-    // float r = _p_fib(atoi(argv[1]));
-    // prfloatf("%d\n", r);
+    float r = _p_fib(atoi(argv[1]));
+    printf("%f\n", r);
     return 0;
 }

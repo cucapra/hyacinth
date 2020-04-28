@@ -218,6 +218,7 @@ public:
     }
 
     // Incorporate communication costs
+    // TODO: for perf, this should build a lookup table
     if (opPartition != nullptr) {
       int comms = costForCommunication(g, currentPlacement.partition,
         *opPartition);

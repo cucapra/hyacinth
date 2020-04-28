@@ -11,6 +11,9 @@ ifeq ($(TARGET), bsg_manycore)
 	TARGET_FLAGS := -m64 --target=x86_64-redhat-linux-gnu
 endif
 
+LL_FLAGS := -Xclang -disable-lifetime-markers -fno-discard-value-names $(TARGET_FLAGS)
+
+
 .PHONY: build install clean test test_save bsg_communication
 
 .PRECIOUS: %_partitioned.ll %_host.ll %_cores.ll %_comms.ll
@@ -48,13 +51,13 @@ test_save:
 	clang $(CLANG_LFLAGS) -O1 $^ -o $@
 
 %.ll: %.c
-	clang -emit-llvm -Xclang -disable-lifetime-markers  $(TARGET_FLAGS) -O0 -S $< -o $@
+	clang -emit-llvm $(LL_FLAGS) -O0 -S $< -o $@
 
 %.bc: %.c
-	clang -emit-llvm -Xclang -disable-lifetime-markers  $(TARGET_FLAGS) -O0 -c $< -o $@
+	clang -emit-llvm $(LL_FLAGS) -O0 -c $< -o $@
 
 %.bc: %.ll
-	clang -emit-llvm -Xclang -disable-lifetime-markers  $(TARGET_FLAGS) -O0 -c $< -o $@
+	clang -emit-llvm $(LL_FLAGS) -O0 -c $< -o $@
 
 %.png : %.dot
 	dot -Tpng $< > $@

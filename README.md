@@ -114,6 +114,8 @@ And:
 
     $ ./hyacpp <IR file>
 
+Which produced and intermediate partitioned file, `hyacpp_output_intermediate.ll`.
+
 Then:
 
     $ make hyacpp_output_intermediate.bc
