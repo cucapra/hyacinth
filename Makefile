@@ -53,6 +53,9 @@ test_save:
 %.bc: %.c
 	clang -emit-llvm -Xclang -disable-lifetime-markers  $(TARGET_FLAGS) -O1 -c $< -o $@
 
+%.bc: %.ll
+	clang -emit-llvm -Xclang -disable-lifetime-markers  $(TARGET_FLAGS) -O1 -c $< -o $@
+
 %.png : %.dot
 	dot -Tpng $< > $@
 
