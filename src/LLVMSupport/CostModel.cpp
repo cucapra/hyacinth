@@ -23,7 +23,7 @@ int HyacinthCostModel::costForInstruction(Instruction *i) {
     case Instruction::FMul:
     case Instruction::URem:
     case Instruction::SRem:
-      return 4;
+      return 3;
 
     // Operations with large costs
     case Instruction::Call:
@@ -45,5 +45,5 @@ int HyacinthCostModel::costForCommunication(int partition1, int partition2) {
   tie(x1, y1) = components(partition1);
   tie(x2, y2) = components(partition2);
 
-  return abs(x1 - x2) + abs(y1 - y2);
+  return (abs(x1 - x2) + abs(y1 - y2)) * 20;
 }
