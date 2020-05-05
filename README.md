@@ -55,7 +55,7 @@ On Linux:
 
 Then:
 
-    $ opam install llvm
+    $ opam pin add llvm 8.0.0
 
 You can add this LLVM installation and the installed libraries to your path with:
 
