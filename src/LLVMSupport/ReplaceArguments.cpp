@@ -2,6 +2,7 @@
 
 #include <set>
 
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 
 #include "ReplaceArguments.hpp"
@@ -61,7 +62,7 @@ public:
 
     // Claim a new communications id
     int id = newCommunicationID(p);
-    string name = "comms_" + to_string(id);
+    string name = "arg_" + to_string(id);
 
     // Allocate memory for this communication and a ready flag based on type
     Type *boolType = IntegerType::get(p->commsMd->getContext(), 1);
@@ -71,17 +72,16 @@ public:
     Constant *ready = Constant::getNullValue(boolType);
     Constant *padding = Constant::getNullValue(intType);
 
-    // Define the struct of { value, ready_flag, padding } as a global
-    StructType *sTy = StructType::create({ty, boolType, intType});
-    Constant *s = ConstantStruct::get(sTy, value, ready, padding);
+    // Define the struct as a global
+    Constant *s = ConstantStruct::getAnon({value, ready, padding});
 
-    GlobalVariable *addrStruct = new GlobalVariable(*(p->commsMd), sTy, false,
-        GlobalValue::CommonLinkage, s, name);
+    GlobalVariable *addrStruct = new GlobalVariable(*(p->commsMd), s->getType(),
+     false, GlobalValue::CommonLinkage, s, name);
 
     // Return the pointer to this global
     llvm::Type *i32Ty = llvm::IntegerType::getInt32Ty(p->commsMd->getContext());
     llvm::Constant *idx = llvm::ConstantInt::get(i32Ty, 0/*value*/, true);
-    auto GEP = ConstantExpr::getGetElementPtr(sTy, addrStruct, idx);
+    auto GEP = ConstantExpr::getGetElementPtr(s->getType(), addrStruct, idx);
 
     return GEP;
   }
@@ -114,9 +114,11 @@ void ReplaceArgumentsPass::replaceArguments() {
     errs() << *hostClone << "\n";
 
     // Create a clone of the function per partition for the device
-    vector<Type *> noParams;
-    FunctionType *newFunType = FunctionType::get(funType->getReturnType(),
-      noParams, false);
+    auto voidType = Type::getVoidTy(deviceMd->getContext());
+    auto voidPtrType = PointerType::get(IntegerType::get(deviceMd->getContext(),
+      8), 0);
+
+    FunctionType *newFunType = FunctionType::get(voidType, {voidPtrType}, false);
 
     for (int partition : partitions) {
       // Create the new function body and insert it into the module...
@@ -126,6 +128,11 @@ void ReplaceArgumentsPass::replaceArguments() {
       clone->setComdat(f.getComdat());
       f.getParent()->getFunctionList().insert(f.getIterator(), clone);
       clone->setName(f.getName() + "_" + to_string(partition));
+      auto cloneCxt = clone->args().begin();
+
+      BasicBlock *entry = BasicBlock::Create(deviceMd->getContext(), "receives",
+       clone);
+      IRBuilder<> builder(entry);
 
       ValueToValueMapTy VMap;
 
@@ -141,8 +148,14 @@ void ReplaceArgumentsPass::replaceArguments() {
 
         if (usedInPartition) {
           auto comms = Internals::argumentAddressWithName(this, a.getType());
-          // TODO: should actually call receive w this addr
-          VMap[&a] = comms;
+          auto receiveArgF = deviceMd->getFunction("receive_argument");
+          auto size = ConstantExpr::getSizeOf(a.getType());
+          vector<Value *> args = {size, comms, cloneCxt};
+          auto call = builder.CreateCall(receiveArgF, args, "receive");
+          auto ptrType = PointerType::get(a.getType(), 0);
+          auto bitcast = builder.CreateBitCast(call, ptrType, "bitcast");
+          auto load =  builder.CreateLoad(a.getType(), bitcast, "receive_load");
+          VMap[&a] = load;
         } else {
           // If this argument is never used in the partition, replace it with
           // undef for now
@@ -153,6 +166,20 @@ void ReplaceArgumentsPass::replaceArguments() {
       SmallVector<ReturnInst *, 4> Returns;
 
       CloneFunctionInto(clone, &f, VMap, /*ModuleLevelChanges=*/true, Returns);
+
+      // Insert branch to old entry
+
+      // TODO: This is a hack to get the second block, likely a better way
+      BasicBlock *oldEntry;
+      int i = 0;
+      for (BasicBlock &b : *clone) {
+        if (i == 1) {
+          oldEntry = &b;
+          break;
+        }
+        i++;
+      }
+      builder.CreateBr(oldEntry);
     }
   }
 }
