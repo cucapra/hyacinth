@@ -41,13 +41,13 @@ let _ =
   in
   let () =
     if !intermediate then
-      match !rows, !columns, !direct_man_distance with 
+      match !rows, !columns, !direct_man_distance with
       | 2,2,false -> ()
-      | 2,2,true -> raise (Flag_Validity 
+      | 2,2,true -> raise (Flag_Validity
         "Cannot specify Manhattan distance computation when intermediate annotations are defined.")
-      | _,_,_ ->  raise (Flag_Validity 
+      | _,_,_ ->  raise (Flag_Validity
         "Cannot specify row or column dimensions when intermediate annotations are defined.")
-  in 
+  in
   let md, instrs_per_block = Llvm_in.parse_llvm () in
   let partitions = if !intermediate then
       Intermediate_llvm.consume_intermediate_llvm instrs_per_block
@@ -61,7 +61,8 @@ let _ =
   in
   Visualize.visualize_dfg partitions (!out_filename ^ ".dot");
 
-  Intermediate_llvm.emit_intermediate_llvm !out_filename md partitions;
+  if (not !intermediate) then
+    Intermediate_llvm.emit_intermediate_llvm !out_filename md partitions;
 
   let target = Emit_utils.target_of_string !target_string in
   Emit_llvm.emit_llvm target !out_filename partitions md !debug
