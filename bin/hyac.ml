@@ -4,6 +4,7 @@ open Partition
 let program_file : string option ref = ref None
 let anon_fun (arg : string) : unit =
     print_endline ("Warning: no argument expected, ignoring: " ^ arg)
+exception Flag_Validity of string
 
 let debug : bool ref = ref false
 let intermediate : bool ref = ref false
@@ -38,6 +39,15 @@ let _ =
       direct_distance = !direct_man_distance;
     }
   in
+  let () =
+    if !intermediate then
+      match !rows, !columns, !direct_man_distance with 
+      | 2,2,false -> ()
+      | 2,2,true -> raise (Flag_Validity 
+        "Cannot specify Manhattan distance computation when intermediate annotations are defined.")
+      | _,_,_ ->  raise (Flag_Validity 
+        "Cannot specify row or column dimensions when intermediate annotations are defined.")
+  in 
   let md, instrs_per_block = Llvm_in.parse_llvm () in
   let partitions = if !intermediate then
       Intermediate_llvm.consume_intermediate_llvm instrs_per_block
