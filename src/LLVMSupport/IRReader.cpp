@@ -1,5 +1,6 @@
 #include "llvm/ADT/PostOrderIterator.h"
 #include <llvm/ADT/SetVector.h>
+#include <llvm/Analysis/AliasSetTracker.h>
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/LegacyPassManager.h>
@@ -25,32 +26,25 @@ using namespace llvm;
 using namespace std;
 using namespace SMTConstraints;
 
-static std::map<string, AliasAnalysis *> getAliasAnalysis(std::unique_ptr<Module> &M) {
-  std::map<string, AliasAnalysis *> aliasAnalysisLookup;
-  legacy::FunctionPassManager *FPM = new legacy::FunctionPassManager(M.get());
+static std::map<string, AliasSetTracker *> getAliasSets(std::unique_ptr<Module> &M) {
+  std::map<string, AliasSetTracker *> aliasSetLookup;
+  legacy::FunctionPassManager* FPM = new legacy::FunctionPassManager(M.get());
   FunctionPass *aaPass = createAAResultsWrapperPass();
   FPM->add(aaPass);
 
   for (Function &F : *M) {
     FPM->run(F);
     AliasAnalysis &AA = ((AAResultsWrapperPass *)aaPass)->getAAResults();
-    aliasAnalysisLookup[F.getName()] = &AA;
+    AliasSetTracker *ast = new AliasSetTracker(AA);
+    aliasSetLookup[F.getName()] = ast;
 
-    // Debugging utility to generate all pointer combinations per function
-    // SetVector<Value *> Pointers;
-    // for (Argument &A : F.args())
-    //   if (A.getType()->isPointerTy())
-    //     Pointers.insert(&A);
-    // for (Instruction &I : instructions(F))
-    //   if (I.getType()->isPointerTy())
-    //     Pointers.insert(&I);
-
-    // for (Value *P1 : Pointers)
-    //   for (Value *P2 : Pointers)
-    //     AA.alias(P1, LocationSize::unknown(), P2,
-    //              LocationSize::unknown());
+    for (BasicBlock &b : F){
+      ast->add(b);
+    }
+    // Debug printing
+    // ast->print(errs());
   }
-  return aliasAnalysisLookup;
+  return aliasSetLookup;
 }
 
 vector<vector<Instruction *>> moduleToBlocksLists(Module &inputModule) {
@@ -129,7 +123,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  getAliasAnalysis(inputModule);
+  getAliasSets(inputModule);
 
   vector<vector<Instruction *>> blocksLists = moduleToBlocksLists(*inputModule);
   SMTConstraints::SMTConstraintGenerator generator(config);
