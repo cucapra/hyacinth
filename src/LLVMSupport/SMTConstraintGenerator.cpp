@@ -227,37 +227,11 @@ public:
     }
   }
 
-  static bool isGlobalValue(Value *operand, llvm::AliasSetTracker *ast, Instruction *i) {
-    bool isGlobalAlias = false;
-    Optional< MemoryLocation > iLoc = MemoryLocation::getOrNone(i);
-    if (iLoc) {
-      // Return the alias set which contains the specified memory location.
-      AliasSet &as = ast->getAliasSetFor(iLoc.getValue());
-      if (as.isMustAlias()){
-        // errs() << "must alias!";
-      }
-    }
-
-    // TODO Need a way to compare this AliasSet to another using aliasesPointer
-    // for (AliasSet *as : globalAliasSets){
-    //   const LocationSize size = operandLoc->Size;
-    //   const AAMDNodes &AAInfo = operandLoc->AATags;
-    //   isGlobalAlias = isGlobalAlias || as->aliasesPointer(operand, size, AAInfo, *AA);
-    // }
-    return isa<GlobalValue>(operand) || isGlobalAlias;
-  }
-
   static void constrainOperand(SMTConstraintGenerator *g, Instruction *i,
-    Value *operand, llvm::AliasSetTracker *ast) {
+    Value *operand) {
 
     // No constraints for constants or arguments
     if (isa<Constant>(operand) || isa<Argument>(operand)) {
-      return;
-    }
-
-    // For now, global accesses need to live on partition 0
-    if (isGlobalValue(operand, ast, i)) {
-      g->solver.add(g->symbolicPlacements.at(i).partition == 0);
       return;
     }
 
@@ -270,10 +244,20 @@ public:
     errs() << "unexpected operand:" << *operand << "\n";
   }
 
+  static void constrainMemoryInstruction(SMTConstraintGenerator *g, Instruction *i,
+    llvm::AliasSetTracker *ast) {
+    if (dyn_cast<StoreInst>(i) || dyn_cast<LoadInst>(i)){
+      g->solver.add(g->symbolicPlacements.at(i).partition == 0);
+    }
+  }
+
   static void constrainInstruction(SMTConstraintGenerator *g, Instruction *i,
     llvm::AliasSetTracker *ast) {
+    // TODO Give each core its own equivalence class in the ast
+    // For now, memory accesses need to live on partition 0
+    constrainMemoryInstruction(g, i, ast);
     for (const auto &operand : i->operands()) {
-      constrainOperand(g, i, operand, ast);
+      constrainOperand(g, i, operand);
     }
   }
 
