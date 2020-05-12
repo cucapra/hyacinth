@@ -2,6 +2,7 @@
 
 #include <type_traits>
 #include <vector>
+#include <llvm/Analysis/AliasSetTracker.h>
 #include <llvm/IR/Instruction.h>
 #include <z3++.h>
 
@@ -74,7 +75,7 @@ public:
 
   SMTConstraintGenerator(SMTConfig config);
 
-  void partitionInstructionsInBlock(std::vector<llvm::Instruction *> instructions);
+  void partitionInstructionsInBlock(std::vector<llvm::Instruction *> instructions, llvm::AliasSetTracker *ast);
 };
 
 }

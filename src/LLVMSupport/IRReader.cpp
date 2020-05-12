@@ -26,13 +26,13 @@ using namespace llvm;
 using namespace std;
 using namespace SMTConstraints;
 
-static std::map<string, AliasSetTracker *> getAliasSets(std::unique_ptr<Module> &M) {
+std::map<string, AliasSetTracker *> getAliasSets(Module &inputModule) {
   std::map<string, AliasSetTracker *> aliasSetLookup;
-  legacy::FunctionPassManager* FPM = new legacy::FunctionPassManager(M.get());
+  legacy::FunctionPassManager* FPM = new legacy::FunctionPassManager(&inputModule);
   FunctionPass *aaPass = createAAResultsWrapperPass();
   FPM->add(aaPass);
 
-  for (Function &F : *M) {
+  for (Function &F : inputModule) {
     FPM->run(F);
     AliasAnalysis &AA = ((AAResultsWrapperPass *)aaPass)->getAAResults();
     AliasSetTracker *ast = new AliasSetTracker(AA);
@@ -47,22 +47,26 @@ static std::map<string, AliasSetTracker *> getAliasSets(std::unique_ptr<Module> 
   return aliasSetLookup;
 }
 
-vector<vector<Instruction *>> moduleToBlocksLists(Module &inputModule) {
-  vector<vector<Instruction *>> instrsPerBlock;
+void partitionInstructionsInModule(Module &inputModule, SMTConstraints::SMTConstraintGenerator &generator) {
+  auto aliasSetLookup = getAliasSets(inputModule);
+    
   for (Function &f : inputModule) {
+    AliasSetTracker *ast = aliasSetLookup[f.getName()];
     if (!CodeSelection::includeFunction(&f)) continue;
-
     ReversePostOrderTraversal<llvm::Function *> traversal(&f);
     for (auto &b : traversal) {
-      vector<Instruction *> instrs;
+      vector<Instruction *> block;
       for (Instruction &i : *b) {
         if (!CodeSelection::includeInstruction(&i)) continue;
-        instrs.push_back(&i);
+        block.push_back(&i);
       }
-      instrsPerBlock.push_back(instrs);
+
+      // Partition Block
+      errs() << "Partitioning block\n";
+      generator.partitionInstructionsInBlock(block, ast);
     }
   }
-  return instrsPerBlock;
+  return;
 }
 
 void declareFunctionsFromModule(string moduleName, Module *to) {
@@ -123,16 +127,10 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  getAliasSets(inputModule);
-
-  vector<vector<Instruction *>> blocksLists = moduleToBlocksLists(*inputModule);
   SMTConstraints::SMTConstraintGenerator generator(config);
   // auto generator = SMTConstraints::SMTConstraintGenerator(); // this does a copy!
-
-  for (vector<Instruction *> block : blocksLists) {
-    errs() << "Partitioning block\n";
-    generator.partitionInstructionsInBlock(block);
-  }
+  
+  partitionInstructionsInModule(*inputModule, generator);
 
   // Write intermediate, partitioned module out
   char* message;

@@ -1,3 +1,4 @@
+#include <llvm/Analysis/AliasSetTracker.h>
 #include <llvm/Analysis/TargetTransformInfo.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IRReader/IRReader.h>
@@ -226,8 +227,28 @@ public:
     }
   }
 
+  static bool isGlobalValue(Value *operand, llvm::AliasSetTracker *ast, Instruction *i) {
+    bool isGlobalAlias = false;
+    Optional< MemoryLocation > iLoc = MemoryLocation::getOrNone(i);
+    if (iLoc) {
+      // Return the alias set which contains the specified memory location.
+      AliasSet &as = ast->getAliasSetFor(iLoc.getValue());
+      if (as.isMustAlias()){
+        // errs() << "must alias!";
+      }
+    }
+
+    // TODO Need a way to compare this AliasSet to another using aliasesPointer
+    // for (AliasSet *as : globalAliasSets){
+    //   const LocationSize size = operandLoc->Size;
+    //   const AAMDNodes &AAInfo = operandLoc->AATags;
+    //   isGlobalAlias = isGlobalAlias || as->aliasesPointer(operand, size, AAInfo, *AA);
+    // }
+    return isa<GlobalValue>(operand) || isGlobalAlias;
+  }
+
   static void constrainOperand(SMTConstraintGenerator *g, Instruction *i,
-    Value *operand) {
+    Value *operand, llvm::AliasSetTracker *ast) {
 
     // No constraints for constants or arguments
     if (isa<Constant>(operand) || isa<Argument>(operand)) {
@@ -235,7 +256,7 @@ public:
     }
 
     // For now, global accesses need to live on partition 0
-    if (isa<GlobalValue>(operand)) {
+    if (isGlobalValue(operand, ast, i)) {
       g->solver.add(g->symbolicPlacements.at(i).partition == 0);
       return;
     }
@@ -249,9 +270,10 @@ public:
     errs() << "unexpected operand:" << *operand << "\n";
   }
 
-  static void constrainInstruction(SMTConstraintGenerator *g, Instruction *i) {
+  static void constrainInstruction(SMTConstraintGenerator *g, Instruction *i,
+    llvm::AliasSetTracker *ast) {
     for (const auto &operand : i->operands()) {
-      constrainOperand(g, i, operand);
+      constrainOperand(g, i, operand, ast);
     }
   }
 
@@ -388,8 +410,8 @@ SMTConstraintGenerator::SMTConstraintGenerator(SMTConfig c) : solver(context),
 
 // Use SMT constraints to partition the current block's instructions,
 // referencing the previous placement mappings as needed.
-void SMTConstraintGenerator::
-partitionInstructionsInBlock(vector<Instruction *> instructions) {
+void SMTConstraintGenerator::partitionInstructionsInBlock(vector<Instruction *> instructions,
+  llvm::AliasSetTracker *ast) {
 
   solver.push();
 
@@ -401,7 +423,7 @@ partitionInstructionsInBlock(vector<Instruction *> instructions) {
   }
 
   for (Instruction *i : instructions) {
-    Internals::constrainInstruction(this, i);
+    Internals::constrainInstruction(this, i, ast);
   }
 
   auto mod = Internals::incremementalPartitioning(this, instructions);
