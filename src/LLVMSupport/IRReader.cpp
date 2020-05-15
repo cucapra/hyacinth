@@ -1,8 +1,6 @@
 #include "llvm/ADT/PostOrderIterator.h"
-#include <llvm/ADT/SetVector.h>
 #include <llvm/Analysis/AliasSetTracker.h>
 #include <llvm/IR/CFG.h>
-#include <llvm/IR/InstIterator.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IRReader/IRReader.h>
