@@ -182,9 +182,7 @@ public:
       if (dyn_cast<StoreInst>(pi) || dyn_cast<LoadInst>(pi)) {
         InstructionPlacement<z3::expr> other = p.second;
         AliasSet &as = ast->getAliasSetFor(MemoryLocation::get(pi));
-        AliasAnalysis &AA = ast->getAliasAnalysis();
-        // TODO Figure out why this throws an error
-        bool aliases = as.aliasesUnknownInst(i, AA);
+        bool aliases = as.aliasesUnknownInst(i, ast->getAliasAnalysis());
         expr samePartition = placement.partition == other.partition;
         g->solver.add(implies(aliases, samePartition));
       }

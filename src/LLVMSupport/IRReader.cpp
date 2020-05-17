@@ -24,34 +24,24 @@ using namespace llvm;
 using namespace std;
 using namespace SMTConstraints;
 
-std::map<string, AliasSetTracker *> getAliasSets(Module &inputModule) {
-  std::map<string, AliasSetTracker *> aliasSetLookup;
+AliasSetTracker* getAliasSet(Module &inputModule, Function& F) {
   legacy::FunctionPassManager* FPM = new legacy::FunctionPassManager(&inputModule);
   FunctionPass *aaPass = createAAResultsWrapperPass();
   FPM->add(aaPass);
-
-  for (Function &F : inputModule) {
-    FPM->run(F);
-    AliasAnalysis &AA = ((AAResultsWrapperPass *)aaPass)->getAAResults();
-    AliasSetTracker *ast = new AliasSetTracker(AA);
-    aliasSetLookup[F.getName()] = ast;
-
-    for (BasicBlock &b : F){
-      ast->add(b);
-    }
-    // Debug printing
-    // ast->print(errs());
+  FPM->run(F);
+  AliasAnalysis &AA = ((AAResultsWrapperPass *)aaPass)->getAAResults();
+  AliasSetTracker *ast = new AliasSetTracker(AA);
+  for (BasicBlock &b : F){
+    ast->add(b);
   }
-  return aliasSetLookup;
+  return ast;
 }
 
-void partitionInstructionsInModule(Module &inputModule, SMTConstraints::SMTConstraintGenerator &generator) {
-  auto aliasSetLookup = getAliasSets(inputModule);
-    
+void partitionInstructionsInModule(Module &inputModule, SMTConstraints::SMTConstraintGenerator &generator) {    
   for (Function &f : inputModule) {
-    AliasSetTracker *ast = aliasSetLookup[f.getName()];
     if (!CodeSelection::includeFunction(&f)) continue;
     ReversePostOrderTraversal<llvm::Function *> traversal(&f);
+    AliasSetTracker *ast = getAliasSet(inputModule, f);
     for (auto &b : traversal) {
       vector<Instruction *> block;
       for (Instruction &i : *b) {
