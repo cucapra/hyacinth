@@ -49,7 +49,6 @@ void partitionInstructionsInModule(Module &inputModule, SMTConstraints::SMTConst
         block.push_back(&i);
       }
 
-      // Partition Block
       errs() << "Partitioning block\n";
       generator.partitionInstructionsInBlock(block, ast);
     }

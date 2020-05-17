@@ -140,7 +140,7 @@ public:
   }
 
   static void constructSymbolicPlacements(SMTConstraintGenerator *g,
-    Instruction *i, int n, llvm::AliasSetTracker *ast) {
+    Instruction *i, int n) {
     // Create symbolic placements for each instruction
     expr partition = g->context.int_const(("p" + to_string(n)).c_str());
     expr startTime = g->context.int_const(("s" + to_string(n)).c_str());
@@ -163,27 +163,23 @@ public:
     // Ensure this instruction does not overlap with any previous instructions
     constrainOverlappingTimes(g, placement);
 
-    // Ensure memory instructions only alias to instructions on the designated core
-    constrainMemoryInstruction(g, i, placement, ast);
-
     // After comparisons, add it to the map
     g->symbolicPlacements.insert(make_pair(i, placement));
-    
   }
 
   static void constrainMemoryInstruction(SMTConstraintGenerator *g, Instruction *i,
-    SymbolicPlacement placement, llvm::AliasSetTracker *ast) {
-    // Only need to check for memory instructions
-    if (!dyn_cast<StoreInst>(i) && !dyn_cast<LoadInst>(i)) {
-      return;
-    }
-    for (const auto &p : g->symbolicPlacements) {
+    llvm::AliasSetTracker *ast) {
+    if (!dyn_cast<StoreInst>(i) && !dyn_cast<LoadInst>(i)) return;
+    const auto &placement = g->symbolicPlacements.find(i);
+    AliasSet &as = ast->getAliasSetFor(MemoryLocation::get(i));
+
+    for (const auto &p : g->previousPlacements) {
       const Instruction *pi = p.first;
-      if (dyn_cast<StoreInst>(pi) || dyn_cast<LoadInst>(pi)) {
-        InstructionPlacement<z3::expr> other = p.second;
-        AliasSet &as = ast->getAliasSetFor(MemoryLocation::get(pi));
-        bool aliases = as.aliasesUnknownInst(i, ast->getAliasAnalysis());
-        expr samePartition = placement.partition == other.partition;
+      if (!dyn_cast<StoreInst>(pi) && !dyn_cast<LoadInst>(pi)) continue;
+      auto other = p.second;
+      bool aliases = as.aliasesUnknownInst(pi, ast->getAliasAnalysis());
+      if (aliases) {
+        expr samePartition = placement->second.partition == other.partition;
         g->solver.add(implies(aliases, samePartition));
       }
     }
@@ -266,7 +262,9 @@ public:
     errs() << "unexpected operand:" << *operand << "\n";
   }
 
-  static void constrainInstruction(SMTConstraintGenerator *g, Instruction *i) {
+  static void constrainInstruction(SMTConstraintGenerator *g, Instruction *i, AliasSetTracker *ast) {
+    // Ensure memory instructions only alias to instructions on the designated core
+    constrainMemoryInstruction(g, i, ast);
     for (const auto &operand : i->operands()) {
       constrainOperand(g, i, operand);
     }
@@ -413,12 +411,12 @@ void SMTConstraintGenerator::partitionInstructionsInBlock(vector<Instruction *> 
   // Create symbolic placements for each instruction
   int n = 0;
   for (Instruction *i : instructions) {
-    Internals::constructSymbolicPlacements(this, i, n, ast);
+    Internals::constructSymbolicPlacements(this, i, n);
     n++;
   }
 
   for (Instruction *i : instructions) {
-    Internals::constrainInstruction(this, i);
+    Internals::constrainInstruction(this, i, ast);
   }
 
   auto mod = Internals::incrementalPartitioning(this, instructions);
