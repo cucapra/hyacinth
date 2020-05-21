@@ -1,5 +1,7 @@
 #include "llvm/ADT/PostOrderIterator.h"
+#include <llvm/Analysis/AliasSetTracker.h>
 #include <llvm/IR/CFG.h>
+#include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
@@ -22,22 +24,36 @@ using namespace llvm;
 using namespace std;
 using namespace SMTConstraints;
 
-vector<vector<Instruction *>> moduleToBlocksLists(Module &inputModule) {
-  vector<vector<Instruction *>> instrsPerBlock;
+AliasSetTracker* getAliasSet(Module &inputModule, Function& F) {
+  legacy::FunctionPassManager* FPM = new legacy::FunctionPassManager(&inputModule);
+  FunctionPass *aaPass = createAAResultsWrapperPass();
+  FPM->add(aaPass);
+  FPM->run(F);
+  AliasAnalysis &AA = ((AAResultsWrapperPass *)aaPass)->getAAResults();
+  AliasSetTracker *ast = new AliasSetTracker(AA);
+  for (BasicBlock &b : F){
+    ast->add(b);
+  }
+  return ast;
+}
+
+void partitionInstructionsInModule(Module &inputModule, SMTConstraints::SMTConstraintGenerator &generator) {    
   for (Function &f : inputModule) {
     if (!CodeSelection::includeFunction(&f)) continue;
-
     ReversePostOrderTraversal<llvm::Function *> traversal(&f);
+    AliasSetTracker *ast = getAliasSet(inputModule, f);
     for (auto &b : traversal) {
-      vector<Instruction *> instrs;
+      vector<Instruction *> block;
       for (Instruction &i : *b) {
         if (!CodeSelection::includeInstruction(&i)) continue;
-        instrs.push_back(&i);
+        block.push_back(&i);
       }
-      instrsPerBlock.push_back(instrs);
+
+      errs() << "Partitioning block\n";
+      generator.partitionInstructionsInBlock(block, ast);
     }
   }
-  return instrsPerBlock;
+  return;
 }
 
 void declareFunctionsFromModule(string moduleName, Module *to) {
@@ -98,14 +114,10 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  vector<vector<Instruction *>> blocksLists = moduleToBlocksLists(*inputModule);
   SMTConstraints::SMTConstraintGenerator generator(config);
   // auto generator = SMTConstraints::SMTConstraintGenerator(); // this does a copy!
-
-  for (vector<Instruction *> block : blocksLists) {
-    errs() << "Partitioning block\n";
-    generator.partitionInstructionsInBlock(block);
-  }
+  
+  partitionInstructionsInModule(*inputModule, generator);
 
   // Write intermediate, partitioned module out
   char* message;

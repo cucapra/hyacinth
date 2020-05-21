@@ -1,3 +1,4 @@
+#include <llvm/Analysis/AliasSetTracker.h>
 #include <llvm/Analysis/TargetTransformInfo.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IRReader/IRReader.h>
@@ -26,7 +27,7 @@ class SMTConstraintGenerator::Internals {
 public:
 
 
-  static Optional<model> incremementalPartitioning(SMTConstraintGenerator *g,
+  static Optional<model> incrementalPartitioning(SMTConstraintGenerator *g,
     vector<Instruction *> instructions) {
 
     int upperBound = sumTotalTime(instructions);
@@ -166,6 +167,24 @@ public:
     g->symbolicPlacements.insert(make_pair(i, placement));
   }
 
+  static void constrainMemoryInstruction(SMTConstraintGenerator *g, Instruction *i,
+    llvm::AliasSetTracker *ast) {
+    if (!i->mayReadOrWriteMemory()) return;
+    const auto &placement = g->symbolicPlacements.find(i);
+    AliasSet &as = ast->getAliasSetFor(MemoryLocation::get(i));
+
+    for (const auto &p : g->previousPlacements) {
+      const Instruction *pi = p.first;
+      if (!pi->mayReadOrWriteMemory()) continue;
+      auto other = p.second;
+      bool aliases = as.aliasesUnknownInst(pi, ast->getAliasAnalysis());
+      if (aliases) {
+        expr samePartition = placement->second.partition == other.partition;
+        g->solver.add(implies(aliases, samePartition));
+      }
+    }
+  }
+
   static void constrainOverlappingTimes(SMTConstraintGenerator *g,
     SymbolicPlacement placement) {
     for (const auto &p : g->symbolicPlacements) {
@@ -234,12 +253,6 @@ public:
       return;
     }
 
-    // For now, global accesses need to live on partition 0
-    if (isa<GlobalValue>(operand)) {
-      g->solver.add(g->symbolicPlacements.at(i).partition == 0);
-      return;
-    }
-
     // Incoming instructions require more complicated logic
     if (isa<Instruction>(operand)) {
       constrainInstructionOperand(g, i, (Instruction *)operand);
@@ -249,7 +262,9 @@ public:
     errs() << "unexpected operand:" << *operand << "\n";
   }
 
-  static void constrainInstruction(SMTConstraintGenerator *g, Instruction *i) {
+  static void constrainInstruction(SMTConstraintGenerator *g, Instruction *i, AliasSetTracker *ast) {
+    // Ensure memory instructions only alias to instructions on the designated core
+    constrainMemoryInstruction(g, i, ast);
     for (const auto &operand : i->operands()) {
       constrainOperand(g, i, operand);
     }
@@ -388,8 +403,8 @@ SMTConstraintGenerator::SMTConstraintGenerator(SMTConfig c) : solver(context),
 
 // Use SMT constraints to partition the current block's instructions,
 // referencing the previous placement mappings as needed.
-void SMTConstraintGenerator::
-partitionInstructionsInBlock(vector<Instruction *> instructions) {
+void SMTConstraintGenerator::partitionInstructionsInBlock(vector<Instruction *> instructions,
+  llvm::AliasSetTracker *ast) {
 
   solver.push();
 
@@ -401,10 +416,10 @@ partitionInstructionsInBlock(vector<Instruction *> instructions) {
   }
 
   for (Instruction *i : instructions) {
-    Internals::constrainInstruction(this, i);
+    Internals::constrainInstruction(this, i, ast);
   }
 
-  auto mod = Internals::incremementalPartitioning(this, instructions);
+  auto mod = Internals::incrementalPartitioning(this, instructions);
   Internals::addConcretePlacements(this, mod);
 
   // Reset block-local solver state
