@@ -4,9 +4,9 @@
 
 #include "SMTConstraintGenerator.hpp"
 
-namespace ReplaceArguments {
+namespace CloneAndReplaceArguments {
 
-class ReplaceArgumentsPass {
+class CloneAndReplaceArguments {
 
 private:
 
@@ -32,7 +32,7 @@ public:
   // Index for argument communication numbering
   int commsIdx;
 
-  ReplaceArgumentsPass(SMTConstraints::ConcretePlacementMap placements,
+  CloneAndReplaceArguments(SMTConstraints::ConcretePlacementMap placements,
     llvm::Module *hostMd, llvm::Module *deviceMd, llvm::Module *commsMd);
 
   void replaceArguments();

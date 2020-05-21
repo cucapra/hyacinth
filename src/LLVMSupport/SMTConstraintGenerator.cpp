@@ -397,7 +397,8 @@ SMTConstraintGenerator::SMTConstraintGenerator(SMTConfig c) : solver(context),
   Internals::buildCommunicationCostTable(this);
 
   params p(context);
-  p.set(":timeout", (unsigned)config.timeout);
+  // Set timeout in milliseconds
+  p.set(":timeout", (unsigned)config.timeout * 1000);
   solver.set(p);
 }
 

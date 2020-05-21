@@ -17,7 +17,7 @@
 
 #include "cxxopts.hpp"
 #include "CodeSelection.hpp"
-#include "ReplaceArguments.hpp"
+#include "CloneAndReplaceArguments.hpp"
 #include "SMTConstraintGenerator.hpp"
 
 using namespace llvm;
@@ -37,7 +37,7 @@ AliasSetTracker* getAliasSet(Module &inputModule, Function& F) {
   return ast;
 }
 
-void partitionInstructionsInModule(Module &inputModule, SMTConstraints::SMTConstraintGenerator &generator) {    
+void partitionInstructionsInModule(Module &inputModule, SMTConstraints::SMTConstraintGenerator &generator) {
   for (Function &f : inputModule) {
     if (!CodeSelection::includeFunction(&f)) continue;
     ReversePostOrderTraversal<llvm::Function *> traversal(&f);
@@ -100,6 +100,11 @@ int main(int argc, char **argv) {
   config.columns = result["c"].as<int>();
   config.timeout = result["t"].as<int>();
 
+  errs() << "Partitioning with "
+         << config.rows  << " rows, "
+         << config.columns  << " columns, "
+         << config.timeout << "s timeout.\n";
+
   SMTConstraints::searchStrategies strategies;
   config.strategy = strategies[result["s"].as<string>()];
 
@@ -116,7 +121,7 @@ int main(int argc, char **argv) {
 
   SMTConstraints::SMTConstraintGenerator generator(config);
   // auto generator = SMTConstraints::SMTConstraintGenerator(); // this does a copy!
-  
+
   partitionInstructionsInModule(*inputModule, generator);
 
   // Write intermediate, partitioned module out
@@ -135,7 +140,7 @@ int main(int argc, char **argv) {
     hostClone.get());
 
   Module *commsMd = new Module(filename + "_comms.ll", context);
-  ReplaceArguments::ReplaceArgumentsPass replaceArgs(generator.previousPlacements,
+  CloneAndReplaceArguments::CloneAndReplaceArguments replaceArgs(generator.previousPlacements,
     hostClone.get(), deviceClone.get(), commsMd);
   replaceArgs.replaceArguments();
 

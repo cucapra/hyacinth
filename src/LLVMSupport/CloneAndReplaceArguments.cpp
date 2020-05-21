@@ -5,44 +5,16 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 
-#include "ReplaceArguments.hpp"
+#include "CloneAndReplaceArguments.hpp"
 
 using namespace llvm;
 using namespace std;
 using namespace SMTConstraints;
 
-namespace ReplaceArguments {
-
-/*
-let new_addr_with_name name ty : llvalue =
-  (* Allocate memory for this communication and a ready flag based on type *)
-  let value = const_null ty in
-  let ready_flag = const_null bool_type in
-  let padding = const_null int_type in
-  let comms_struct = const_struct context [| value; ready_flag; padding |] in
-
-  (* Define the struct of { value, ready_flag, padding } as a global *)
-  let global = define_global name comms_struct comms_module in
-
-  (* Return the pointer to this global *)
-  let gep = const_gep global [| const_i32 0 |] in
-  const_ptrtoint gep (target_ptr_type ())
-
-let new_comms_addr ty : llvalue =
-  let id = !comms_id in
-  comms_id := !comms_id + 1;
-  new_addr_with_name ("comms_" ^ (string_of_int id)) ty
-
-let new_arg_addr_name ty : (llvalue * string) =
-  let id = !comms_id in
-  comms_id := !comms_id + 1;
-  let name = "arg_" ^ (string_of_int id) ^ "\x00" in
-  let addr = new_addr_with_name name ty in
-  (addr, name)
-*/
+namespace CloneAndReplaceArguments {
 
 // For internal helper functions
-class ReplaceArgumentsPass::Internals {
+class CloneAndReplaceArguments::Internals {
 
 public:
 
@@ -51,13 +23,13 @@ public:
     return stoi(cast<MDString>(md)->getString());
   }
 
-  static int newCommunicationID(ReplaceArgumentsPass *p) {
+  static int newCommunicationID(CloneAndReplaceArguments *p) {
     int newID = p->commsIdx;
     p->commsIdx++;
     return newID;
   }
 
-  static Value *argumentAddressWithName(ReplaceArgumentsPass *p,
+  static Value *argumentAddressWithName(CloneAndReplaceArguments *p,
     Type *ty) {
 
     // Claim a new communications id
@@ -86,15 +58,33 @@ public:
     return GEP;
   }
 
+  static void replaceArgumentOnClone(CloneAndReplaceArguments *p, Argument *a,
+    Argument *cloneCxt, IRBuilder<> *builder, ValueToValueMapTy *VMap) {
+
+    // Insert call to receive argument in the new entry block
+    auto comms = Internals::argumentAddressWithName(p, a->getType());
+    auto receiveArgF = p->deviceMd->getFunction("receive_argument");
+    auto size = ConstantExpr::getSizeOf(a->getType());
+    vector<Value *> args = {size, comms, cloneCxt};
+    auto call = builder->CreateCall(receiveArgF, args, "receive");
+    auto ptrType = PointerType::get(a->getType(), 0);
+    auto bitcast = builder->CreateBitCast(call, ptrType, "bitcast");
+    auto load =  builder->CreateLoad(a->getType(), bitcast, "receive_load");
+    (*VMap)[a] = load;
+  }
+
+  static void sendArgumentFromHost(CloneAndReplaceArguments *p, Argument *a,
+    Argument *cloneCxt, IRBuilder<> *builder, ValueToValueMapTy *VMap) {
+  }
 };
 
-ReplaceArgumentsPass::ReplaceArgumentsPass(ConcretePlacementMap p, Module *hm,
+CloneAndReplaceArguments::CloneAndReplaceArguments(ConcretePlacementMap p, Module *hm,
   Module *dm, Module *cm) : placements(p), hostMd(hm), deviceMd(dm),
   commsMd(cm), commsIdx(0) {}
 
 // Replace arguments to partitioned functions with calls to receive from
 // device code
-void ReplaceArgumentsPass::replaceArguments() {
+void CloneAndReplaceArguments::replaceArguments() {
 
   // Get the set of all partitions
   for (pair<Instruction *, ConcretePlacement> element : placements) {
@@ -107,11 +97,8 @@ void ReplaceArgumentsPass::replaceArguments() {
 
     // Lookup the corresponding function on the host and create a clone
     Function *hostF = hostMd->getFunction(f.getName());
-    FunctionType *funType = f.getFunctionType();
-    Function *hostClone = Function::Create(funType, hostF->getLinkage(),
-      "replace_" + f.getName(), hostMd);
-
-    errs() << *hostClone << "\n";
+    Function *hostClone = Function::Create(f.getFunctionType(),
+      hostF->getLinkage(), "host_" + f.getName(), hostMd);
 
     // Create a clone of the function per partition for the device
     auto voidType = Type::getVoidTy(deviceMd->getContext());
@@ -133,12 +120,11 @@ void ReplaceArgumentsPass::replaceArguments() {
       BasicBlock *entry = BasicBlock::Create(deviceMd->getContext(), "receives",
        clone);
       IRBuilder<> builder(entry);
-
       ValueToValueMapTy VMap;
 
       // For each argument, check whether it is used in this partition; if so,
       // replace with a call to receive args in the entry block
-      for (Argument &a : f.args()) {
+      for (Argument &a : hostClone->args()) {
 
         bool usedInPartition = std::any_of(a.users().begin(), a.users().end(),
           [&partition](llvm::User *U) {
@@ -147,15 +133,7 @@ void ReplaceArgumentsPass::replaceArguments() {
         });
 
         if (usedInPartition) {
-          auto comms = Internals::argumentAddressWithName(this, a.getType());
-          auto receiveArgF = deviceMd->getFunction("receive_argument");
-          auto size = ConstantExpr::getSizeOf(a.getType());
-          vector<Value *> args = {size, comms, cloneCxt};
-          auto call = builder.CreateCall(receiveArgF, args, "receive");
-          auto ptrType = PointerType::get(a.getType(), 0);
-          auto bitcast = builder.CreateBitCast(call, ptrType, "bitcast");
-          auto load =  builder.CreateLoad(a.getType(), bitcast, "receive_load");
-          VMap[&a] = load;
+          Internals::replaceArgumentOnClone(this, &a, cloneCxt, &builder, &VMap);
         } else {
           // If this argument is never used in the partition, replace it with
           // undef for now
@@ -164,11 +142,9 @@ void ReplaceArgumentsPass::replaceArguments() {
       }
 
       SmallVector<ReturnInst *, 4> Returns;
-
       CloneFunctionInto(clone, &f, VMap, /*ModuleLevelChanges=*/true, Returns);
 
       // Insert branch to old entry
-
       // TODO: This is a hack to get the second block, likely a better way
       BasicBlock *oldEntry;
       int i = 0;
