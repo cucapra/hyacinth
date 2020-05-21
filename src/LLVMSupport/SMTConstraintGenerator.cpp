@@ -169,13 +169,13 @@ public:
 
   static void constrainMemoryInstruction(SMTConstraintGenerator *g, Instruction *i,
     llvm::AliasSetTracker *ast) {
-    if (!dyn_cast<StoreInst>(i) && !dyn_cast<LoadInst>(i)) return;
+    if (!i->mayReadOrWriteMemory()) return;
     const auto &placement = g->symbolicPlacements.find(i);
     AliasSet &as = ast->getAliasSetFor(MemoryLocation::get(i));
 
     for (const auto &p : g->previousPlacements) {
       const Instruction *pi = p.first;
-      if (!dyn_cast<StoreInst>(pi) && !dyn_cast<LoadInst>(pi)) continue;
+      if (!pi->mayReadOrWriteMemory()) continue;
       auto other = p.second;
       bool aliases = as.aliasesUnknownInst(pi, ast->getAliasAnalysis());
       if (aliases) {
