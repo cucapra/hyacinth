@@ -31,15 +31,17 @@ int HyacinthCostModel::costForInstruction(Instruction *i) {
   return 0;
 }
 
-static pair<int, int>components(int partition) {
-  return make_pair(0, 0);
+static pair<int, int>components(int partition, int columns) {
+  int q = partition % columns;
+  int r = (partition - q) / columns;
+  return make_pair(r, q);
 }
 
-int HyacinthCostModel::costForCommunication(int partition1, int partition2) {
+int HyacinthCostModel::costForCommunication(int partition1, int partition2, int columns) {
   // Manhattan distance: number of hops
   int x1, x2, y1, y2;
-  tie(x1, y1) = components(partition1);
-  tie(x2, y2) = components(partition2);
+  tie(x1, y1) = components(partition1, columns);
+  tie(x2, y2) = components(partition2, columns);
 
   return abs(x1 - x2) + abs(y1 - y2);
 }
