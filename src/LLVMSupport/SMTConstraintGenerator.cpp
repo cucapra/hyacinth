@@ -324,7 +324,7 @@ public:
   static void buildCommunicationCostTable(SMTConstraintGenerator *g) {
     for (int x = 0; x < g->config.rows; x++) {
       for (int y = 0; y < g->config.columns; y++) {
-        int cost = HyacinthCostModel::costForCommunication(x, y);
+        int cost = HyacinthCostModel::costForCommunication(x, y, g->config.columns);
         expr xExpr = g->context.int_val(x);
         expr yExpr = g->context.int_val(y);
         g->solver.add(g->communicationCosts(xExpr, yExpr) == cost);
